@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { runRule } from '../src/audit/engine.js'
+import { auditSchema, runRule } from '../src/audit/engine.js'
 import { schemaDialect } from '../src/audit/rules/schema-dialect.js'
 import { versionConstruct } from '../src/audit/rules/version-construct.js'
 import { versionLegacy } from '../src/audit/rules/version-legacy.js'
+import { loadInlineApiModel } from '../src/openapi/loader.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
 const run = (rule, document, options) => runRule(rule, auditContext(document, options))
@@ -305,5 +307,32 @@ describe('schema-dialect', () => {
       dataPath: '/jsonSchemaDialect',
       params: { dialect },
     })
+  })
+})
+
+// The one rule whose input is a marker no hand-written document carries: the
+// fixtures are the real Swagger 2.0 petstore run through the converter, and a
+// 3.0 document nobody converted.
+describe('conversion-approximation', () => {
+  const fixture = (name) =>
+    JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'))
+  const findings = (result, ruleId) =>
+    result.categories.flatMap((c) => c.findings).filter((f) => f.ruleId === ruleId)
+  const report = async (name) => auditSchema(await loadInlineApiModel(fixture(name)))
+
+  it('reports every approximation the conversion had to make, and only those', async () => {
+    const result = await report('petstore-2.0.json')
+    const approximations = findings(result, 'conversion-approximation')
+    expect(approximations.map((f) => [f.dataPath, f.params.construct])).toEqual([
+      ['/paths/~1pets/get/parameters/4', 'tsv'],
+      ['/paths/~1pets/get/parameters/5', 'ssv'],
+      ['/paths/~1pets/get/responses/200/headers/X-Pages/schema', 'ssv'],
+    ])
+    expect(approximations.every((f) => f.severity === 'info')).toBe(true)
+  })
+
+  it('says nothing on a document nobody converted', async () => {
+    const result = await report('petstore-3.0.json')
+    expect(findings(result, 'conversion-approximation')).toEqual([])
   })
 })

@@ -300,7 +300,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Tag sections (`summary` label, `parent` hierarchy incl. unknown parent and cycles, non-navigational `kind`) | `model.test.js` | `openapi-32.spec.js`, `navigation.spec.js` |
 | Per-route `<head>` (title, meta description, JSON-LD), `seo.index` noindex | `head.test.js` | `head.spec.js` |
 | Request fidelity (`encoding`, `allowReserved`, `allowEmptyValue`, cookie params, XML samples, `$self`, inline YAML) | `request-fidelity.test.js`, `sample-xml.test.js`, `loader-inline.test.js`, `send.test.js`, `exports.test.js`, `audit-rules-version.test.js` | `request-fidelity.spec.js` |
-| Swagger 2.0 conversion (whole table, `$ref` rewrite, `collectionFormat`, security mapping, approximation audit) | `swagger2.test.js`, `model.test.js`, `loader-inline.test.js` | `swagger2.spec.js`, `bootstrap.spec.js` |
+| Swagger 2.0 conversion (whole table, `$ref` rewrite, `collectionFormat`, security mapping, approximation audit) | `swagger2.test.js`, `model.test.js`, `loader-inline.test.js`, `audit-rules-version.test.js` | `swagger2.spec.js`, `bootstrap.spec.js` |
 | Environments, `{{var}}` interpolation, colors | `env-store.test.js`, `interpolate.test.js`, `env-colors.test.js`, `json-template.test.js` | `environments.spec.js`, `env-locked.spec.js` |
 | Environment setup link (codec, caps, merge plan, plan execution, scrub, preview, generation, from-scratch builder) | `env-setup-link.test.js`, `router.test.js` | `env-setup-link.spec.js`, `env-locked.spec.js`, `a11y.spec.js` |
 | Auth from `securitySchemes`, credentials card | `auth.test.js` | `tryit.spec.js` |

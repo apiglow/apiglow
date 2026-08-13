@@ -403,6 +403,9 @@ describe('the converted document through the whole pipeline', () => {
   })
 })
 
+// Only what the conversion's own output must satisfy. The rule that reads the
+// approximation markers (`conversion-approximation`) has its fixtures with the
+// other version-awareness rules, in `audit-rules-version.test.js`.
 describe('audit of a converted document', () => {
   const report = async () => auditSchema(await loadInlineApiModel(petstore()))
   const findings = (result, ruleId) =>
@@ -416,21 +419,5 @@ describe('audit of a converted document', () => {
     expect(findings(result, 'version-legacy')).toEqual([])
     // Nor ahead of it: nothing in the converted document is a 3.1+ construct.
     expect(findings(result, 'version-construct')).toEqual([])
-  })
-
-  it('reports every approximation the conversion had to make, and only those', async () => {
-    const result = await report()
-    const approximations = findings(result, 'conversion-approximation')
-    expect(approximations.map((f) => [f.dataPath, f.params.construct])).toEqual([
-      ['/paths/~1pets/get/parameters/4', 'tsv'],
-      ['/paths/~1pets/get/parameters/5', 'ssv'],
-      ['/paths/~1pets/get/responses/200/headers/X-Pages/schema', 'ssv'],
-    ])
-    expect(approximations.every((f) => f.severity === 'info')).toBe(true)
-  })
-
-  it('says nothing on a document nobody converted', async () => {
-    const result = auditSchema(await loadInlineApiModel(fixture('petstore-3.0.json')))
-    expect(findings(result, 'conversion-approximation')).toEqual([])
   })
 })
