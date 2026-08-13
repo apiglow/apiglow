@@ -115,7 +115,11 @@
    (depth/noise 0), 1px borders, restrained radii; semantic colors are chosen
    dark enough (light side) / light enough (dark side) that daisyUI's `-soft`
    derivations — the method badges, the most visible element of the app — stay
-   readable against the tinted base, which the stock themes never guaranteed. */
+   readable against the tinted base, which the stock themes never guaranteed.
+   `-soft` paints the token itself as ink on an 8 % wash of it over base-100, so
+   the constraint that fixes each hue is that ratio, not the ratio on the plain
+   surface: red at #dc2626 clears white at 4.83:1 and its own wash at only
+   4.36:1. Every semantic color below is floored at 4.5:1 in that derivation. */
 @plugin "daisyui/theme" {
   name: "apiglow";
   default: true;
@@ -138,7 +142,7 @@
   --color-success-content: #ffffff;
   --color-warning: #b45309;
   --color-warning-content: #ffffff;
-  --color-error: #dc2626;
+  --color-error: #b91c1c;
   --color-error-content: #ffffff;
   --radius-selector: 0.25rem;
   --radius-field: 0.375rem;

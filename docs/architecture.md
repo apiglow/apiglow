@@ -1096,8 +1096,11 @@ Functional source of truth: [docs-pages.md](docs-pages.md). Summary:
 - **Signature pair `apiglow` / `apiglow-dark`**, compiled into `app.css` next
   to the standard themes and offered by default
   (`available: ['apiglow', 'apiglow-dark']`). Flat surfaces, 1 px borders,
-  restrained radii; semantic colors picked so daisyUI's `-soft` derivations
-  (method badges) stay readable — which the stock themes never guaranteed.
+  restrained radii; every semantic color is picked so that daisyUI's `-soft`
+  derivation of it — the token as ink on an 8 % wash of itself, which is the
+  tightest ratio that color ever produces, and what the method badges and the
+  cartouche badges are made of — clears 4.5:1 on both halves, which the stock
+  themes never guaranteed.
 - **`theme.default: 'system'`** (the built-in default) follows the OS
   `prefers-color-scheme`, resolved within the first light/dark pair fully
   present in `available` (`apiglow`/`apiglow-dark`, else `light`/`dark`), and
@@ -1777,10 +1780,15 @@ exercising every prose feature at once, gating on
 `apiglow` — the sweep stores the choice itself, so a fixture that still asks
 for stock `light` is measured on the pair anyway — plus one pass on
 `apiglow-dark`, and `color-contrast` is enforced like any other rule. What
-that promise covers is exactly the default install. Three properties hold
+that promise covers is exactly the default install. Four properties hold
 it up, and they are the shape of the design layer rather
 than scanner appeasement:
 
+- **the palette is floored by its own `-soft` derivation** — a semantic color
+  belongs to the pair only if it clears 4.5:1 as ink on an 8 % wash of itself
+  (§5.9). That is a stricter constraint than the same color on the plain
+  surface, and it is the one that binds: red at `#dc2626` cleared white at
+  4.83:1 and its own wash at 4.36:1;
 - **secondary text is a color, never an opacity** — `text-subtle` (70 % of
   the ink) and `text-faint` (66 %) carry every secondary text
   throughout the components, never `opacity-40…80`. Opacity multiplies: a `opacity-60` caption

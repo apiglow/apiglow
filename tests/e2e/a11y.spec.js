@@ -108,7 +108,11 @@ test('a custom-theme install has no accessibility violations', async ({ page }) 
 // The pair, not just its light half: `apiglow-dark` is what a reader on a dark
 // OS gets by default, and its ratios come from different tokens. One pass over
 // the two surfaces that carry the most color — the nav's method badges and the
-// doc — is enough to catch a token that only clears the floor on white.
+// doc — is enough to catch a token that only clears the floor on white. The
+// third pass reaches the red of that family, which neither of the first two
+// renders: the try-it cartouche of the 3.2 fixture sits on its "missing
+// credentials" badge, the same `badge-soft badge-error` the DELETE method
+// badge is made of.
 test('the dark half of the pair holds the same contrast floor', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('apidoc:theme', JSON.stringify('apiglow-dark'))
@@ -118,22 +122,26 @@ test('the dark half of the pair holds the same contrast floor', async ({ page })
   await clickNavOp(page, 'listPets')
   await expect(page.locator('api-endpoint-doc h1')).toBeVisible()
   await expectNoViolations(page)
+
+  await gotoFixture(page, '/tests/e2e/fixtures/app-32.html')
+  await clickNavOp(page, 'streamPets')
+  await expect(credentialsCard(page)).toContainText('missing')
+  await expectNoViolations(page)
 })
 
 // A 3.2 tag hierarchy nests one disclosure inside another and hangs label
 // badges off the operation header: two structures the flat nav never produced.
-// The try-it column is out: this fixture's schemes leave the cartouche on its
-// "missing credentials" badge, whose contrast is a question of its own and has
-// its own sweep above.
+// This fixture's schemes also leave the cartouche on its "missing credentials"
+// badge, which is where the red `-soft` derivation gets measured on the light
+// half — no fixture operation is a DELETE.
 test('a nested tag nav and its label badges have no accessibility violations', async ({ page }) => {
-  const surfaces = { exclude: ['api-try-it-panel'] }
   await gotoFixture(page, '/tests/e2e/fixtures/app-32.html')
   await clickNavOp(page, 'streamPets')
   await expect(page.locator('api-endpoint-doc h1')).toBeVisible()
-  await expectNoViolations(page, surfaces)
+  await expectNoViolations(page)
   await clickNavOp(page, 'findPets')
   await expect(page.locator('main header .badge', { hasText: 'Partners' })).toBeVisible()
-  await expectNoViolations(page, surfaces)
+  await expectNoViolations(page)
 })
 
 test('operation doc has no accessibility violations', async ({ page }) => {
