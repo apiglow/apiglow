@@ -1,7 +1,7 @@
 import { t } from '../i18n/index.js'
 import { suggestedVariables } from '../openapi/auth.js'
 import { drivableFlows } from '../openapi/oauth.js'
-import { flowLabel, schemeLocation, schemeTypeLabel } from './auth-labels.js'
+import { flowLabel, platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js'
 import { el, text } from './dom.js'
 import { markdownBlock } from './markdown.js'
 
@@ -72,6 +72,9 @@ function schemeDetail(scheme) {
   if (scheme.type === 'oauth2' || scheme.type === 'openIdConnect') {
     const key = drivableFlows(scheme).length ? 'auth.oauthFlowNote' : 'auth.oauthNote'
     parts.push(el('p', 'text-xs text-subtle', text(t(key))))
+  }
+  for (const note of platformNotes(scheme)) {
+    parts.push(el('p', 'text-xs text-subtle', text(note)))
   }
   const urls = [
     urlRow('auth.openIdConnectUrl', scheme.openIdConnectUrl),

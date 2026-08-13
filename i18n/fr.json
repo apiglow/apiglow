@@ -300,6 +300,8 @@
   "auth.field.credential": "Identifiant",
   "auth.oauthNote": "Les flows OAuth ne sont pas exécutés ici : obtenez un token par ailleurs et collez-le dans la variable.",
   "auth.oauthFlowNote": "Un token d'accès peut être obtenu directement depuis le cartouche Identifiants du panneau d'essai.",
+  "auth.mutualTlsNote": "Le TLS mutuel est documenté mais pas envoyé d'ici : un navigateur ne peut pas présenter de certificat client — appelez cet endpoint depuis un client qui le peut (cURL, votre propre code).",
+  "auth.deviceFlowNote": "Le flow d'autorisation par appareil n'est pas exécuté ici : il interroge le endpoint de token hors du navigateur — obtenez le token par ailleurs et collez-le dans la variable.",
   "auth.configured": "Configuré · {env}",
   "auth.sent": "envoyé par le try-it",
   "auth.authorizationUrl": "URL d'autorisation",

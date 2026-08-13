@@ -74,14 +74,17 @@ tier the browser platform allows:
 - **T2 — executable**: additionally drives the try-it request.
 - **T3 — rendered with documented fallback**: the browser cannot execute
   it — fetch forbids the `Cookie` header, no client certificates for
-  `mutualTLS`, `deviceAuthorization` needs out-of-browser polling. The
-  cookie case says so in the UI (i18n'd hint, not silence) and the cURL
-  export still carries the
-  value (the cookie-auth path in `request-builder.js` does exactly this:
-  cookies become a `Cookie` header for cURL, `hasCookies` flags the browser
-  limitation); `mutualTLS` and `deviceAuthorization` render in the auth
-  overview without an equivalent in-place hint. These are platform limits,
-  not gaps; §5.1 carries their rationale.
+  `mutualTLS`, `deviceAuthorization` needs out-of-browser polling. Each one
+  says so in the UI (i18n'd hint, not silence). The cookie case also keeps
+  the value in the cURL export (the cookie-auth path in
+  `request-builder.js` does exactly this: cookies become a `Cookie` header
+  for cURL, `hasCookies` flags the browser limitation at send time);
+  `mutualTLS` and `deviceAuthorization` are named by
+  `platformLimits` (`src/openapi/auth.js`) and stated wherever the scheme
+  appears — operation doc, auth overview, and the try-it Credentials
+  cartouche whose status badge would otherwise promise a send that cannot
+  happen. These are platform limits, not gaps; §5.1 carries their
+  rationale.
 
 ## 2. Coverage by area
 
@@ -879,9 +882,9 @@ are enumerated in `scenarios.md` §8.4; the dependency-side waivers live in
 | Three things in the Arazzo round trip | `persist`/`sensitive` on an extraction (Arazzo has no such notion), a variable name carrying a dot, and the 2xx expectation that comes back as the default verdict. Working around them would mean writing `x-` extensions into a document other tools must read | §4.7 |
 
 Separately, the **T3 constructs** of §1.1 (the `Cookie` header on send,
-`mutualTLS`, `deviceAuthorization`) are platform limits, not choices: the
-cookie path says so in the UI and the cURL export still carries the value;
-the other two render in the auth overview (§1.1).
+`mutualTLS`, `deviceAuthorization`) are platform limits, not choices: each
+states its limit in the UI, and the cookie path additionally keeps the
+value in the cURL export (§1.1).
 
 ### 5.2 Beyond OpenAPI — out of scope, deliberately
 

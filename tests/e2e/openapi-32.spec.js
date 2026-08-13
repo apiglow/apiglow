@@ -2,7 +2,7 @@
 // exist in 3.1 must travel through the whole pipeline — normalization,
 // nav, doc, and above all the try-it's real send.
 import { test, expect } from '@playwright/test'
-import { clickNavOp, mockApi, panelField, send, tryIt } from './helpers.js'
+import { clickNavOp, credentialsCard, mockApi, panelField, send, tryIt } from './helpers.js'
 
 const PAGE = '/tests/e2e/fixtures/app-32.html'
 
@@ -48,6 +48,24 @@ test('an in: querystring parameter goes out as-is, without re-encoding', async (
   expect(decodeURIComponent(calls[0].url)).toBe(
     "https://api.e2e.test/v3/pets/find?$.pets[?(@.name=='Rex')]",
   )
+})
+
+// Tier T3 (docs/openapi-coverage.md §1.1): a construct the browser cannot
+// execute is still rendered, and the UI says why — silence would read as a
+// broken try-it. Checked where the credential is entered as well as in the
+// doc: the cartouche is what promises the send.
+test('mutualTLS and the device flow state their browser limit', async ({ page }) => {
+  await goto(page)
+  await clickNavOp(page, 'streamPets')
+
+  const auth = page.locator('api-endpoint-doc details', { hasText: 'Authentication' })
+  await expect(auth).toContainText('cannot present a client certificate')
+  await expect(auth).toContainText('polls the token endpoint outside the browser')
+
+  const credentials = credentialsCard(page)
+  await expect(credentials).toContainText('cannot present a client certificate')
+  await credentials.getByLabel('Credentials').selectOption('deviceOauth')
+  await expect(credentials).toContainText('polls the token endpoint outside the browser')
 })
 
 test('a sequential media type displays the schema of a stream item', async ({ page }) => {

@@ -300,6 +300,8 @@
   "auth.field.credential": "Credential",
   "auth.oauthNote": "OAuth flows are not executed here: obtain a token elsewhere and paste it into the variable.",
   "auth.oauthFlowNote": "An access token can be obtained directly from the Credentials box of the try-it panel.",
+  "auth.mutualTlsNote": "Mutual TLS is documented but not sent from here: a browser cannot present a client certificate — call this endpoint from a client that can (cURL, your own code).",
+  "auth.deviceFlowNote": "The device authorization flow is not run here: it polls the token endpoint outside the browser — obtain the token elsewhere and paste it into the variable.",
   "auth.configured": "Configured · {env}",
   "auth.sent": "sent by the try-it",
   "auth.authorizationUrl": "Authorization URL",

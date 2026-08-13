@@ -602,6 +602,12 @@ load, a revision we do not know. An overlay never breaks a load.
   - `oauth2` / `openIdConnect` → manual token field, plus a "Get a token"
     block when a flow is drivable (Authorization Code + PKCE, client
     credentials) — both write the same `auth.X` variable.
+- What the browser cannot execute is named by `platformLimits`
+  (`src/openapi/auth.js`): `mutualTLS`, and an OAuth2 scheme carrying a
+  `deviceAuthorization` flow. Each limit is stated as an i18n'd hint in the
+  three places the scheme is displayed — operation doc, home summary,
+  credentials cartouche — so no surface promises a send it cannot make
+  (`openapi-coverage.md` §1.1, tier T3).
 - Manual header overrides in the try-it always remain possible.
 - **Host-provided credentials**: the host page can feed `auth.X` values at
   runtime through a public provider API (`window.apidoc`, plus the

@@ -25,7 +25,7 @@ import { opShareHash } from '../router.js'
 import { rememberHeader } from '../storage/header-memory.js'
 import { readPref, writePref } from '../storage/prefs.js'
 import { announce } from './a11y.js'
-import { schemeLocation, schemeTypeLabel } from './auth-labels.js'
+import { platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js'
 import { hoverCopyButton } from './copy-button.js'
 import { credentialsForm } from './credentials-form.js'
 import { el, icon, text } from './dom.js'
@@ -777,6 +777,10 @@ class ApiTryItPanel extends HTMLElement {
           el('span', 'badge badge-neutral badge-sm', text(schemeTypeLabel(scheme))),
           location ? el('span', 'text-xs text-subtle', text(location)) : null,
         ),
+        // A construct the browser cannot execute (T3) says so where the
+        // credential is entered, not only in the doc: this is the cartouche
+        // whose green badge would otherwise promise a send that cannot happen.
+        ...platformNotes(scheme).map((note) => el('p', 'text-xs text-subtle', text(note))),
         credentialsForm({
           scheme,
           envStore: this.#envStore,

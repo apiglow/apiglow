@@ -4,6 +4,7 @@ import {
   buildAuthInjection,
   credentialFields,
   credentialsStatus,
+  platformLimits,
   suggestedVariables,
 } from '../src/openapi/auth.js'
 
@@ -95,6 +96,44 @@ describe('credentialsStatus', () => {
       { name: 'auth.basicAuth.username', set: false, sensitive: false, value: '' },
       { name: 'auth.basicAuth.password', set: false, sensitive: false, value: '' },
     ])
+  })
+})
+
+// The T3 tier of docs/openapi-coverage.md §1.1: these constructs are rendered
+// and the UI states why they cannot travel. Silence is the defect being
+// guarded against, so what matters is that each limit is named exactly once
+// and that ordinary schemes name none.
+describe('platformLimits', () => {
+  it('names mutualTLS and the device authorization flow', () => {
+    expect(platformLimits({ name: 'mtls', type: 'mutualTLS' })).toEqual(['mutualTLS'])
+    expect(
+      platformLimits({
+        name: 'device',
+        type: 'oauth2',
+        flows: [{ key: 'deviceAuthorization', deviceAuthorizationUrl: 'https://auth/device' }],
+      }),
+    ).toEqual(['deviceAuthorization'])
+  })
+
+  it('reports the device limit of a scheme that also has a drivable flow', () => {
+    expect(
+      platformLimits({
+        name: 'mixed',
+        type: 'oauth2',
+        flows: [
+          { key: 'authorizationCode', authorizationUrl: 'https://auth', tokenUrl: 'https://token' },
+          { key: 'deviceAuthorization', deviceAuthorizationUrl: 'https://auth/device' },
+        ],
+      }),
+    ).toEqual(['deviceAuthorization'])
+  })
+
+  it('says nothing about a scheme the browser can execute', () => {
+    expect(platformLimits(bearer)).toEqual([])
+    expect(platformLimits(apiKeyCookie)).toEqual([])
+    expect(
+      platformLimits({ name: 'oidc', type: 'openIdConnect', openIdConnectUrl: 'https://oidc' }),
+    ).toEqual([])
   })
 })
 

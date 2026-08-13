@@ -1,4 +1,5 @@
 import { t } from '../i18n/index.js'
+import { platformLimits } from '../openapi/auth.js'
 
 // Auth type labels — static map (rule 2), i18n keys resolved here.
 // Shared between the central doc and the Credentials cartouche of the try-it panel.
@@ -22,6 +23,13 @@ const FLOW_LABEL = {
   deviceAuthorization: 'oauth.flow.deviceAuthorization',
 }
 
+// Browser limit (cf. platformLimits) → the sentence that states it. A T3
+// construct is rendered and says so; silence would read as a bug.
+const LIMIT_NOTE = {
+  mutualTLS: 'auth.mutualTlsNote',
+  deviceAuthorization: 'auth.deviceFlowNote',
+}
+
 // Nature of a credential field (cf. credentialFields) → label.
 const CREDENTIAL_LABEL = {
   token: 'auth.field.token',
@@ -29,6 +37,10 @@ const CREDENTIAL_LABEL = {
   username: 'auth.field.username',
   password: 'auth.field.password',
   credential: 'auth.field.credential',
+}
+
+export function platformNotes(scheme) {
+  return platformLimits(scheme).map((limit) => t(LIMIT_NOTE[limit]))
 }
 
 export function credentialLabel(kind) {

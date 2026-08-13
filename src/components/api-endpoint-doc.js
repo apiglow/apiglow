@@ -12,7 +12,7 @@ import { isXmlMedia } from '../openapi/sample-xml.js'
 import { opHash } from '../router.js'
 import { readHeaderMemory } from '../storage/header-memory.js'
 import { linkTabPanel, wireTablist } from './a11y.js'
-import { schemeLocation, schemeTypeLabel } from './auth-labels.js'
+import { platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js'
 import { changeBadge, changeDot } from './change-badge.js'
 import { confirmed, hoverCopyButton, writeClipboard } from './copy-button.js'
 import { copyPageMenu } from './copy-page-menu.js'
@@ -397,6 +397,9 @@ function authSection(security, credentialsResolver, authRows = {}) {
       // Credentials cartouche; otherwise it still has to be pasted in by hand.
       const key = drivableFlows(scheme).length ? 'auth.oauthFlowNote' : 'auth.oauthNote'
       box.append(el('p', 'text-xs text-faint', text(t(key))))
+    }
+    for (const note of platformNotes(scheme)) {
+      box.append(el('p', 'text-xs text-faint', text(note)))
     }
     const description = markdownInline(scheme.description)
     if (description) box.append(el('div', 'text-xs text-subtle', description))

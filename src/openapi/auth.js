@@ -35,6 +35,19 @@ export function credentialsStatus(scheme, variables) {
   })
 }
 
+// What the browser platform forbids executing for this scheme
+// (docs/openapi-coverage.md §1.1, tier T3). Named limits rather than
+// sentences: the components layer translates them, this layer only knows
+// which construct has no browser equivalent. A scheme can carry several —
+// one OAuth2 scheme may mix a drivable flow and the device one.
+export function platformLimits(scheme) {
+  const limits = []
+  if (scheme.type === 'mutualTLS') limits.push('mutualTLS')
+  if ((scheme.flows ?? []).some((flow) => flow.key === 'deviceAuthorization'))
+    limits.push('deviceAuthorization')
+  return limits
+}
+
 // Effective security requirements of an operation: its own `security`
 // if it has one — including [] which disables auth — otherwise the document's
 // global one. An empty requirement {} in the list makes auth optional.
