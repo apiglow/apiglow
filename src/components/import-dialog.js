@@ -13,7 +13,12 @@ import { METHOD_BADGE } from './method-colors.js'
 // (dropped cookies, an unmatched credential, an ignored flag) is shown before
 // the reader commits, because after the jump the panel looks like any other.
 
-const NEUTRAL_BADGE = 'badge badge-soft badge-neutral'
+// The look of a method carrying no semantic color, which `methodBadgeClass`
+// already settled for OPTIONS/HEAD/TRACE and for anything absent from the map.
+// Not `badge-neutral`: on a dark theme `neutral` is a surface token, so the
+// `-soft` and `-outline` recipes — which paint the token itself as ink — put it
+// against base-100 at ~1.4:1. `badge-ghost` inks with `base-content` instead.
+const NEUTRAL_BADGE = 'badge badge-ghost'
 
 class ImportDialog extends HTMLElement {
   #dialog = null

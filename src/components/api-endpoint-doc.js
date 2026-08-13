@@ -509,9 +509,12 @@ function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeS
 // about the operation rather than filing it, and this is where it says it —
 // the registry's `badge` is literally this, `audience` names who the endpoint
 // is for. One static class per kind (rule 2); an unregistered kind is still a
-// label, it just gets the neutral look.
+// label, it just gets the neutral look — which `badge` gets too, since "this
+// operation is flagged" carries no color of its own. That look is `badge-ghost`
+// and not `badge-neutral`: `-outline` inks with the token itself, and on a dark
+// theme `neutral` is a surface, which lands at ~1.4:1 against base-100.
 const LABEL_BADGE_CLASS = {
-  badge: 'badge badge-neutral badge-outline',
+  badge: 'badge badge-ghost badge-outline',
   audience: 'badge badge-accent badge-outline',
 }
 

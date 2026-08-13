@@ -1780,7 +1780,7 @@ exercising every prose feature at once, gating on
 `apiglow` — the sweep stores the choice itself, so a fixture that still asks
 for stock `light` is measured on the pair anyway — plus one pass on
 `apiglow-dark`, and `color-contrast` is enforced like any other rule. What
-that promise covers is exactly the default install. Four properties hold
+that promise covers is exactly the default install. Five properties hold
 it up, and they are the shape of the design layer rather
 than scanner appeasement:
 
@@ -1789,6 +1789,15 @@ than scanner appeasement:
   (§5.9). That is a stricter constraint than the same color on the plain
   surface, and it is the one that binds: red at `#dc2626` cleared white at
   4.83:1 and its own wash at 4.36:1;
+- **the ink recipes belong to the semantic colors alone** — `-soft` and
+  `-outline` paint the token itself as ink, which a *surface* token cannot
+  survive: `neutral` is the dark half's panel color, so `badge-soft
+  badge-neutral` reads at 1.37:1 on `apiglow-dark` while clearing 12:1 on
+  white. Relighting `--color-neutral` is not the answer — it is what
+  `bg-neutral` paints with. A badge with nothing semantic to say (an HTTP
+  method outside the colored set, an import candidate for one, a tag `kind`
+  that only flags) is `badge-ghost`, whose ink is `base-content` on
+  `base-200`;
 - **secondary text is a color, never an opacity** — `text-subtle` (70 % of
   the ink) and `text-faint` (66 %) carry every secondary text
   throughout the components, never `opacity-40…80`. Opacity multiplies: a `opacity-60` caption
@@ -1802,6 +1811,15 @@ than scanner appeasement:
   picker marks its unselected chips with a neutral tint and `aria-pressed`
   instead of an opacity, and the send meter's stats carry per-element colors
   instead of a container opacity.
+
+**Where the scanner cannot answer: inside a modal.** daisyUI stretches the
+backdrop's dismiss button across the whole `.modal-box`, so axe reports
+`color-contrast` as *incomplete* — "background color could not be determined
+because it is overlapped by another element" — for every node of a dialog, and
+an incomplete is not a violation. What holds the floor there is the palette
+rules above, plus a ratio computed from the painted pixels for the surfaces
+whose whole point is a color (`a11y.spec.js`, `contrastRatio`); a sweep of an
+open dialog gates everything *but* contrast.
 
 **What it is not a promise about: the other themes.** The app ships **every**
 standard daisyUI theme (rule 3) and a ratio fixed on `apiglow` says nothing

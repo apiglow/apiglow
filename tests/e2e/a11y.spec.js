@@ -90,6 +90,50 @@ async function expectNoViolations(page, options) {
   expect(violationSummary(await scan(page, options))).toEqual([])
 }
 
+// The AA floor for normal text, which `color-contrast` gates everywhere it can
+// measure — and asserts nothing where it cannot. Inside a daisyUI modal it
+// cannot: `.modal-backdrop` stretches its dismiss button across the whole box,
+// and axe answers "background color could not be determined because it is
+// overlapped by another element" for every node of it. Those come back as
+// `incomplete`, which is not a violation, so a dialog can hold a 1.4:1 badge
+// and leave the sweep green. This measures what the browser painted instead of
+// asking the scanner.
+const CONTRAST_FLOOR = 4.5
+
+function contrastRatio(locator) {
+  return locator.evaluate((node) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    // Layers painted in order over an opaque white start, source-over: a
+    // transparent one contributes nothing and a translucent one blends,
+    // exactly as on screen. It also settles the color syntax — a `-soft`
+    // background is a `color-mix()` in oklab, and comes back out as sRGB.
+    const paint = (layers) => {
+      ctx.clearRect(0, 0, 1, 1)
+      for (const layer of ['#ffffff', ...layers]) {
+        ctx.fillStyle = layer
+        ctx.fillRect(0, 0, 1, 1)
+      }
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+      const channels = [r, g, b].map((v) => {
+        const c = v / 255
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+    }
+    const backgrounds = []
+    for (let el = node; el; el = el.parentElement) {
+      backgrounds.unshift(getComputedStyle(el).backgroundColor)
+    }
+    const background = paint(backgrounds)
+    const ink = paint([...backgrounds, getComputedStyle(node).color])
+    const [lighter, darker] = background > ink ? [background, ink] : [ink, background]
+    return (lighter + 0.05) / (darker + 0.05)
+  })
+}
+
 test('home view has no accessibility violations', async ({ page }) => {
   await gotoApp(page)
   await expectNoViolations(page)
@@ -113,6 +157,14 @@ test('a custom-theme install has no accessibility violations', async ({ page }) 
 // renders: the try-it cartouche of the 3.2 fixture sits on its "missing
 // credentials" badge, the same `badge-soft badge-error` the DELETE method
 // badge is made of.
+//
+// The last two passes are the badges with no semantic color, which is exactly
+// where the dark half diverges: `neutral` is a SURFACE token there, so the
+// recipes that ink with the token itself (`-soft`, `-outline`) land near 1.4:1
+// against base-100 while reading perfectly on white. Both are rendered by a
+// path the rest of the suite never takes — a `badge` kind tag on the operation
+// header, and an import candidate whose method carries no color (a free-form
+// PURGE, absent from `METHOD_BADGE`).
 test('the dark half of the pair holds the same contrast floor', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('apidoc:theme', JSON.stringify('apiglow-dark'))
@@ -127,6 +179,20 @@ test('the dark half of the pair holds the same contrast floor', async ({ page })
   await clickNavOp(page, 'streamPets')
   await expect(credentialsCard(page)).toContainText('missing')
   await expectNoViolations(page)
+
+  await clickNavOp(page, 'findPets')
+  await expect(page.locator('main header .badge', { hasText: 'Beta' })).toBeVisible()
+  await expectNoViolations(page)
+
+  await page.getByRole('button', { name: 'Import a request' }).click()
+  await page.locator('import-dialog textarea').fill(`curl -X PURGE 'https://api.e2e.test/v3/pets'`)
+  const candidateBadge = page.locator('import-dialog .badge', { hasText: 'PURGE' })
+  await expect(candidateBadge).toBeVisible()
+  await expectNoViolations(page)
+  // The sweep above says nothing about this badge — it is in a modal, where
+  // `color-contrast` only ever reports `incomplete` (see `contrastRatio`). The
+  // floor is what is being tested here, so it is asserted rather than swept.
+  expect(await contrastRatio(candidateBadge)).toBeGreaterThanOrEqual(CONTRAST_FLOOR)
 })
 
 // A 3.2 tag hierarchy nests one disclosure inside another and hangs label

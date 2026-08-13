@@ -119,7 +119,10 @@
    `-soft` paints the token itself as ink on an 8 % wash of it over base-100, so
    the constraint that fixes each hue is that ratio, not the ratio on the plain
    surface: red at #dc2626 clears white at 4.83:1 and its own wash at only
-   4.36:1. Every semantic color below is floored at 4.5:1 in that derivation. */
+   4.36:1. Every semantic color below is floored at 4.5:1 in that derivation.
+   `--color-neutral` is outside that set on purpose: it is a surface, dark on
+   both halves, that carries `--color-neutral-content` — nothing inks WITH it,
+   so a badge with no semantic color is `badge-ghost` (§12). */
 @plugin "daisyui/theme" {
   name: "apiglow";
   default: true;

@@ -11,6 +11,7 @@
       "description": "Reserved for the partner network",
       "kind": "audience"
     },
+    { "name": "beta", "summary": "Beta", "description": "Shape may still change", "kind": "badge" },
     { "name": "Orphans", "parent": "Nowhere" }
   ],
   "paths": {
@@ -42,7 +43,7 @@
     "/pets/find": {
       "get": {
         "operationId": "findPets",
-        "tags": ["Pets", "partner"],
+        "tags": ["Pets", "partner", "beta"],
         "summary": "Find pets",
         "parameters": [
           {
