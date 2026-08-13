@@ -208,10 +208,14 @@ only history. Concretely, in every tracked file:
   it* is not.
 - **No references to documents that are not in the tree**: every
   cross-reference must resolve for a reader of the published repository.
-- Forward-looking documents (roadmaps, specified-but-unimplemented
-  features) are legitimate — the future is not history — and follow the
-  same rules: undated, no acceptance journal. "Status: implemented" vs
-  "Status: specified, not implemented" is current state and stays.
+- **No plans, todos or status banners in tracked docs.** A tracked
+  document describes the current state of the project — being in the tree
+  *is* the "implemented" statement, so no document says it. Plans,
+  roadmaps, in-progress specs and todo lists live in `docs/plan/`
+  (gitignored, like `docs/upgrade/`) and never enter a commit; what a
+  plan produces enters the tree as state documentation once it exists.
+  Recorded decisions belong in a doc only when the rationale is technical
+  or genuinely worth highlighting — never as a journal of choices.
 
 This applies to what tooling *produces* too: a script or skill that writes
 dated decisions into a tracked file reintroduces the debt on its next run.

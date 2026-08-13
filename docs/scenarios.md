@@ -587,10 +587,6 @@ waits); Postman scenario export; run report persistence; running a scenario
 on a schedule — no server by charter, and the hand-off of §8.6 is the answer
 rather than a gap.
 
-The decided evolutions live in [`scenarios-roadmap.md`](scenarios-roadmap.md);
-this list remains the implemented boundary until a roadmap workstream
-graduates back into this document.
-
 ## 11. Tests
 
 Unit (Vitest, pure core): generator runner with a fake sender (chaining,

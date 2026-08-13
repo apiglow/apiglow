@@ -50,10 +50,11 @@ next `/app-health` run starts from a net with no known hole — its job is
 drift, not backlog.
 
 The backlog that does exist is future surface, not a present hole:
-`docs/docs-pages.md` and `docs/scenarios-roadmap.md` describe work not
-yet written. Neither is an app-health gap today — but each will add rows
-or widen existing ones the moment it lands, and the run after that
-landing is the one that has to say so.
+`docs/plan/scenarios-roadmap.md` (untracked — `docs/plan/` holds plans,
+never committed) describes work not
+yet written. It is no app-health gap today — but it will add rows
+or widen existing ones the moment a workstream lands, and the run after
+that landing is the one that has to say so.
 
 Two things worth remembering rather than re-deriving:
 

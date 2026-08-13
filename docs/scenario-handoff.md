@@ -387,17 +387,16 @@ declares their own export knows the documentation shows what they authored.
   no use to a third party.
 - **Cross-spec `sourceDescriptions`.** A scenario references one document,
   as scenarios do (`scenarios.md` §9) — a declared Arazzo listing several
-  sources resolves against the loaded model and says so (§2.1). Multiple
-  sources belong to the composition work of `scenarios-roadmap.md` §5.3,
-  and nothing in this design blocks it: the emitter copies what it was given
-  and generates what `toArazzo` produces, neither of which decides how many
-  sources a document may name.
+  sources resolves against the loaded model and says so (§2.1). Nothing in
+  this design constrains how many sources a document may name: the emitter
+  copies what it was given
+  and generates what `toArazzo` produces, neither of which decides that.
 - **A per-scenario MCP tool.** The MCP export wires an OpenAPI→MCP bridge to
   a document; no bridge consumes Arazzo. The recipe is for an agent that
   reads, not for a bridge that generates tools.
-- **Running the CI job for the reader.** No server by charter; the frontier
-  is sketched in `scenarios-roadmap.md` §5.9 and this document stays on its
-  near side.
+- **Running the CI job for the reader.** No server by charter; handing the
+  reader the job their own pipeline runs is this document's whole frontier,
+  and it stays on the near side of it.
 - **An in-app editor for a declared Arazzo document.** Declaring one (§2.1)
   makes it readable and runnable, never writable: a config scenario is
   read-only, and "Duplicate" is the way to a local editable copy — the app
