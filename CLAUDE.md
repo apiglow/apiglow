@@ -117,25 +117,12 @@ Rationale for each lives in `CONTRIBUTING.md` and `docs/architecture.md` §14.
     versions conflict on a concept, normalize to the newest version's
     semantics. Coverage contract: `docs/openapi-coverage.md`.
 20. **The doc↔panel mirror: the try-it panel is the single source of
-    truth, the central doc holds no choice of its own.** Every widget in
-    `api-endpoint-doc.js` / `schema-view.js` — field, selector, tab,
-    picker — derives its displayed state from the panel's `tryit-state`,
-    and pushes changes up through `tryit-edit` instead of acting locally.
-    This binds hardest on the widgets that decide **what is editable**
-    (media type, discriminator variant, "expand"), because their drift is
-    silent: the page stays plausible while the two columns edit different
-    things. Concretely, whenever you add or touch an editable surface:
-    - add the value to `currentValues()` **and** apply it in
-      `#applyTryItValues()` — a one-way addition is the bug;
-    - apply in dependency order (media type → variant → fields): a widget
-      that rebuilds others runs first;
-    - after any local remount that creates editors, call
-      `onEditorsChanged` rather than waiting for the next unrelated push;
-    - a programmatic `setValue` **never** emits — an echo erases the very
-      state it was just told about.
-    Contract: `docs/architecture.md` §5.5.4. Guard:
-    `tests/e2e/doc-panel-sync.spec.js`, which every new editable surface
-    extends.
+    truth, the central doc holds no choice of its own.** Doc-side widgets
+    render from the panel's `tryit-state` and push edits up through
+    `tryit-edit`, never acting locally — drift between the two columns is
+    silent, so before touching any editable surface read the mechanics in
+    `docs/architecture.md` §5.5.4, and extend the guard
+    (`tests/e2e/doc-panel-sync.spec.js`) with every new one.
 
 ## Process
 
