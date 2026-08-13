@@ -12,7 +12,8 @@ avatars, and anywhere else the project shows its face.
 | `apiglow-wordmark-light.svg` | "ApiGlow" set as paths, for light backgrounds |
 | `apiglow-wordmark-dark.svg` | "ApiGlow" set as paths, for dark backgrounds |
 | `apiglow-avatar.svg` | The mark on the `#1c1917` plate, for square avatar slots |
-| `apiglow-avatar-512.png` | The same at 512×512, for uploads that refuse SVG (GitHub org and repo avatars, npm, social) |
+| `apiglow-avatar-512.png` | The same at 512×512, for uploads that refuse SVG (GitHub org avatar, npm, social profiles) |
+| `apiglow-social-1280x640.png` | The GitHub repository social preview — the card link unfurlers show |
 
 The tab favicon is not here: it lives at its serving path, `demo/favicon.svg`.
 
@@ -29,6 +30,13 @@ surface.
 Gradient `id`s are unique per file: the marks are meant to be inlined, and two
 `id="glow"` in one document would make the second one silently borrow the
 first's colors.
+
+## Social preview
+
+1280×640 at 1×, the size GitHub crops to: the dark mark and wordmark centered
+on the `#1c1917` plate over a wide pink-to-violet radial halo, the README
+pitch line under them in `#d6d3d1`. The lockup stays well inside the middle
+of the frame: unfurlers crop this card, some of them to a square.
 
 ## Wordmarks
 
