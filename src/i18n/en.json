@@ -52,6 +52,7 @@
   "doc.externalDocs": "External documentation",
   "doc.required": "required",
   "doc.deprecated": "deprecated",
+  "doc.tagLabel": "Tag: {label}",
   "doc.allowReserved": "reserved characters kept",
   "doc.allowEmptyValue": "empty value allowed",
   "doc.encoding": "Encoding",

@@ -12,6 +12,19 @@ export function text(value) {
   return document.createTextNode(String(value))
 }
 
+// OpenAPI descriptions are potentially long Markdown: the title attribute only
+// renders plain text, so we flatten it and cap it rather than letting the
+// browser display a wall of text.
+const TOOLTIP_MAX_CHARS = 300
+
+export function tooltipText(description) {
+  const flat = String(description ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!flat) return null
+  return flat.length > TOOLTIP_MAX_CHARS ? `${flat.slice(0, TOOLTIP_MAX_CHARS)}…` : flat
+}
+
 // Link to content we don't host: new tab, and never a window handle back into
 // the app. Vetting the href is the CALLER's job and it happens upstream — every
 // URL the model exposes went through its http(s) gate (rule 5), and the one

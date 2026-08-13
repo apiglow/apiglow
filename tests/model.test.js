@@ -243,6 +243,127 @@ describe('3.2 normalization', () => {
   })
 })
 
+// The nav's sections come from here and nowhere else: what the model calls a
+// group is a section, `parent` is the nesting, and a tag the spec forbids
+// (unknown parent, cycle) has to come back to the root rather than disappear.
+describe('tag sections', () => {
+  const sections = (tags, opTags) =>
+    buildModel({
+      openapi: '3.2.0',
+      info: { title: 't', version: '1' },
+      tags,
+      paths: Object.fromEntries(
+        opTags.map((names, i) => [
+          `/op${i}`,
+          {
+            get: { operationId: `op${i}`, tags: names, responses: { 200: { description: 'ok' } } },
+          },
+        ]),
+      ),
+    }).groups
+
+  const shape = (groups) => groups.map((g) => [g.tag, g.parent ?? null, g.operationIds])
+
+  it('carries the tag summary into the section and nests a child under its parent', async () => {
+    const groups = (await load('petstore-3.2.json')).groups
+    expect(groups.map((g) => [g.tag, g.summary ?? null, g.parent ?? null])).toEqual([
+      ['pets', 'Pets', null],
+      ['search', 'Search', 'pets'],
+      [null, null, null],
+    ])
+  })
+
+  it('emits a parent immediately before the children it holds', () => {
+    const groups = sections(
+      [
+        { name: 'a' },
+        { name: 'b', parent: 'a' },
+        { name: 'c' },
+        { name: 'd', parent: 'b' },
+        { name: 'e', parent: 'a' },
+      ],
+      [['a'], ['b'], ['c'], ['d'], ['e']],
+    )
+    expect(shape(groups)).toEqual([
+      ['a', null, ['op0']],
+      ['b', 'a', ['op1']],
+      ['d', 'b', ['op3']],
+      ['e', 'a', ['op4']],
+      ['c', null, ['op2']],
+    ])
+  })
+
+  it('roots a tag whose parent no tag declares', () => {
+    expect(shape(sections([{ name: 'a', parent: 'ghost' }], [['a']]))).toEqual([
+      ['a', null, ['op0']],
+    ])
+  })
+
+  it('roots every tag caught in a parent cycle, and everything hanging off it', () => {
+    const groups = sections(
+      [
+        { name: 'a', parent: 'b' },
+        { name: 'b', parent: 'a' },
+        { name: 'c', parent: 'a' },
+        { name: 'self', parent: 'self' },
+      ],
+      [['a'], ['b'], ['c'], ['self']],
+    )
+    expect(shape(groups)).toEqual([
+      ['a', null, ['op0']],
+      ['b', null, ['op1']],
+      ['c', null, ['op2']],
+      ['self', null, ['op3']],
+    ])
+  })
+
+  it('keeps a tag with no operation of its own when a tag below has some', () => {
+    const groups = sections([{ name: 'a' }, { name: 'b', parent: 'a' }], [['b']])
+    expect(shape(groups)).toEqual([
+      ['a', null, []],
+      ['b', 'a', ['op0']],
+    ])
+  })
+
+  it('drops a whole branch that holds no operation at all', () => {
+    const groups = sections([{ name: 'a' }, { name: 'b', parent: 'a' }, { name: 'c' }], [['c']])
+    expect(shape(groups)).toEqual([['c', null, ['op0']]])
+  })
+
+  it('builds no section for a tag whose kind is not navigational', () => {
+    const tags = [
+      { name: 'pets', kind: 'nav' },
+      { name: 'partner', summary: 'Partners', description: 'Who it is for', kind: 'audience' },
+    ]
+    const groups = sections(tags, [['pets', 'partner']])
+    expect(shape(groups)).toEqual([['pets', null, ['op0']]])
+  })
+
+  it('labels the operation with its non-navigational tags instead', () => {
+    const model = buildModel({
+      openapi: '3.2.0',
+      info: { title: 't', version: '1' },
+      tags: [
+        { name: 'pets', kind: 'nav' },
+        { name: 'partner', summary: 'Partners', kind: 'audience' },
+      ],
+      paths: {
+        '/a': { get: { operationId: 'a', tags: ['pets', 'partner'], responses: {} } },
+        '/b': { get: { operationId: 'b', tags: ['pets'], responses: {} } },
+      },
+    })
+    expect(opById(model, 'a').labels).toEqual([
+      { name: 'partner', summary: 'Partners', kind: 'audience' },
+    ])
+    expect(opById(model, 'b').labels).toBeUndefined()
+  })
+
+  it('files an operation carrying only label tags under the fallback group', () => {
+    const groups = sections([{ name: 'partner', kind: 'badge' }], [['partner']])
+    expect(shape(groups)).toEqual([[null, null, ['op0']]])
+  })
+})
+
 describe('JSON Schema 2020-12 keywords', () => {
   const payment = async () =>
     opById(await load('keywords-3.1.json'), 'createPayment').requestBody.contents[0].schema

@@ -104,8 +104,10 @@ The report also carries its own identity and perimeter:
   unit of work. Counted on the document, so hidden operations are in the
   figures. "Groups" is the count of distinct tags, declared or merely used;
   no fallback bucket for untagged operations (`operation-tagged` already
-  reports them one by one), and a tag borne only by a webhook makes no
-  group (the nav lists webhooks flat, in their own section). No
+  reports them one by one), a tag borne only by a webhook makes no group
+  (the nav lists webhooks flat, in their own section), and neither does a
+  3.2 tag whose `kind` is not navigational (it badges the operations
+  carrying it). No
   "callbacks" figure: the scope counts the same units as the home page,
   and nothing in the app counts callbacks.
 
@@ -271,7 +273,9 @@ Each message states the concrete degradation *in this app*:
   links (fallback `{method}-{path-slug}` route). Callbacks are exempt: a
   callback has no fallback route id to name.
 - `operation-tagged` (`info`) — untagged operation → lumped into the
-  fallback nav group. Webhooks and callbacks are exempt: the nav lists
+  fallback nav group. An operation carrying only 3.2 label tags (a `kind`
+  other than `nav`) lands there too, and is flagged the same way.
+  Webhooks and callbacks are exempt: the nav lists
   webhooks flat in their own section and never groups them by tag, and
   nothing groups callbacks — the finding would name no degradation.
 - `servers-declared` (`warning`) — no `servers` → environment seeding

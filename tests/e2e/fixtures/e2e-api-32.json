@@ -2,7 +2,17 @@
   "openapi": "3.2.0",
   "info": { "title": "OpenAPI 3.2 E2E API", "version": "1.0.0" },
   "servers": [{ "name": "e2e", "url": "https://api.e2e.test/v3" }],
-  "tags": [{ "name": "Pets", "summary": "Pets" }],
+  "tags": [
+    { "name": "Pets", "summary": "Pet catalogue", "description": "Everything about pets" },
+    { "name": "Streams", "summary": "Live streams", "parent": "Pets", "kind": "nav" },
+    {
+      "name": "partner",
+      "summary": "Partners",
+      "description": "Reserved for the partner network",
+      "kind": "audience"
+    },
+    { "name": "Orphans", "parent": "Nowhere" }
+  ],
   "paths": {
     "/pets": {
       "query": {
@@ -23,7 +33,7 @@
       "additionalOperations": {
         "PURGE": {
           "operationId": "purgePets",
-          "tags": ["Pets"],
+          "tags": ["Orphans"],
           "summary": "Purge the pet cache",
           "responses": { "204": { "summary": "Purged" } }
         }
@@ -32,7 +42,7 @@
     "/pets/find": {
       "get": {
         "operationId": "findPets",
-        "tags": ["Pets"],
+        "tags": ["Pets", "partner"],
         "summary": "Find pets",
         "parameters": [
           {
@@ -48,7 +58,7 @@
     "/pets/stream": {
       "get": {
         "operationId": "streamPets",
-        "tags": ["Pets"],
+        "tags": ["Streams"],
         "summary": "Stream pets",
         "security": [{ "mtls": [] }, { "deviceOauth": [] }],
         "responses": {

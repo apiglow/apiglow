@@ -461,7 +461,15 @@ load, a revision we do not know. An overlay never breaks a load.
 ### 5.2 Navigation, doc rendering and deep linking
 
 - Menu generated from OpenAPI **tags** (groups) + paths/operations; fallback
-  group when tags are absent; order = schema order.
+  group when tags are absent; order = schema order. A group is labeled by the
+  tag's `summary` when it declares one (3.2), by its name otherwise — the name
+  stays the key, in the model and on `data-group`. A tag declaring a `parent`
+  (3.2) nests **inside** it: the model resolves the hierarchy and hands over a
+  flat list in reading order, each nested group naming its parent, and the nav
+  is the only surface that rebuilds the tree from it. A group's count pill and
+  its change dot cover its subgroups too — folded, it hides them. A tag whose
+  3.2 `kind` is not navigational makes no group at all: it badges the
+  operations carrying it, in the doc header.
 - A closed group's link list is **built on demand** (first open — summary
   click, route, or toggle), not at boot: on a heavy schema a folded menu
   built eagerly would hold thousands of links nobody asked for. Every group still declares

@@ -129,6 +129,9 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
 
   resolveLinkTargets(ctx.links, raw, [...operations, ...webhooks])
 
+  const tags = collectTags(raw, operations, hiddenTags)
+  attachLabels(tags, [...operations, ...webhooks])
+
   return prune({
     sourceVersion: String(raw.openapi),
     // The version the document was WRITTEN in, when it isn't the one above:
@@ -147,8 +150,8 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     info: normalizeInfo(raw.info),
     externalDocs: normalizeExternalDocs(raw.externalDocs),
     servers: (raw.servers ?? []).map(normalizeServer),
-    tags: collectTags(raw, operations, hiddenTags),
-    groups: buildGroups(raw, operations, hiddenTags),
+    tags,
+    groups: buildGroups(tags, operations),
     operations,
     webhooks,
     // Absent, like every other optional key, when there is nothing to record: a
@@ -255,15 +258,15 @@ function collectTags(raw, operations, hiddenTags) {
   for (const tag of raw.tags ?? []) {
     if (seen.has(tag.name) || hiddenTags.has(tag.name)) continue
     seen.add(tag.name)
-    // summary/parent/kind: 3.2. `parent` and `kind` are modeled but not
-    // yet used by the nav, which stays flat.
+    // summary/parent/kind: 3.2. `name` stays the identifier operations point
+    // at (and the nav's group key); `summary` is the display label.
     tags.push(
       prune({
         name: tag.name,
-        summary: tag.summary,
+        summary: textOrUndefined(tag.summary),
         description: tag.description,
-        parent: tag.parent,
-        kind: tag.kind,
+        parent: textOrUndefined(tag.parent),
+        kind: textOrUndefined(tag.kind),
         externalDocs: normalizeExternalDocs(tag.externalDocs),
       }),
     )
@@ -278,36 +281,118 @@ function collectTags(raw, operations, hiddenTags) {
   return tags
 }
 
-function buildGroups(raw, operations, hiddenTags) {
+// 3.2 tag `kind` (registry values: `nav`, `badge`, `audience`): only a
+// navigational tag makes a nav section. The others say something ABOUT the
+// operations carrying them — `badge` literally, `audience` names who an
+// endpoint is for — and a section built out of one would be a heading over a
+// label; they become operation labels instead (`attachLabels`). A tag that
+// declares no kind, and a tag no `tags` entry declares at all, are
+// navigational: that is every tag written before 3.2.
+function isNavTag(tag) {
+  return !tag.kind || tag.kind === 'nav'
+}
+
+// Nav sections, in schema order, each parent immediately followed by its
+// children (3.2 `parent`). The list stays FLAT: every consumer but the nav
+// reads it as a reading order — the pager, llms.txt, the history labels — and
+// the nesting travels as `parent`, resolved here to a tag that IS in the list.
+function buildGroups(tags, operations) {
+  const declared = new Map(tags.map((tag) => [tag.name, tag]))
   const groups = new Map()
-  for (const tag of raw.tags ?? []) {
-    if (hiddenTags.has(tag.name)) continue
-    groups.set(
-      tag.name,
-      prune({
-        tag: tag.name,
-        description: tag.description,
-        externalDocs: normalizeExternalDocs(tag.externalDocs),
-        operationIds: [],
-      }),
-    )
+  for (const tag of tags) {
+    if (isNavTag(tag)) {
+      groups.set(
+        tag.name,
+        prune({
+          tag: tag.name,
+          summary: tag.summary,
+          description: tag.description,
+          externalDocs: tag.externalDocs,
+          operationIds: [],
+        }),
+      )
+    }
   }
   const untagged = []
   for (const op of operations) {
-    if (!op.tags.length) {
+    const navTags = op.tags.filter((name) => groups.has(name))
+    // An operation whose every tag is a label has no section of its own: the
+    // fallback group is where it is still reachable.
+    if (!navTags.length) {
       untagged.push(op.id)
       continue
     }
-    for (const name of op.tags) {
-      if (!groups.has(name)) groups.set(name, { tag: name, operationIds: [] })
-      groups.get(name).operationIds.push(op.id)
-    }
+    for (const name of navTags) groups.get(name).operationIds.push(op.id)
   }
-  const list = [...groups.values()].filter((g) => g.operationIds.length)
+
+  // The spec requires `parent` to name an existing tag and forbids a cycle
+  // between parent and child. Both are author errors with no rendering: the
+  // tag takes the only other place there is, the root. A cycle ANYWHERE above
+  // detaches the tag too — nesting it under an ancestor that loops would build
+  // the loop in the nav.
+  const parentOf = (name) => {
+    const parent = declared.get(name)?.parent
+    return groups.has(parent) ? parent : undefined
+  }
+  const cyclic = (name) => {
+    // Terminates: each step adds a tag to `seen`, and there are finitely many.
+    const seen = new Set([name])
+    for (let above = parentOf(name); above; above = parentOf(above)) {
+      if (seen.has(above)) return true
+      seen.add(above)
+    }
+    return false
+  }
+  const parents = new Map()
+  const children = new Map()
+  const roots = []
+  for (const name of groups.keys()) {
+    const parent = cyclic(name) ? undefined : parentOf(name)
+    if (!parent) {
+      roots.push(name)
+      continue
+    }
+    parents.set(name, parent)
+    if (!children.has(parent)) children.set(parent, [])
+    children.get(parent).push(name)
+  }
+
+  // A tag with no operation of its own is still a section when a tag below it
+  // has some: dropping it would reparent its children onto nothing.
+  const populated = new Set()
+  for (const [name, group] of groups) {
+    if (!group.operationIds.length) continue
+    for (let up = name; up && !populated.has(up); up = parents.get(up)) populated.add(up)
+  }
+
+  const list = []
+  const stack = [...roots].reverse()
+  while (stack.length) {
+    const name = stack.pop()
+    if (!populated.has(name)) continue
+    const group = groups.get(name)
+    const parent = parents.get(name)
+    if (parent) group.parent = parent
+    list.push(group)
+    const kids = children.get(name) ?? []
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i])
+  }
   // tag: null = fallback group for operations without a tag; its label is
   // decided by the UI via i18n, not by the model.
   if (untagged.length) list.push({ tag: null, operationIds: untagged })
   return list
+}
+
+// The non-navigational tags an operation carries, hung off the operation
+// itself: the doc badges them, and the doc only ever sees one operation. The
+// tag objects are shared, not copied — nothing downstream writes to them.
+function attachLabels(tags, operations) {
+  const labels = new Map(tags.filter((tag) => !isNavTag(tag)).map((tag) => [tag.name, tag]))
+  if (!labels.size) return
+  for (const op of operations) {
+    const own = op.tags.map((name) => labels.get(name)).filter(Boolean)
+    if (own.length) op.labels = own
+  }
 }
 
 // Stable id fallback for deep-linking when operationId is absent

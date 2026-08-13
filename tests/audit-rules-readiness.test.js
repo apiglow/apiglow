@@ -45,6 +45,17 @@ describe('operation-tagged', () => {
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
+  it('flags an operation carrying only a 3.2 label tag', () => {
+    const result = run(
+      operationTagged,
+      doc({
+        tags: [{ name: 'partner', kind: 'audience' }],
+        paths: { '/pets': { get: { tags: ['partner'], responses: okResponse } } },
+      }),
+    )
+    expect(result.findings).toHaveLength(1)
+  })
+
   it('flags an untagged operation, and an empty tag list', () => {
     const result = run(
       operationTagged,

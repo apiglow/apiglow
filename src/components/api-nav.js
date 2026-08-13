@@ -2,7 +2,7 @@ import { docsZoneEntries } from '../docs/pages.js'
 import { t } from '../i18n/index.js'
 import { firstCallHash, homeHash, opHash, overviewHash, pageHash, scenarioHash } from '../router.js'
 import { changeDot } from './change-badge.js'
-import { el, externalLink, icon, text } from './dom.js'
+import { el, externalLink, icon, text, tooltipText } from './dom.js'
 import { downloadText } from './download.js'
 import { externalDocsLink } from './external-docs.js'
 import {
@@ -162,8 +162,10 @@ class ApiNav extends HTMLElement {
     // remains manually collapsible afterward.
     if (this.#activeId && this.#model) {
       const group = this.#model.groups.find((g) => g.operationIds.includes(this.#activeId))
-      if (group) {
-        const key = group.tag ?? ''
+      // Root first: a nested group is only reachable once every disclosure
+      // above it is open.
+      for (const ancestor of group ? this.#ancestry(group) : []) {
+        const key = ancestor.tag ?? ''
         this.#openGroups.add(key)
         // Built before `open`: the highlight below runs synchronously, and the
         // `toggle` event a programmatic open fires is a queued task — waiting
@@ -189,6 +191,20 @@ class ApiNav extends HTMLElement {
       }
     }
     this.#highlight()
+  }
+
+  // A group and its ancestors (3.2 tag `parent`), root first. The `seen` set
+  // is the bound: the model already broke every parent cycle, and a nav that
+  // spun on one would freeze the page rather than degrade (rule 7).
+  #ancestry(group) {
+    const byTag = new Map(this.#model.groups.map((g) => [g.tag, g]))
+    const chain = [group]
+    const seen = new Set([group.tag])
+    for (let up = byTag.get(group.parent); up && !seen.has(up.tag); up = byTag.get(up.parent)) {
+      seen.add(up.tag)
+      chain.unshift(up)
+    }
+    return chain
   }
 
   connectedCallback() {
@@ -278,9 +294,35 @@ class ApiNav extends HTMLElement {
     )
     const groupItems = []
     this.#groupBuilders = new Map()
+    // 3.2 tag hierarchy: the model hands a flat list in reading order, each
+    // nested group naming the `parent` it sits under — already resolved there,
+    // so a parent that does not exist or that loops has come back to the root.
+    // Rebuilding the tree is the nav's job and nobody else's.
+    const childGroups = new Map()
+    const rootGroups = []
     for (const group of this.#model.groups) {
+      if (!group.parent) rootGroups.push(group)
+      else if (childGroups.has(group.parent)) childGroups.get(group.parent).push(group)
+      else childGroups.set(group.parent, [group])
+    }
+    // Everything a group holds, its subgroups included: what the count pill
+    // announces and what the change dot watches over — a folded parent hides
+    // its children's endpoints too. Keyed by id, since an operation carrying
+    // both a parent tag and a child tag is one endpoint, not two.
+    const subtreeOps = (group, into = new Map()) => {
+      for (const id of group.operationIds) {
+        const op = byId.get(id)
+        if (op) into.set(id, op)
+      }
+      for (const child of childGroups.get(group.tag) ?? []) subtreeOps(child, into)
+      return into
+    }
+    // Returns the group's <li>, subgroups nested inside it, or null when
+    // neither it nor anything below it has an operation left to show.
+    const groupItem = (group) => {
       const ops = group.operationIds.map((id) => byId.get(id)).filter(Boolean)
-      if (!ops.length) continue
+      const childItems = (childGroups.get(group.tag) ?? []).map(groupItem).filter(Boolean)
+      if (!ops.length && !childItems.length) return null
       total += ops.length
       const key = group.tag ?? ''
       // max-w-full on every level li>details>ul>li (+ w-full min-w-0 on the
@@ -298,12 +340,16 @@ class ApiNav extends HTMLElement {
       const build = () => {
         if (built) return
         built = true
+        // Subgroups exist from the start (a disclosure costs nothing, unlike
+        // the links inside it) and close the group; everything built here
+        // slots in above them.
+        const anchor = childItems[0] ?? null
         // A tag's external documentation, as the group's first entry. Not in
         // the <summary>: an anchor nested inside it would be a control inside
         // a control — the disclosure would swallow the click, and the axe
         // sweep says so too (rule 15).
         const tagDocs = externalDocsLink(group.externalDocs, 'text-xs text-subtle gap-1 truncate')
-        if (tagDocs) sub.append(el('li', 'max-w-full', tagDocs))
+        if (tagDocs) sub.insertBefore(el('li', 'max-w-full', tagDocs), anchor)
         for (const op of ops) {
           // Method badge on the right as a soft pill, label on the left.
           // w-full + min-w-0: the DaisyUI menu li is flex, without which the
@@ -319,16 +365,20 @@ class ApiNav extends HTMLElement {
           link.href = opHash(op.id)
           link.dataset.opId = op.id
           link.title = `${op.method.toUpperCase()} ${op.path}`
-          sub.append(el('li', 'max-w-full', link))
+          sub.insertBefore(el('li', 'max-w-full', link), anchor)
         }
       }
       this.#groupBuilders.set(key, build)
-      const groupDot = this.#groupDot(ops)
+      sub.append(...childItems)
+      const held = subtreeOps(group)
+      const groupDot = this.#groupDot([...held.values()])
       const summary = el(
         'summary',
         'font-medium',
         groupDot,
-        el('span', 'truncate', text(group.tag ?? t('nav.otherGroup'))),
+        // 3.2 `summary` is the tag's display label; `name` — the identifier
+        // operations point at, and the group key here — is the fallback.
+        el('span', 'truncate', text(group.summary ?? group.tag ?? t('nav.otherGroup'))),
         // Group's endpoint count: deliberately discreet pill,
         // stuck to the name — not at the end of the
         // line, where it would collide with the menu chevron.
@@ -338,7 +388,7 @@ class ApiNav extends HTMLElement {
         el(
           'span',
           'justify-self-start self-center shrink-0 rounded-full bg-base-content/5 px-1.5 py-0.5 text-[10px] font-mono leading-none tabular-nums text-base-content/50',
-          text(String(ops.length)),
+          text(String(held.size)),
         ),
       )
       // Tag description as a tooltip: it doesn't have room to display
@@ -351,13 +401,11 @@ class ApiNav extends HTMLElement {
       // list built on demand, this attribute is what still lets a test — or
       // any outside code — find which group to open for a given operation.
       details.dataset.ops = ops.map((op) => op.id).join(' ')
-      // Collapsed by default; open if pinned by the user or if the
-      // group contains the active operation.
-      details.open = this.#openGroups.has(key) || group.operationIds.includes(this.#activeId)
-      // The first group is built even closed: its links are the proof in the
-      // DOM that the reference rendered, which is what the perf contract (and
-      // any deep selector on a fresh page) waits for before interacting.
-      if (details.open || !groupItems.length) build()
+      // Collapsed by default; open if pinned by the user or if the active
+      // operation is anywhere below — including in a subgroup, which stays
+      // out of reach while its parent is folded.
+      details.open = this.#openGroups.has(key) || held.has(this.#activeId)
+      if (details.open) build()
       summary.addEventListener('click', build)
       details.addEventListener('toggle', () => {
         if (details.open) {
@@ -365,8 +413,19 @@ class ApiNav extends HTMLElement {
           this.#openGroups.add(key)
         } else this.#openGroups.delete(key)
       })
-      groupItems.push(el('li', 'max-w-full', details))
+      return el('li', 'max-w-full', details)
     }
+    let firstKey = null
+    for (const group of rootGroups) {
+      const item = groupItem(group)
+      if (!item) continue
+      if (firstKey === null) firstKey = group.tag ?? ''
+      groupItems.push(item)
+    }
+    // The first group is built even closed: its links are the proof in the DOM
+    // that the reference rendered, which is what the perf contract (and any
+    // deep selector on a fresh page) waits for before interacting.
+    if (firstKey !== null) this.#groupBuilders.get(firstKey)?.()
     // "API overview" heads the reference zone, and only when a docs page has
     // taken `#/` over: without a takeover the same view IS `#/`, and an entry
     // pointing at the page you are already on is noise.
@@ -664,19 +723,6 @@ class ApiNav extends HTMLElement {
       this.#scrolledKey = key
     }
   }
-}
-
-// OpenAPI descriptions are potentially long Markdown: the title
-// attribute only renders plain text, so we flatten it and cap it rather than
-// letting the browser display a wall of text.
-const TOOLTIP_MAX_CHARS = 300
-
-function tooltipText(description) {
-  const flat = String(description ?? '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!flat) return null
-  return flat.length > TOOLTIP_MAX_CHARS ? `${flat.slice(0, TOOLTIP_MAX_CHARS)}…` : flat
 }
 
 // Two scenario sources, two icons: provided by the docs (book) or created

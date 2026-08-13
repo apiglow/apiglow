@@ -297,6 +297,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | JSON Schema 2020-12 keywords (conditionals, pattern keys, dependencies, `$defs` names) | `model.test.js`, `sample.test.js`, `audit-rules-version.test.js` | `schema-keywords.spec.js` |
 | `discriminator` (mapping resolution, parent-side `allOf`, variant pick) | `model.test.js`, `sample.test.js`, `audit-rules-correctness.test.js`, `audit-rules-version.test.js` | `polymorphism.spec.js` |
 | Document metadata (`info`, `externalDocs`, response `links`) | `model.test.js`, `audit-rules-correctness.test.js`, `audit-rules-version.test.js` | `document-metadata.spec.js` |
+| Tag sections (`summary` label, `parent` hierarchy incl. unknown parent and cycles, non-navigational `kind`) | `model.test.js` | `openapi-32.spec.js`, `navigation.spec.js` |
 | Per-route `<head>` (title, meta description, JSON-LD), `seo.index` noindex | `head.test.js` | `head.spec.js` |
 | Request fidelity (`encoding`, `allowReserved`, `allowEmptyValue`, cookie params, XML samples, `$self`, inline YAML) | `request-fidelity.test.js`, `sample-xml.test.js`, `loader-inline.test.js`, `send.test.js`, `exports.test.js`, `audit-rules-version.test.js` | `request-fidelity.spec.js` |
 | Swagger 2.0 conversion (whole table, `$ref` rewrite, `collectionFormat`, security mapping, approximation audit) | `swagger2.test.js`, `model.test.js`, `loader-inline.test.js` | `swagger2.spec.js`, `bootstrap.spec.js` |

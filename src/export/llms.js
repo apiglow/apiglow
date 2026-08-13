@@ -231,8 +231,10 @@ export function toLlmsText(
     const ops = group.operationIds.map((id) => byId.get(id)).filter(Boolean)
     if (!ops.length) continue
     // `tag: null` is the model's fallback group; its label belongs to the
-    // consumer, and here the consumer is an English text file.
-    lines.push('', `## ${group.tag ?? 'Other operations'}`, '')
+    // consumer, and here the consumer is an English text file. The map stays
+    // flat under a 3.2 tag hierarchy: an agent reads a section list, and the
+    // nesting the nav draws would only cost heading levels here.
+    lines.push('', `## ${group.summary ?? group.tag ?? 'Other operations'}`, '')
     for (const op of ops) lines.push(operationEntry(op, linkTo))
   }
 

@@ -68,6 +68,51 @@ test('mutualTLS and the device flow state their browser limit', async ({ page })
   await expect(credentials).toContainText('polls the token endpoint outside the browser')
 })
 
+// 3.2 tags: `summary` names the section, `parent` nests it, `kind` decides
+// whether the tag is a section at all.
+test('the nav is a tag hierarchy labelled by the tag summaries', async ({ page }) => {
+  await goto(page)
+
+  const pets = page.locator('api-nav details[data-group="Pets"]')
+  const streams = page.locator('api-nav details[data-group="Streams"]')
+  // The display label is the tag `summary`, and the count covers the subgroup
+  // too — a folded parent hides what its children hold.
+  await expect(pets.locator('> summary')).toContainText('Pet catalogue')
+  await expect(pets.locator('> summary')).toContainText('3')
+  // Nested, not a section of its own.
+  await expect(pets.locator('details[data-group="Streams"]')).toBeAttached()
+  await expect(page.locator('api-nav ul.menu > li > details[data-group="Streams"]')).toHaveCount(0)
+  await expect(streams.locator('> summary')).toContainText('Live streams')
+  // A tag whose parent no tag declares is an author error the spec forbids;
+  // it comes back to the root rather than vanishing.
+  await expect(page.locator('api-nav ul.menu > li > details[data-group="Orphans"]')).toBeAttached()
+
+  await clickNavOp(page, 'streamPets')
+  await expect(page.locator('main h1')).toHaveText('Stream pets')
+})
+
+// A deep link into a nested group has to unfold the whole chain above it: the
+// subgroup is out of reach while its parent is folded.
+test('a deep link into a subgroup opens every group above it', async ({ page }) => {
+  await page.goto(`${PAGE}#/op/streamPets`)
+  await expect(page.locator('main h1')).toHaveText('Stream pets')
+  // Below lg the nav lives in a closed drawer, so what is checked is the state
+  // of the disclosures, not their visibility.
+  await expect(page.locator('api-nav details[data-group="Pets"]')).toHaveAttribute('open', '')
+  await expect(page.locator('api-nav details[data-group="Streams"]')).toHaveAttribute('open', '')
+  await expect(page.locator('api-nav a[data-op-id="streamPets"]')).toHaveClass(/menu-active/)
+})
+
+test('a tag whose kind is not navigational badges the operation instead', async ({ page }) => {
+  await goto(page)
+
+  await expect(page.locator('api-nav details[data-group="partner"]')).toHaveCount(0)
+  await clickNavOp(page, 'findPets')
+  const label = page.locator('main header .badge', { hasText: 'Partners' })
+  await expect(label).toBeVisible()
+  await expect(label).toHaveAttribute('title', 'Reserved for the partner network')
+})
+
 test('a sequential media type displays the schema of a stream item', async ({ page }) => {
   await goto(page)
   await clickNavOp(page, 'streamPets')

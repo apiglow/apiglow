@@ -120,6 +120,22 @@ test('the dark half of the pair holds the same contrast floor', async ({ page })
   await expectNoViolations(page)
 })
 
+// A 3.2 tag hierarchy nests one disclosure inside another and hangs label
+// badges off the operation header: two structures the flat nav never produced.
+// The try-it column is out: this fixture's schemes leave the cartouche on its
+// "missing credentials" badge, whose contrast is a question of its own and has
+// its own sweep above.
+test('a nested tag nav and its label badges have no accessibility violations', async ({ page }) => {
+  const surfaces = { exclude: ['api-try-it-panel'] }
+  await gotoFixture(page, '/tests/e2e/fixtures/app-32.html')
+  await clickNavOp(page, 'streamPets')
+  await expect(page.locator('api-endpoint-doc h1')).toBeVisible()
+  await expectNoViolations(page, surfaces)
+  await clickNavOp(page, 'findPets')
+  await expect(page.locator('main header .badge', { hasText: 'Partners' })).toBeVisible()
+  await expectNoViolations(page, surfaces)
+})
+
 test('operation doc has no accessibility violations', async ({ page }) => {
   await gotoApp(page)
   await clickNavOp(page, 'listPets')

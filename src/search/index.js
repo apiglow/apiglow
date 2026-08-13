@@ -27,7 +27,7 @@ function collectProperties(schema, depth, seen, out) {
     collectProperties(variant, depth, seen, out)
 }
 
-function operationEntry(op) {
+function operationEntry(op, group = null) {
   const names = new Set()
   const seen = new Set()
   for (const param of op.parameters ?? []) {
@@ -50,9 +50,10 @@ function operationEntry(op) {
     title: op.summary || op.path,
     method: op.method,
     path: op.path,
-    // Same grouping rule as the nav (buildGroups): first tag, null
-    // for the fallback group.
-    group: op.tags[0] ?? null,
+    // The section the nav files it under, null for the fallback group — read
+    // from the model's groups rather than re-derived from `op.tags`, which
+    // knows neither a 3.2 label tag nor a tag's display `summary`.
+    group,
     primary: [op.summary, op.operationId].filter(Boolean).map((f) => String(f).toLowerCase()),
     secondary: [op.path, op.method].map((f) => String(f).toLowerCase()),
     description: String(op.description ?? '').toLowerCase(),
@@ -122,11 +123,19 @@ function scenarioEntry(scenario) {
 // the palette's first open (§6), so a session that never searches never
 // fetches a page it did not display.
 export function buildSearchIndex(model, pages = [], scenarios = [], sections = []) {
+  // The first group an operation appears in, exactly as the nav files it: a
+  // multi-tag operation has one position, the first one encountered.
+  const groupOf = new Map()
+  for (const group of model.groups) {
+    for (const id of group.operationIds) {
+      if (!groupOf.has(id)) groupOf.set(id, group.summary ?? group.tag ?? null)
+    }
+  }
   return [
     ...pages.map(pageEntry),
     ...sections.map(pageSectionEntry),
     ...scenarios.map(scenarioEntry),
-    ...model.operations.map(operationEntry),
+    ...model.operations.map((op) => operationEntry(op, groupOf.get(op.id) ?? null)),
     // Same indexing as an operation (the webhook has its shape), distinct
     // type for the group label in the palette.
     ...(model.webhooks ?? []).map((webhook) => ({ ...operationEntry(webhook), type: 'webhook' })),

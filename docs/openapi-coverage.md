@@ -45,8 +45,9 @@ Normalized and rendered:
   three forms apart — `src/openapi/examples.js` is what every surface reads
   them through; an external example is shown as the link it is and never
   fetched, never pre-filled),
-  tag `summary`/`parent`/`kind` (modeled — the flat nav renders neither
-  the hierarchy nor the summary, a documented degradation, §5.1),
+  tag `summary`/`parent`/`kind` (the nav's sections are a hierarchy
+  labelled by the summaries, and a non-navigational tag badges the
+  operation instead — §4.3),
   server `name`, `deviceAuthorization`
   flow, `oauth2MetadataUrl`, security-scheme `deprecated`,
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
@@ -375,6 +376,23 @@ response headers table — name, description (markdown), expressions as
 `#/op/{targetId}` through the router. Runtime expressions are
 **documentation**, never evaluated; evaluating one against a real response
 is what a scenario does (§5.1).
+
+**Tags** — a tag is a nav section: `name` identifies it (operations point
+at it, and it is the group's key in the DOM), 3.2's `summary` labels it,
+`description` is its tooltip, `parent` nests it under another section.
+`parent` is resolved at normalization, which is also where the two things
+the spec forbids come back to the root: a parent no tag declares, and a
+parent cycle — a cycle detaches every tag caught in it, plus anything
+hanging off one, so no loop reaches the nav (rule 7). A section with no
+operation of its own survives when a section below it has one; a branch
+holding nothing at all is dropped. The list the model exposes stays flat
+and in reading order — parent immediately followed by its children — since
+the pager, `llms.txt` and the history labels read it as an order, and only
+the nav rebuilds the tree. 3.2's `kind` decides whether a tag is a section
+at all: `nav` and no kind are sections, any other value (the registry's
+`badge` and `audience`, or a value of the author's own) is a label on the
+operations carrying it, rendered as a badge in the operation header — an
+operation left with none of the first kind falls into the fallback group.
 
 **externalDocs** — `{ description, url }`, modeled at root, tag, operation
 and schema-node levels; rendered in the welcome/overview block, the
@@ -872,7 +890,6 @@ are enumerated in `scenarios.md` §8.4; the dependency-side waivers live in
 | Construct | What happens instead | Reference |
 |---|---|---|
 | `prefixEncoding` / `itemEncoding` (3.2) | modeled and listed in the doc's Encoding block, not applied: an array-shaped body has no field editor to drive. An application would be a body-kind question, not an encoding one | §4.4, arch. §5.5.3 |
-| Tag `summary` / `parent` / `kind` (3.2) | modeled; the nav stays flat and labels groups by tag name — the hierarchy and the summary have no rendering surface | §1 |
 | `explode` inside an `in: cookie` parameter | the style's delimiter joins instead — repeating the name inside one header value reads back as nothing | §4.4 |
 | An `example` on an XML object or array | not re-serialized into XML; a declared media-type example is already the body the document wants sent, and `prefillBody` uses it verbatim | §4.4 |
 | Parent-side `allOf` polymorphism | the parent lists its subtypes by **name**; no variant nodes, which would close a cycle in the node graph and badge every subtype "recursive". Expanding one would need a render-time back-reference that is not a normalized node | §4.2, arch. §5.1 |

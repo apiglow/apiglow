@@ -203,11 +203,22 @@ export async function clickInDoc(page, locator) {
 // The group is found via `data-ops`, not via its links: a closed group's link
 // list does not exist until the group opens, so the link cannot be what
 // locates its group.
+// A group under a 3.2 tag hierarchy sits inside its parent's disclosure, so
+// opening it means opening the chain above it too — clicking one summary is
+// not enough, and the inner one is not clickable while its parent is folded.
 export async function clickNavOp(page, opId) {
   await openDrawerIfMobile(page)
   const link = page.locator(`api-nav a[data-op-id="${opId}"]`)
   if (!(await link.isVisible())) {
-    await page.locator(`api-nav details[data-ops~="${opId}"] summary`).click()
+    // Retried: unfolding from the outside can be undone by a nav re-render —
+    // the scenario store answers after boot and rebuilds the list, and a group
+    // only counts as pinned once its `toggle` has fired.
+    await expect(async () => {
+      await page.locator(`api-nav details[data-ops~="${opId}"]`).evaluate((group) => {
+        for (let node = group; node; node = node.parentElement?.closest('details')) node.open = true
+      })
+      await expect(link).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
   }
   await link.click()
   await openTryItIfMobile(page)

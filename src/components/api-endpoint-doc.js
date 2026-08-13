@@ -16,7 +16,7 @@ import { platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js
 import { changeBadge, changeDot } from './change-badge.js'
 import { confirmed, hoverCopyButton, writeClipboard } from './copy-button.js'
 import { copyPageMenu } from './copy-page-menu.js'
-import { el, externalLink, scrollToAnchor, text } from './dom.js'
+import { el, externalLink, scrollToAnchor, text, tooltipText } from './dom.js'
 import { externalDocsLink } from './external-docs.js'
 import { pagerSection } from './pager.js'
 import { ANCHOR_SVG, CHECK_SVG } from './icons.js'
@@ -495,6 +495,7 @@ function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeS
       op.deprecated
         ? el('span', 'badge badge-warning badge-outline', text(t('doc.deprecated')))
         : null,
+      ...labelBadges(op),
       changeBadge(changeStatus),
     ),
   )
@@ -502,6 +503,35 @@ function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeS
   const externalDocs = externalDocsLink(op.externalDocs, 'link link-primary text-sm gap-1')
   if (externalDocs) header.append(el('div', 'mt-3', externalDocs))
   return header
+}
+
+// 3.2 tag `kind`: a tag the nav does not turn into a section says something
+// about the operation rather than filing it, and this is where it says it —
+// the registry's `badge` is literally this, `audience` names who the endpoint
+// is for. One static class per kind (rule 2); an unregistered kind is still a
+// label, it just gets the neutral look.
+const LABEL_BADGE_CLASS = {
+  badge: 'badge badge-neutral badge-outline',
+  audience: 'badge badge-accent badge-outline',
+}
+
+function labelBadges(op) {
+  return (op.labels ?? []).map((label) => {
+    const badge = el(
+      'span',
+      LABEL_BADGE_CLASS[label.kind] ?? 'badge badge-ghost badge-outline',
+      // `summary` is the display label, `name` the identifier — same rule as
+      // the nav's group headers.
+      text(label.summary ?? label.name),
+    )
+    // A bare word beside the deprecation badge reads as nothing on its own:
+    // the accessible name says what kind of thing it is, and keeps the visible
+    // text inside it (label-in-name).
+    badge.setAttribute('aria-label', t('doc.tagLabel', { label: label.summary ?? label.name }))
+    const description = tooltipText(label.description)
+    if (description) badge.title = description
+    return badge
+  })
 }
 
 // Anchor icon to the left of the section title: copies the deep link

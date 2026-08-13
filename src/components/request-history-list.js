@@ -53,7 +53,9 @@ class RequestHistoryList extends HTMLElement {
   // only stores the opId (the schema may have changed since the call).
   set model(model) {
     this.#opGroups = new Map(
-      model.groups.flatMap((group) => group.operationIds.map((id) => [id, group.tag])),
+      model.groups.flatMap((group) =>
+        group.operationIds.map((id) => [id, group.summary ?? group.tag]),
+      ),
     )
     // Capturing a step needs the operation's path template to
     // re-extract the path params from the stored URL.

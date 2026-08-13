@@ -103,15 +103,21 @@ function auditScope(ctx) {
 // operations: `operation-tagged` already reports them one by one, and counting
 // a bucket the document never asked for would inflate the figure. A tag borne
 // only by a webhook makes no group either: the nav lists webhooks flat, in
-// their own section, which is also why `operation-tagged` spares them.
+// their own section, which is also why `operation-tagged` spares them. Nor
+// does a 3.2 tag whose `kind` is not navigational: it badges the operations
+// carrying it instead of filing them (`openapi/model.js`).
 function countTags(ctx) {
+  const labels = new Set()
   const tags = new Set()
   for (const tag of ctx.document.tags ?? []) {
-    if (typeof tag?.name === 'string') tags.add(tag.name)
+    if (typeof tag?.name !== 'string') continue
+    if (typeof tag.kind === 'string' && tag.kind && tag.kind !== 'nav') labels.add(tag.name)
+    else tags.add(tag.name)
   }
   for (const entry of ctx.operations) {
     if (entry.kind !== 'operation') continue
-    for (const tag of entry.op.tags ?? []) if (typeof tag === 'string') tags.add(tag)
+    for (const tag of entry.op.tags ?? [])
+      if (typeof tag === 'string' && !labels.has(tag)) tags.add(tag)
   }
   return tags.size
 }
