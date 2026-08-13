@@ -45,7 +45,9 @@ Normalized and rendered:
   three forms apart — `src/openapi/examples.js` is what every surface reads
   them through; an external example is shown as the link it is and never
   fetched, never pre-filled),
-  tag `summary`/`parent`/`kind`, server `name`, `deviceAuthorization`
+  tag `summary`/`parent`/`kind` (modeled — the flat nav renders neither
+  the hierarchy nor the summary, a documented degradation, §5.1),
+  server `name`, `deviceAuthorization`
   flow, `oauth2MetadataUrl`, security-scheme `deprecated`,
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
   `itemEncoding`, XML `nodeType`.
@@ -72,12 +74,14 @@ tier the browser platform allows:
 - **T2 — executable**: additionally drives the try-it request.
 - **T3 — rendered with documented fallback**: the browser cannot execute
   it — fetch forbids the `Cookie` header, no client certificates for
-  `mutualTLS`, `deviceAuthorization` needs out-of-browser polling. The UI
-  says so (i18n'd hint, not silence) and the cURL export still carries the
+  `mutualTLS`, `deviceAuthorization` needs out-of-browser polling. The
+  cookie case says so in the UI (i18n'd hint, not silence) and the cURL
+  export still carries the
   value (the cookie-auth path in `request-builder.js` does exactly this:
   cookies become a `Cookie` header for cURL, `hasCookies` flags the browser
-  limitation). These are platform limits, not gaps; §5.1 carries their
-  rationale.
+  limitation); `mutualTLS` and `deviceAuthorization` render in the auth
+  overview without an equivalent in-place hint. These are platform limits,
+  not gaps; §5.1 carries their rationale.
 
 ## 2. Coverage by area
 
@@ -135,7 +139,7 @@ Details in §4.4; contract in arch. §5.5.3.
 
 ### 2.5 Loader
 
-Four accepted inputs, and every combination of the two axes is one of them:
+Every combination of the three axes is an accepted input:
 OpenAPI 3.x or Swagger 2.0, serialized as JSON or YAML, by URL or inline
 (`.yml` included, and an extension-less URL — §4.4). `$self` (3.2) sets the
 document base URI: relative external `$ref`s and relative server URLs
@@ -197,8 +201,9 @@ to `allOf`/`oneOf`/`anyOf`.
 
 Every rendered string from the schema (link descriptions, contact names,
 license names, external URLs) follows rule 5: markdown through the
-existing `markdownBlock` (DOMPurify), URLs restricted to `http(s):` (drop
-silently + audit info finding otherwise), outbound links get
+existing `markdownBlock` (DOMPurify), URLs restricted to `http(s):` (a
+rejected one is dropped, and the object left empty disappears with it —
+§4.3), outbound links get
 `target="_blank" rel="noopener noreferrer"`. No `innerHTML` anywhere new.
 
 ### 3.6 No back-compat shims
@@ -307,8 +312,8 @@ synthesize variant nodes: that would close a cycle in the node graph — the
 child's `allOf` already points at the parent — and `circular` would then
 badge every subtype "recursive", hiding them behind an expand button
 throughout a very common 3.0 shape. Expanding a subtype from its parent
-needs a render-time back-reference that is not a normalized node; this is
-the one open half of the idiom (§5.1).
+would need a render-time back-reference that is not a normalized node; the
+subtype list stays names-only, the §5.1 degradation.
 
 **Consumers**: `schema-view.js` variant labels prefer the mapping key over
 `schemaName`, and the discriminator property row gets a "discriminator"
@@ -387,9 +392,10 @@ the identifier is rendered and the url dropped. Rendered in the welcome
 header: summary under the title, contact as `mailto:`/link, license line,
 ToS link.
 
-`llms-full.txt` and the Markdown export deliberately do not carry links or
-external docs: they export the operation surface, and links/externalDocs
-are metadata *about* it.
+`llms-full.txt` and the Markdown export deliberately do not carry response
+links: they export the operation surface, and links are navigation *about*
+it. `externalDocs` does travel — a root-level "More:" line in
+`llms-full.txt`, and the operation-level link in the Markdown mirror.
 
 ### 4.4 Request fidelity
 
@@ -412,9 +418,9 @@ Header Object carries no value of its own, so the value that leaves is its
 `example`, failing that its schema `default`. The positional
 `prefixEncoding` / `itemEncoding` are modeled and listed in the doc's
 Encoding block, not applied: they encode a body that is an *array*, and
-`bodyKind` gives one field editor per top-level *property* — closing the
-gap for real is a body-kind question (an array-shaped multipart editor),
-not an encoding one (§5.1).
+`bodyKind` gives one field editor per top-level *property* — an
+application would be a body-kind question (an array-shaped multipart
+editor), not an encoding one (§5.1).
 
 **Body kinds** — `src/openapi/body-kind.js` is the single derivation of
 "which editor": file (binary formats, octet-stream, `image/*` and
@@ -520,12 +526,16 @@ a defect):
 - `swagger: '2.0'` → `openapi: '3.0.4'`; the original recorded in
   `x-converted-from: '2.0'`, surfaced as `model.convertedFrom` in the
   settings diagnostics block.
-- `host` / `basePath` / `schemes` → `servers`: one server per scheme,
-  `{scheme}://{host}{basePath}`; no `host` → single relative server
+- `host` / `basePath` / `schemes` → `servers`: one server per **http(s)**
+  scheme, `{scheme}://{host}{basePath}`; a `host` with no http(s) scheme
+  → one protocol-relative server `//{host}{basePath}`; no `host` → single
+  relative server
   `basePath` (the relative-server resolution then applies); nothing at all
-  → no servers (existing fallback). `ws`/`wss` schemes produce no server:
+  → no servers (existing fallback). `ws`/`wss` schemes produce no server
+  of their own:
   a URL every request fails against is worse than one server fewer.
-  Operation-level `schemes` become operation-level `servers`.
+  Operation-level `schemes` become operation-level `servers` — host
+  permitting: with no root `host` there is no URL to build.
 - Root and per-operation `consumes` / `produces` (operation wins) →
   `requestBody.content` / response `content` maps, one entry per media
   type sharing the same schema object (sharing preserved — the identity
@@ -539,8 +549,9 @@ a defect):
   (in response schemas too).
 - Non-body parameters: flat validation keywords (`type`, `format`,
   `items`, `enum`, `minimum`…) wrap into `schema`; `collectionFormat` →
-  `csv`: `style: form, explode: false` (query/formData) or
-  `style: simple` (path/header); `ssv` → `spaceDelimited`; `pipes` →
+  `csv`: `style: form, explode: false` in query/formData, and nothing at
+  all in path/header — both defaults already agree there;
+  `ssv` → `spaceDelimited`; `pipes` →
   `pipeDelimited`; `multi` → `form, explode: true`. `tsv` has no 3.x
   equivalent → `form` + `x-original-collection-format: 'tsv'` + audit
   finding (documented approximation) — and neither do `ssv`/`pipes`/
@@ -616,8 +627,10 @@ Common output shape (`src/import/draft.js`), one per request:
 
 The draft stops short of the model, by rule: a parser cannot turn a URL
 into path values, nor a body into a field list, because neither is
-knowable without the operation. `src/import/` is format work only, and
-`match.js` is the single module there that imports from `src/openapi/`.
+knowable without the operation. `src/import/` is format work only;
+`match.js` is the one request-side module that imports from
+`src/openapi/` (the scenario-side `arazzo.js` reads `body-kind.js` too —
+§4.7).
 
 Matcher `matchOperation(model, draft)` (`src/import/match.js`): strip a
 known server prefix (model servers + active environment base URL), then
@@ -716,9 +729,14 @@ from `openapi/`.
     is the only lever.
   - `xpath` criteria are **waived**, not missing:
     `docs/registry/specs-registry.md`.
-- `components` references resolve. `info`, `$self` and
-  `sourceDescriptions` are read; workflow `successActions` /
-  `failureActions` and step `dependsOn` are covered; step `timeout` is
+- `components` references resolve. `info` and
+  `sourceDescriptions` are read; `$self` is deliberately not read — one
+  workflow document at a time, nothing resolves against it — and not
+  warned about. Workflow `successActions` / `failureActions` and step
+  actions, a workflow's own `outputs` and `dependsOn`, and a step
+  `dependsOn` the strictly sequential run cannot honor are **named and
+  refused**, each with its warning code (`scenarios.md` §8.4). Step
+  `timeout` is
   honoured through an abort path in the sender and reported as its own
   failure kind, not as a network error.
 - AsyncAPI steps (`action` over a `channelPath`) are a documented
@@ -746,7 +764,8 @@ them would mean writing `x-` extensions into a document other tools have
 to read.
 
 **OpenAPI Overlay 1.1** — `src/openapi/overlay.js`,
-`applyOverlay(doc, overlay)` pure, applied on the **parsed source, before
+`applyOverlay(doc, overlay)` pure (a 1.0 document is accepted and read
+with the 1.1 rules — newest-wins), applied on the **parsed source, before
 the 2.0 conversion and the dereference**: an overlay targets the file its
 author has in front of them, which may be a 2.0 one, and everything
 downstream (the audit's `source` included) then sees one document, the
@@ -841,19 +860,19 @@ real token never appears in it.
 ### 5.1 Inside OpenAPI — the documented degradations
 
 Rule 19 allows a construct to "degrade with an explicit, documented
-fallback" and forbids the silent hole. There are eight such degradations;
-this is their one list. Nothing else in the spec is knowingly unmodeled.
-
-Each is a waiver **candidate** for `docs/registry/specs-registry.md`,
-whose waiver table lists only validated entries — it therefore says "none"
-while these remain candidates.
+fallback" and forbids the silent hole. This is the one list of those
+degradations for the OpenAPI document itself — a degradation absent from
+it is a defect, not a decision. (The Arazzo import's own named refusals
+are enumerated in `scenarios.md` §8.4; the dependency-side waivers live in
+`docs/registry/specs-registry.md`, §6.)
 
 | Construct | What happens instead | Reference |
 |---|---|---|
-| `prefixEncoding` / `itemEncoding` (3.2) | modeled and listed in the doc's Encoding block, not applied: an array-shaped body has no field editor to drive. Closing it for real is a body-kind question, not an encoding one | §4.4, arch. §5.5.3 |
+| `prefixEncoding` / `itemEncoding` (3.2) | modeled and listed in the doc's Encoding block, not applied: an array-shaped body has no field editor to drive. An application would be a body-kind question, not an encoding one | §4.4, arch. §5.5.3 |
+| Tag `summary` / `parent` / `kind` (3.2) | modeled; the nav stays flat and labels groups by tag name — the hierarchy and the summary have no rendering surface | §1 |
 | `explode` inside an `in: cookie` parameter | the style's delimiter joins instead — repeating the name inside one header value reads back as nothing | §4.4 |
 | An `example` on an XML object or array | not re-serialized into XML; a declared media-type example is already the body the document wants sent, and `prefillBody` uses it verbatim | §4.4 |
-| Parent-side `allOf` polymorphism | the parent lists its subtypes by **name**; no variant nodes, which would close a cycle in the node graph and badge every subtype "recursive". Expanding one needs a render-time back-reference that does not exist yet | §4.2, arch. §5.1 |
+| Parent-side `allOf` polymorphism | the parent lists its subtypes by **name**; no variant nodes, which would close a cycle in the node graph and badge every subtype "recursive". Expanding one would need a render-time back-reference that is not a normalized node | §4.2, arch. §5.1 |
 | `if`/`then`/`else`, `not`, `dependent*`, `unevaluated*` in sample generation | rendered, but not merged into the generated sample: deciding a branch is validation work. `contains` and `contentEncoding: base64` are the two exceptions | §4.1 |
 | Response `links` runtime expressions | documentation, never evaluated — evaluating one against a real response is what a scenario does | §4.3, arch. §5.2 |
 | Arazzo `replacements` on a step payload | reported as missing, not applied: a pointer-addressed patch list over a payload is a second body-editing language on top of `{{var}}` | §4.7 |
@@ -861,18 +880,19 @@ while these remain candidates.
 
 Separately, the **T3 constructs** of §1.1 (the `Cookie` header on send,
 `mutualTLS`, `deviceAuthorization`) are platform limits, not choices: the
-UI says so and the cURL export still carries the value.
+cookie path says so in the UI and the cURL export still carries the value;
+the other two render in the auth overview (§1.1).
 
-### 5.2 Beyond OpenAPI — deferred, deliberately
+### 5.2 Beyond OpenAPI — out of scope, deliberately
 
-AsyncAPI, GraphQL, gRPC/Protobuf: **deferred** — large effort, niche for
+AsyncAPI, GraphQL, gRPC/Protobuf: **out of scope** — large effort, niche
+for
 the current audience, and rule 19 is about the OpenAPI spec, which the app
-satisfies. Re-evaluate only on real demand; this document is where that
-re-evaluation gets recorded.
+satisfies.
 
 What this contract does **not** claim: that every OpenAPI construct is
-executable in a browser (§1.1's tiers), nor that the eight degradations of
-§5.1 are closed. Both are recorded, neither is silent.
+executable in a browser (§1.1's tiers), nor that §5.1 is empty. Both are
+recorded, neither is silent.
 
 ## 6. The in-house spec-code inventory
 
@@ -965,5 +985,6 @@ are state and live in `docs/registry/specs-registry.md` — deliberately not
 repeated here, because a copy of a version pin is a copy that goes wrong.
 
 One finding that is not a dependency question: the RFC 6901 escape is
-hand-rolled in five places, recorded in the Duplication row of
+hand-rolled at several sites across `src/scenarios/`, `src/audit/`,
+`src/import/` and `src/openapi/`, recorded in the Duplication row of
 `docs/registry/code-health-registry.md`.

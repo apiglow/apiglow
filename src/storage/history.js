@@ -18,7 +18,7 @@ function openDb() {
   return openDatabase(DB_NAME, DB_VERSION, (db) => {
     const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true })
     store.createIndex('timestamp', 'timestamp')
-    // multi-spec §4.5: every entry carries its specId.
+    // multi-spec §5: every entry carries its specId.
     store.createIndex('specId', 'specId')
   })
 }

@@ -1,6 +1,6 @@
 # User overlay
 
-Status: **implemented**. This document is the functional source of truth for
+This document is the functional source of truth for
 the feature, alongside [`architecture.md`](architecture.md) (§5.1.2 for the
 overlay pipeline it extends, §5.11 for the editor's placement, §6.2 for its
 key, §14.17 for two of the decisions below).
@@ -54,14 +54,16 @@ browser.
    the ref-parser); the textarea takes JSON only — the app has no YAML
    serializer to round-trip an edit, and half-YAML support (parse but
    never emit) would make the download in decision 8 lie about what was
-   typed. A YAML paste is a recorded future note, not a v1 promise.
+   typed. A YAML paste is refused with the reason — a smaller lie than a
+   silent translation (`architecture.md` §14.17).
 7. **Storage: a spec-scoped localStorage pref, hard-capped.** The
    document lives under the existing `writeSpecPref` mechanism
    (`apidoc:{specId}:user-overlay` — rule 8 mechanism and prefix, no new
    channel). Cap: **64 KB** of serialized document per spec; a save over
    the cap is refused with a visible error and writes nothing (rule 13 —
-   policy: hard cap). `storageInventory()` declares the key, so the
-   settings purge clears it — asserted in e2e, not deduced.
+   policy: hard cap). The settings purge clears it through the
+   inventory's default `preferences` group (§5) — asserted in e2e, not
+   deduced.
 8. **Download is the exit.** A download button emits the document as
    `overlay-{specId}.json` — a standard Overlay 1.1 file, ready for a bug
    report, a pull request, or the host's `openapi.overlays[]`. The
@@ -169,22 +171,25 @@ the badge is a link, the live region announces save/clear outcomes.
   holds, and the editor is the place they typed it.
 - **Core vs shell** (rule 10): read/write/cap/validate live in a core
   module (`src/openapi/user-overlay.js`) beside `overlay.js`; the loader
-  appends the stored document after the host's overlays (decision 2); the
-  shell knows nothing new — the user overlay is user data, not host
-  config, and never rides the config channel.
+  appends the stored document after the host's overlays (decision 2). The
+  **stored** document is user data and never rides the config channel;
+  the one config-borne piece is decision 11's starting patch
+  (`openapi.userOverlay`), which the shell passes down like any other
+  option and the loader seeds into storage — from there on it is user
+  data like the rest.
 
 ## 5. Architecture
 
 | Where | What |
 |---|---|
-| `src/openapi/user-overlay.js` (core) | Read/write through `readSpecPref`/`writeSpecPref`, the 64 KB cap, JSON validation, the dry-run (`checkOverlay(doc, source)` composing `overlay.js`'s pure pieces), the skeleton seed, and decision 11's rule: `seedUserOverlay` (fingerprint in, one write out) and `userOverlayOrigin`. |
+| `src/openapi/user-overlay.js` (core) | Read/write through `readSpecPref`/`writeSpecPref`, the 64 KB cap, JSON validation, the dry-run (`checkUserOverlay(text, source)` — parses the text, then dry-runs `overlay.js`'s pure `applyOverlay` against the source already in memory), the skeleton seed, and decision 11's rule: `seedUserOverlay` (fingerprint in, one write out) and `userOverlayOrigin`. |
 | `src/openapi/loader.js` | Resolves what the host declared (document or URL, decision 11) and seeds it before reading storage; appends the user overlay last (decision 2); reports which of the applied documents is the user's and whose it is, so the badge and the diagnostics can name both. |
 | `src/specs.js`, `src/app.js` | `openapi.userOverlay` through the config channel: the one openapi key a `specs[]` entry replaces instead of accumulating. |
 | `src/components/settings-panel.js` | The §3 section, plus the "yours" tag on the diagnostics entries. |
 | `src/shell/toolbar.js`, `src/app.js` | The header badge while active, opening the panel focused on the editor. |
 | `src/storage/maintenance.js` | Nothing to add: the key falls in the inventory's default `preferences` group, which is what the settings purge clears (asserted in e2e, not deduced). |
 | `src/i18n/en.json`, `i18n/fr.json` | `userOverlay.*`. |
-| `docs/architecture.md` | §5.1.2 gains the third source and its order; §14 records decisions 6 and 9. |
+| `docs/architecture.md` | §5.1.2 carries the third source and its order; §14.17 records decisions 6, 9 and 11's replacement rule. |
 | `CONTRIBUTING.md` | Feature→test map row (rule 16). |
 
 No new runtime dependency. `docs/openapi-coverage.md` is untouched — the
@@ -200,7 +205,7 @@ Vitest (`tests/user-overlay.test.js`), pure core:
 - cap: at 64 KB and one byte past → refused past, nothing written;
 - invalid JSON, valid JSON that is not an overlay (no `overlay` field, no
   `actions`) → refused with the right code;
-- `checkOverlay`: match counts per action against a fixture source, a
+- `checkUserOverlay`: match counts per action against a fixture source, a
   non-RFC 9535 target and a zero-match target produce `overlay.js`'s
   warning codes;
 - the host's starting patch (decision 11): seeded into an empty slot and
@@ -240,9 +245,10 @@ report join the sweep.
 ## 7. Out of scope (recorded so they aren't re-litigated)
 
 - **A per-node GUI** ("fix this field" from the endpoint doc, generating
-  targeted actions). The natural v2, over this exact storage and order —
+  targeted actions). The natural extension, over this exact storage and
+  order —
   but it is an editable surface per node kind plus a JSONPath generator,
-  and the raw editor unblocks the workaround today. Revisit on demand.
+  and the raw editor is the workaround.
 - **YAML in the textarea** (decision 6).
 - **Sharing a user overlay via link.** The download file shared over any
   channel is the same payload with none of the URL constraints; a link

@@ -241,7 +241,7 @@ export function normalizeSpecsConfig(openapi = {}) {
   return { multi: true, specs, defaultId, warnings }
 }
 
-// Priority rules §4.2, candidates in order: pending OAuth > hash > stored
+// Priority rules (multi-spec.md §2), candidates in order: pending OAuth > hash > stored
 // preference. An unknown candidate is ignored (silent fallback); defaultId
 // covers rules 4 and 5 (it is the first entry when there's no explicit
 // openapi.default).

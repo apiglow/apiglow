@@ -1,6 +1,5 @@
 # Environment setup link
 
-Status: **implemented**.
 This document is the functional source of truth for the feature, alongside
 [`architecture.md`](architecture.md) (§5.3 bullet, §6.2 bound, §8 security
 bullet).
@@ -96,8 +95,11 @@ https://docs.example.com/#/s/petstore/?setup=eyJ2Ijox…
 https://docs.example.com/#/op/getPetById?setup=eyJ2Ijox…
 ```
 
-Because it is a parameter and not a route, the link keeps its destination:
-"here is the endpoint I mean, already configured" is one link, not two.
+Because it is a parameter and not a route, a link can carry a destination:
+the decoder accepts the payload on any route and lands there configured.
+The two generators themselves always emit the spec's home (`#/?setup=…`) —
+what they set up is the environment, not a place; an operation-scoped link
+is a hand edit the landing honors.
 
 ### 3.2 Payload
 
@@ -112,10 +114,10 @@ base64url JSON — `toBase64Url` / `fromBase64Url` from
     "name": "Staging",
     "baseUrl": "https://staging.example.com/v3",
     "color": "amber",              // through normalizeEnvColor; unknown → none
-    "vars": [                      // [name, value, sensitive]
+    "vars": [                      // [name, value] or [name, value, true]
       ["auth.bearerAuth", "", true],
-      ["tenant", "acme", false]
-    ],
+      ["tenant", "acme"]           // the third slot travels only when
+    ],                             // sensitive — false is spelled by absence
     "headers": [["X-Tenant", "acme"]]
   }
 }
@@ -144,7 +146,7 @@ reasoning. Beyond shape, the payload is bounded:
 | variables | 50 | more than any real environment; the same order as `tryit.headers`' 50 names |
 | default headers | 20 | |
 | name length | 200 chars | variable names, header names, environment name |
-| value length | 4 KB | a JWT is ~1 KB; 4 KB is generous and still bounded |
+| value length | 4 KB | a JWT is ~1 KB; 4 KB is generous and still bounded. The base URL is held to the same bound |
 
 Over any bound, the whole link is rejected (decision 8) with the same
 invalid-link message as a corrupt payload. The distinction matters to a
@@ -154,9 +156,9 @@ which bound failed, the UI does not.
 ### 3.4 Generation
 
 In the environment manager, a band of its own — not two more buttons in the
-CRUD toolbar, which is where the feature started and where it read as a
+CRUD toolbar, where they would read as a
 third way to mutate the environment, at Delete's weight and behind a label
-("Share as link") that only meant something to someone who already knew.
+("Share as link") that only means something to someone who already knows.
 The band names the job first ("Set a teammate up — one link configures
 their environment"), then offers the two ways in: **"Share “{name}”"**,
 which is this environment and says which, and the §3.5 builder beside it.
@@ -174,10 +176,12 @@ not the environments editor, and the manager owns neither of the two.
   selected), so a partial selection can only ever under-share. An
   unselected *header* does not travel at all — unlike a variable, its
   value is its whole point.
-- Checking the first sensitive row reveals a warning, once, in place:
+- While any checked sensitive row carries a value, a warning shows in
+  place:
   anyone holding this link holds this credential, and a link lives on in the
   chat that carried it. The warning is text, not a confirm dialog — it must
-  be readable while deciding, not dismissed before.
+  be readable while deciding, not dismissed before — and it leaves the
+  moment no secret travels anymore.
 - The link renders in a read-only field with a copy button
   (`copy-button.js`).
 - Length is shown, with a warning past **2000 characters**
@@ -270,15 +274,18 @@ same side of the line as `defaultSetupSelection` and for the same reason.
    performs the same scrub-then-preview when a payload appears
    mid-session — decision 3 is about the URL, not about how the app
    happened to start. Guarded by its own e2e.
-2. **Decode.** `decodeSetupLink(payload)` → payload or `null`.
-3. **Refuse, with a reason.** Three refusals, each its own message,
+2. **Refuse locked outright.** `envStore.locked` → `envSetup.locked`,
+   before even decoding: under a locked config no payload could be
+   applied, whatever it says (decision 7) — a locked install given a
+   corrupt link says "locked", not "invalid".
+3. **Decode.** `decodeSetupLink(payload)` → payload or `null`. Two more
+   refusals, each its own message,
    each writing nothing:
    - invalid or over-cap payload → `envSetup.invalid`;
    - `spec` present and ≠ the active spec id → `envSetup.wrongSpec`, naming
      both. This check is belt and braces: an unknown `#/s/{id}/` already
      falls back silently to the default spec, and a silent fallback here
-     would write staging credentials into the wrong API's environment;
-   - `envStore.locked` → `envSetup.locked`.
+     would write staging credentials into the wrong API's environment.
    A refusal is a toast, not a full-page error: the link rides on a real
    route and that route must still render.
 4. **Preview.** Otherwise a modal dialog, opened after the first render so
@@ -317,8 +324,8 @@ does not do:
 - `keep` — the link carries an empty value and the local one is non-empty
   (decision 5), or the values are already identical.
 
-`sensitive` on a plan row is the **effective** flag — the link's on `add`
-rows, the local variable's otherwise — because the preview masks by it,
+`sensitive` on a plan row is the **effective** flag — true when either the
+link or the local variable says so — because the preview masks by it,
 and a `set` over a locally-sensitive variable rendered unmasked is exactly
 what §4.3 forbids. The *write* applies sensitivity on creation only, which
 is `EnvStore.setVariable`'s existing contract: a choice made in the
@@ -421,8 +428,8 @@ Vitest (`tests/env-setup-link.test.js`), pure core:
   locally, even empty over an empty store → `add`; differing values →
   `set`; identical values → `keep`; a local variable the link does not
   mention → absent from the plan (decision 6);
-- `sensitive` on every plan row is the effective flag (§4.2): the link's on
-  `add`, the local variable's on `set`/`keep`;
+- `sensitive` on every plan row is the effective flag (§4.2): true when
+  either side says so, in both directions;
 - the builder's side of the same codec (§3.5): a transient environment built
   from form-shaped rows round-trips through encode → decode, an uncarried
   sensitive row travelling by name only; and each shape the form refuses —
@@ -482,21 +489,15 @@ Playwright (`tests/e2e/env-setup-link.spec.js`), packed bundle:
 the sweep (rule 15).
 
 Demo: neither demo page locks its environments, so the manager's §3.4 band
-(both actions) and the overview card are reachable in both with no fixture
-work and no `mock-sw.js` change.
+(both actions) and the overview card are reachable in both.
 
-## 8. Open question
+## 8. Out of scope (recorded so they aren't re-litigated)
 
-One thing this spec deliberately does not settle, because the answer is
-cheap to change and expensive to guess: whether Apply should also **switch
-the active spec** when a multi-spec link names a spec that is not active. It
-would mean a reload (a spec change reloads the page, `multi-spec.md` §4) and
-re-reading a payload that has just been scrubbed — so the payload would have
-to survive the reload, in `sessionStorage`, which is a mechanism this
-feature otherwise does not need. §4.1 refuses instead. Revisit only if a
-multi-spec install actually reports the friction.
-
-## 9. Out of scope (recorded so they aren't re-litigated)
+- **Switching the active spec on Apply.** A multi-spec link naming an
+  inactive spec is refused (§4.1). Switching instead would mean a reload
+  (a spec change reloads the page, `multi-spec.md` §4) and a payload
+  surviving it in `sessionStorage` — a mechanism this feature otherwise
+  does not need.
 
 - **Multi-environment links.** One link, one environment (decision 8).
 - **Expiring or single-use links.** Both need a server; there isn't one.

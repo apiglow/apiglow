@@ -1,6 +1,6 @@
 # Network insights
 
-Status: **implemented**. This document is the functional source of truth for
+This document is the functional source of truth for
 the network-insights feature set, alongside [`architecture.md`](architecture.md)
 (which summarizes it in its §5). It covers three features that share one idea:
 *the app explains what the network just did*, using only what the browser
@@ -73,7 +73,10 @@ two §4 actions send *new* requests through the existing pipeline).
 ## 3. Failure diagnosis
 
 Applies when `send()` catches before any HTTP response exists
-(`result.error` set, `result.response` null).
+(`result.error` set, `result.response` null) — with one exemption: an
+abort or a deadline (`AbortError`/`TimeoutError`) never runs the probe.
+Diagnosing the server for a deadline we set would be the wrong reading,
+and a canceled send needs no verdict at all.
 
 ### 3.1 Decision table
 
@@ -122,9 +125,9 @@ Notes:
   `continueOnFailure` chain against a dead server: kept on purpose,
   because §8 promises its entries carry the data for a later rendering,
   and a per-caller opt-in would empty that promise.
-- `#renderNetworkError` renders the verdict as one additional
-  `alert-info` block between the facts box and the generic
-  `networkFailHelp` — which it *replaces* when a verdict exists (the
+- `#renderNetworkError` renders the verdict as one `alert-info` block
+  after the facts box, **in place of** the generic
+  `networkFailHelp` (the
   generic "possible causes" text is exactly what the verdict supersedes).
   The proxy suggestion belongs to the `cors` verdict's hint alone (when
   the proxy is configured but off) — an unreachable server does not
@@ -150,8 +153,8 @@ case-insensitive on stored header names.
 |---|---|---|---|
 | Rate limit | `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` (IETF draft), `X-RateLimit-*` legacy variants | `{ limit, remaining, resetSeconds }` (fields optional) | "Rate limit: 57/100 left · resets in 32 s". Warning tone when `remaining / limit ≤ 0.1` (or `remaining === 0` when no limit). |
 | Retry-After | `Retry-After` (delta-seconds or HTTP-date), on status 429/503 only | `{ seconds }` | "Retry after 30 s" with a live countdown. |
-| Deprecation | `Deprecation` (RFC 9745; boolean or `@unix-ts`), `Sunset` (RFC 8594, HTTP-date) | `{ deprecated, sunsetDate }` | "Deprecated by the server" badge, plus the sunset date when present. Distinct from the schema-level `deprecated` flag: this is the *live* server saying so. |
-| Pagination | `Link` (RFC 8288), rels `next` / `prev` / `first` / `last` | `[{ rel, url }]` | Follow buttons (§4.2). |
+| Deprecation | `Deprecation` (RFC 9745; boolean, `@unix-ts` or HTTP-date), `Sunset` (RFC 8594, HTTP-date) | `{ deprecated, deprecatedDate, sunsetDate }` | "Deprecated by the server" badge, plus the sunset date when present — and a lone `Sunset` with no `Deprecation` gets its own "sunset announced" label. Distinct from the schema-level `deprecated` flag: this is the *live* server saying so. |
+| Pagination | `Link` (RFC 8288), rels `next` / `prev` (IANA `previous` aliased onto it) / `first` / `last` | `[{ rel, url }]` | Follow buttons (§4.2). |
 | Correlation | First match among `traceparent`, `x-request-id`, `x-correlation-id`, `x-amzn-requestid`, `cf-ray` | `{ name, value }` | The id with a copy button — what a user pastes into a support ticket. |
 | Validators | `ETag` (with `Last-Modified` as fallback) | `{ etag }` or `{ lastModified }` | Conditional-replay button (§4.2). |
 
@@ -171,12 +174,13 @@ spec makes, never the wording: `low` on rate limit (the threshold above),
 
 Parsing is lenient: a malformed value yields no insight, never a broken
 one. `Link` URLs resolve against the request URL and only `http(s):`
-results are kept. `X-RateLimit-Reset` is a Unix timestamp at most large
-APIs where the IETF draft says delta-seconds; the magnitude tells them
-apart (no real delta is decades long) — a reading of the wild, not of a
-spec.
+results are kept. A reset value can be a Unix timestamp (the legacy
+`X-RateLimit-*` habit of most large APIs) or delta-seconds (what the IETF
+draft says); the magnitude tells them apart, whichever spelling carried
+the value (no real delta is decades long) — a reading of the wild, not of
+a spec.
 
-CORS caveat, to document in the UI-facing docs: cross-origin, only
+CORS caveat (stated reader-side in `try-it-network.md` §2): cross-origin, only
 safelisted response headers are visible unless the API sends
 `Access-Control-Expose-Headers`. The registry doesn't know or care —
 absent header, no insight (decision 2). Through the proxy, everything the
@@ -188,10 +192,10 @@ demo shows the full set.
 Both actions build on the entry's stored request and go through the normal
 `send()` + history pipeline — they create ordinary history entries and
 re-render the response panel exactly like a manual send. Offered only for
-`GET`/`HEAD` (decision 5) and never on archived entries older than the
-current panel state if the panel inputs have diverged — simplest honest
-rule: the action replays **the stored request**, and the buttons say so in
-their tooltip.
+`GET`/`HEAD` (decision 5) — simplest honest
+rule: the action replays **the stored request**, on an archived run as on
+a fresh one, whatever the panel's current draft says, and the buttons say
+so in their tooltip.
 
 - **Follow link** — one button per relevant rel (`next` first, then
   `prev`; `first`/`last` only in the insight tooltip to avoid a button
@@ -282,8 +286,10 @@ is the existing behavior for `serverMs`; not worse, not fixed here.
 Three facts, appended to the insight strip (§4.3) — transfer and header
 insights share one row:
 
-- **Protocol badge** — `HTTP/2`, `HTTP/3`, `HTTP/1.1` from a static map
-  of known `nextHopProtocol` values; unknown value → no badge.
+- **Protocol badge** — `HTTP/1.0`, `HTTP/1.1`, `HTTP/2`, `HTTP/3` from a
+  static map
+  of known `nextHopProtocol` values (`http/1.0`, `http/1.1`, `h2`, `h2c`,
+  `h3`); unknown value → no badge.
 - **Compression** — when `decodedBodySize > encodedBodySize > 0`:
   "12.4 kB on the wire → 85.2 kB (×6.9)" — "on the wire" sits next to
   the number it describes. No chip when not compressed (decision 2 —
@@ -301,12 +307,16 @@ storage inventory and wrong for a payload.
 
 The HAR generator maps the stored snapshot onto standard fields:
 `response.bodySize` = `encodedBodySize`, `response.content.size` =
-`decodedBodySize`, `response.content.compression` = `decodedBodySize -
+`decodedBodySize` (falling back to the stored body's length when the
+snapshot has no decoded size), `response.content.compression` =
+`decodedBodySize -
 encodedBodySize`, `_transferSize` = `transferSize` (the underscore field
-is the de-facto Chrome extension). Those four mappings, and only those:
+is the de-facto Chrome extension; emitted only when the snapshot saw
+encoded bytes, so a protocol-only snapshot adds nothing to the HAR).
+Those four mappings, and only those:
 `httpVersion` still says `HTTP/1.1` by default even though the snapshot
-may know better — a deliberate non-change, to be picked up the day the
-export is revisited on purpose. Entries without a snapshot keep the
+may know better — a deliberate non-change. Entries without a snapshot
+keep the
 pre-snapshot values (snapshot tests cover both).
 
 ## 6. Architecture
@@ -325,8 +335,9 @@ pre-snapshot values (snapshot tests cover both).
 - **Components**: insight strip renderer shared by the try-it panel and
   the history detail; verdict block in `#renderNetworkError`; action
   buttons wired to the panel's send path — the panel's `#dispatch(built)`
-  is everything a send does once the request exists, and the Send button
-  is one of its two callers, the strip's actions the other. Request
+  is everything a send does once the request exists; its callers are the
+  Send button, the strip's actions, and the host-credentials
+  expired-token retry (`host-credentials.md` §5). Request
   shaping never leaks into a component.
 - **Storage impact** (rule 8, rule 13): two nullable fields on history
   entries (`diagnosis`, `transfer`), covered by the existing history
@@ -395,10 +406,10 @@ and any larger page would leave `Link` with nothing to point at.
 ## 8. Out of scope (recorded so they aren't re-litigated)
 
 - Live online/offline banner and pre-send blocking on mixed content.
-- Full DNS/TCP/TLS waterfall (needs `Timing-Allow-Origin`; revisit as a
-  proxy-mode feature).
+- Full DNS/TCP/TLS waterfall (needs `Timing-Allow-Origin`, which only a
+  proxy could grant).
 - Full `Server-Timing` table (the meter's single-number split stays).
 - Console logging of sends, error capture for diagnostics — separate
-  ideas, separate spec if pursued.
-- Scenario UI surfacing of insights (entries carry the data; rendering
-  can come later at zero storage cost).
+  ideas, out of scope here.
+- Scenario UI surfacing of insights (the entries already carry the data —
+  only the rendering is out of scope).

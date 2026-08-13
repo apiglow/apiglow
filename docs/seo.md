@@ -67,7 +67,8 @@ model and the docs pages, never the host config (rule 10).
 - **Title.** `"{route title} — {model.info.title}"`: operation summary (or
   `{METHOD} {path}`) for `#/op/…`, page title for `#/page/…`, the workflow's
   own name for `#/scenario/…` once its document is loaded, i18n'd view names
-  for audit/overview/first-call, bare `model.info.title` on home. The pure derivation function is unit-tested; the host's
+  for audit/overview/first-call/scenario-import, bare `model.info.title` on
+  home. The pure derivation function is unit-tested; the host's
   original title is never restored — once booted, the app owns the title.
 - **Meta description.** One `<meta name="description">` managed by the
   app (created if the host has none, updated in place otherwise):
@@ -75,10 +76,13 @@ model and the docs pages, never the host config (rule 10).
   description or first paragraph for docs pages, `model.info.description`
   first sentence elsewhere. Plain text only — Markdown stripped, length
   capped (~160 chars).
-- **JSON-LD.** One `<script type="application/ld+json">` per route:
+- **JSON-LD.** One `<script type="application/ld+json">` on each route
+  that maps to a schema.org type:
   `schema.org/APIReference` for endpoints, `TechArticle` for docs pages and
   workflows (a sequence of calls with a goal reads as a tutorial), `WebSite`
-  on home. Semantically correct, speculative payoff, near-zero
+  on home. The remaining views (audit, first-call, scenario import) emit
+  none — no type fits them, and a wrong type is worse than silence.
+  Semantically correct, speculative payoff, near-zero
   cost; the same objects are reused by the baked snapshots.
 - **noindex.** `seo: { index: false }` in the host config injects
   `<meta name="robots" content="noindex">` before first paint — before the
@@ -117,8 +121,9 @@ apiglow bake --config apidoc.config.json --site-url https://docs.example.com/ --
   emitted URL derives from it.
 - `--out` — output directory, to be served at the site root next to the
   host page.
-- `--language` — `en` (default) or `fr`; selects the i18n bundle for the
-  snapshots' chrome text.
+- `--language` — `en` (default) or any code whose catalog file exists
+  (`i18n/{code}.json` — `fr` is the one shipped); selects the i18n bundle
+  for the snapshots' chrome text. A code with no catalog is a hard error.
 
 One declaration, two resolutions, and they are not the same address. What the
 config names is **read** from disk under the config file's own directory — a
@@ -165,18 +170,20 @@ it shares the `#/op/…` route.
 
 - **Markdown mirrors** come from the existing `toEndpointMarkdown` /
   `toDocsPageMarkdown`, uninterpolated (`{{var}}` stays literal, as in
-  the in-app exports — `architecture.md` §docs-pages).
+  the in-app exports — `architecture.md` §5.8).
 - **`llms.txt` links the served `.md` mirrors**, not hash routes
   (llmstxt.org convention: agents get fetchable Markdown).
-  `toLlmsText`/`toLlmsFullText` gain a URL-mapper option; the in-app
-  download keeps its current hash links, since without a bake there is
+  `toLlmsText`/`toLlmsFullText` take a URL-mapper option; the in-app
+  download keeps hash links, since without a bake there is
   nothing else to point at. In `llms-full.txt` the same mapper adds a
   `Source:` line under each section's heading — an agent answering out of
   that file holds the whole documentation and, unbaked, not one address to
   cite for it.
 - **HTML snapshots** wrap the Markdown mirror rendered through `marked`
   in a minimal static template: `<title>`, meta description, JSON-LD,
-  `rel=canonical` pointing at the snapshot itself, `<html lang>`, and a
+  `rel=canonical` pointing at the snapshot itself, a
+  `rel=alternate type="text/markdown"` link to the `.md` mirror,
+  `<html lang>`, a small inline `<style>` for legibility, and a
   prominent link into the interactive doc (`{site-url}#/op/{id}`). No
   script, no redirect — the snapshot is honest static content, not a
   cloaking trampoline. Raw HTML tokens inside Markdown are escaped at
@@ -184,8 +191,8 @@ it shares the `#/op/…` route.
   we are willing to take (dependency rule, `architecture.md` §14.2), and
   a build-time mirror may degrade where the runtime view stays rich. This
   is the documented fallback. The same absence costs one more guard:
-  marked no longer filters link destinations, assuming a sanitizer runs
-  after it, so the template drops any scheme that could execute —
+  marked does not filter link destinations (it assumes a sanitizer runs
+  after it), so the template drops any scheme that could execute —
   `[click](javascript:…)` in a schema description must not ship as a live
   link on a page we generated. The template takes its own chrome text as
   strings rather than reading the i18n runtime, so `--language` is
@@ -221,8 +228,8 @@ drift gets caught by existing snapshot tests.
   own URLs indexable by Google without a bake, at the cost of requiring
   host-side rewrite rules — exactly what hash routing exists to avoid.
   The baked snapshots already give every endpoint an indexable URL that
-  also works for non-JS crawlers, which History routing does not. Possible
-  later opt-in; nothing in this design blocks it.
+  also works for non-JS crawlers, which History routing does not. Nothing
+  in this design blocks it.
 - **SSR / dynamic rendering.** No server by charter (`architecture.md`
   §1); Google deprecated bot-sniffing dynamic rendering.
 - **Serving `llms.txt` from the app.** A `<script>` cannot create server

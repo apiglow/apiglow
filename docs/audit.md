@@ -1,6 +1,6 @@
-# Schema audit — feature specification
+# Schema audit
 
-Status: implemented. This document is the functional source of truth for the
+This document is the functional source of truth for the
 audit feature, alongside [`architecture.md`](architecture.md) (§5.12). The
 shipped rule set lives in `src/audit/rules/`, one file per rule with its
 tests; this catalog describes each of them.
@@ -66,7 +66,7 @@ drifting.
 A finding:
 
 ```
-{ ruleId, severity, category, location, opRef | null, dataPath }
+{ ruleId, severity, category, location, opRef | null, dataPath, params, hidden? }
 ```
 
 - `severity`: `error` (almost certainly a schema bug) / `warning`
@@ -87,6 +87,10 @@ A finding:
   filter's verdict, so the engine reimplements none of it.
 - `dataPath`: JSON-pointer-ish path into the schema document, displayed
   for findings without an `opRef` (components, top-level info, …).
+- `params`: the values the finding's i18n message interpolates
+  (`t('audit.rule.{id}.message', finding.params)`); `hidden` marks a
+  finding on an operation the model filtered out (the badge of the
+  `opRef` bullet above).
 
 The report also carries its own identity and perimeter:
 
@@ -205,7 +209,9 @@ What the document leaves unsaid — mostly `warning`.
   `description`.
 - `property-described` (`info`) — schema property without `description`.
 - `error-responses-documented` (`warning`) — no error responses at all
-  (no 4xx) on a mutating operation. Skips webhooks and callbacks: those
+  (no 4xx, and no `default`, which covers them) on a mutating operation —
+  3.2's `query` method counts as a read. Skips webhooks and callbacks:
+  those
   responses come from the integrator's server, not this API.
 - `response-example` (`info`) — response schema declared without any
   example (the app generates one, but a hand-written example is always
@@ -219,7 +225,8 @@ What the document leaves unsaid — mostly `warning`.
 ### 4.3 Deprecation hygiene
 
 - `deprecated-inventory` (`info`) — inventory of every
-  `deprecated: true` (operations, parameters, properties, security
+  `deprecated: true` (operations, parameters, schema nodes — request and
+  response bodies included — and security
   schemes): the report *is* the deliverable here, since deprecation marks
   are scattered across the pages that carry them. Every **deprecable**
   element is a check, not only the deprecated ones — the score then reads
@@ -239,8 +246,9 @@ before being called dominant, and a single lowercase word (`id`,
 kebab-case at once.
 
 - `parameter-naming` (`info`) — parameter names off the dominant
-  convention. Header parameters are exempt: `X-Request-Id` follows the
-  HTTP convention, not the document's.
+  convention. Only `query` and `path` names are classified: headers
+  (`X-Request-Id`) follow the HTTP convention, not the document's, and
+  cookies and 3.2's `querystring` carry no naming signal either.
 - `property-naming` (`info`) — property names off the dominant
   convention.
 - `path-style` (`info`) — mixed path segment styles (`/kebab-case` vs
@@ -295,18 +303,22 @@ PASSES in a 3.0 document instead of being punished for it.
 
 - `version-legacy` (`warning`) — a spelling a later version replaced,
   used in a document of that later version: `nullable: true` (→
-  `type: [..., "null"]`) from 3.1 on, the XML `attribute`/`wrapped`
+  `type: [..., "null"]`) and the boolean form of
+  `exclusiveMinimum`/`exclusiveMaximum` (→ numeric) from 3.1 on, the XML
+  `attribute`/`wrapped`
   booleans from 3.2 on — the threshold travels per construct. All of them
   are silent failures: the newer reader ignores the older spelling.
 - `version-construct` (`warning`) — anything used ahead of the declared
   version. 3.1+ constructs in a 3.0 document (`webhooks`, type arrays,
-  `jsonSchemaDialect`, `info.summary`, the licence's SPDX `identifier`,
+  `const`, `jsonSchemaDialect`, `info.summary`, the licence's SPDX
+  `identifier`,
   and the JSON Schema 2020-12 keywords a 3.0 Schema Object does not have —
   `if`/`then`/`else`, `$defs`, `patternProperties`, `propertyNames`,
   `dependent*`, `unevaluated*`, `contains` and its bounds, `content*`;
   not `not`, which 3.0 already carries), and 3.2-only constructs
   (`additionalOperations`, the `query` method, `in: querystring`,
-  `itemSchema`, `discriminator.defaultMapping`) in older documents.
+  `itemSchema`, `discriminator.defaultMapping`, `$self`, XML `nodeType`,
+  `prefixEncoding` / `itemEncoding`) in older documents.
 - `conversion-approximation` (`info`) — a construct the Swagger 2.0
   conversion could only approximate. The converter
   (`src/openapi/swagger2.js`) marks what 3.0 cannot spell with
@@ -325,8 +337,9 @@ PASSES in a 3.0 document instead of being punished for it.
   Vitest-able.
 - **Input: the raw schema, not the normalized model.** Normalization
   erases exactly what several rules must flag (`nullable`, version
-  mismatches). This makes the audit the second legitimate consumer of the
-  raw document, next to normalization; rendering still only consumes the
+  mismatches). This makes the audit a second legitimate consumer of the
+  raw document, next to normalization (the user overlay's dry run is the
+  third and last); rendering still only consumes the
   model (rule 6 concerns rendering, and the audit *page* renders audit
   results, not the schema). Design rationale: `architecture.md`. The
   engine receives both the source document (pre-`$ref` resolution, for
@@ -335,11 +348,14 @@ PASSES in a 3.0 document instead of being punished for it.
   which doubles as the hide-filter verdict so findings on hidden
   operations can be labeled. Concretely:
   `auditSchema({ source, document, model })`. The loader returns the
-  three of them (`{ model, source, document }`): it parses first and
+  three of them next to the model — `source` as a lazy getter, `document`
+  eagerly: it parses first and
   dereferences a clone against the same URL — which keeps the source's
   `$ref`s observable while external `$ref`s still resolve. When
-  `features.audit` is off, the shell drops both raw documents — nothing
-  to compute from, nothing retained.
+  `features.audit` is off, the shell keeps no audit input; the parsed
+  source itself outlives the switch, because the user overlay's dry run
+  and the schema download still read it (they are the raw document's
+  other consumers, `architecture.md` §14.13).
 - **Lazy, sliced and cached**: nothing is computed at boot. The report is
   computed on first visit to `#/audit`, in-memory-cached per spec,
   recomputed on spec switch. The run is handed out one rule at a time
@@ -349,8 +365,7 @@ PASSES in a 3.0 document instead of being punished for it.
   is no partial report — a score needs every category graded — so the view
   appears once, at the end, and not at all if the reader has left by then. No persisted dataset → no change to `storageInventory()`
   and no new storage policy. (A report history/trend over schema versions
-  is deliberately out of scope; the `apidoc-schema` snapshots would be
-  the natural substrate if ever wanted.)
+  is deliberately out of scope.)
 - **Multi-spec**: report is per active spec, like the rest of the doc.
   `auditHash()` builds the route like the other builders and gets the
   multi-spec prefix for free; the route carries no id segment, unlike
@@ -433,8 +448,9 @@ PASSES in a 3.0 document instead of being punished for it.
   materialized on first expansion and never before. The count is always
   on the row and the remainder is always on the "show more" button:
   nothing is dropped silently. A rule that fired once is not folded: its
-  own message is more informative than the generic label, and it keeps
-  its rationale inline.
+  own message is more informative than the generic label, and its
+  rationale sits behind a compact "why" disclosure — the one place a
+  second click is cheaper than pushing the next rule down.
 - Long JSON pointers (recursive schemas produce several hundred
   characters of one repeated segment) are elided in the middle on the
   page only. The export keeps them whole — it is what locates the finding

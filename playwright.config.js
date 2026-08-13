@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test'
 // Several projects, but `npm run test:e2e` only ever runs `chromium`: the
 // matrix is a CI lever (and an opt-in `npm run test:e2e:all` locally), so a
 // dev loop or an agent run never pays for it by accident.
-// Plan and locked decisions: docs/cross-browser.md.
+// Decision record: docs/cross-browser.md.
 
 // The perf budgets are a Chromium-calibrated regression tripwire, not a
 // cross-engine benchmark: `perf.spec.js` measures through
@@ -26,7 +26,7 @@ const MOBILE_ONLY = ['mobile.spec.js']
 // Specs whose subject is the desktop layout itself, and which a mobile
 // viewport therefore cannot ask the question of. Kept as short as the triage
 // could make it — the list is the exception, and every line of it is argued in
-// docs/cross-browser.md §0 Notes.
+// docs/cross-browser.md §4.4.
 const DESKTOP_LAYOUT_ONLY = []
 
 export default defineConfig({

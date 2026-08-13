@@ -205,7 +205,7 @@ function normalizeExternalDocs(raw) {
 
 // Outbound URLs are restricted to http(s) (rule 5): a `javascript:` or `data:`
 // href in a rendered link is script execution smuggled through a description
-// field. Anything else is dropped silently here and flagged by the audit.
+// field. Anything else is dropped silently here.
 function externalUrl(value) {
   if (typeof value !== 'string' || !value.trim()) return undefined
   try {

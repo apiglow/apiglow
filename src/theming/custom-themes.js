@@ -49,7 +49,7 @@ export const THEME_TOKENS = [
 // the tokens plus the property `colorScheme` maps to.
 export const PROBE_PROPERTIES = ['color-scheme', ...THEME_TOKENS]
 
-// daisyUI 5.7.9 (pinned) — the set the build ships (rule 3), i.e. the legal
+// daisyUI (pinned in package.json) — the set the build ships (rule 3), i.e. the legal
 // `extends` targets. Only used to warn: an unknown name is still honoured, so
 // a daisyUI bump that adds a theme costs a console line, not a broken config.
 export const BUILTIN_THEMES = [

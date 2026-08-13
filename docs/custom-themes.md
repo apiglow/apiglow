@@ -1,6 +1,6 @@
 # Custom themes
 
-Status: **implemented**. This document is the functional source of truth
+This document is the functional source of truth
 for the custom-theme feature, alongside
 [`architecture.md`](architecture.md) §5.9 — which carries the summary, this
 one the design record and the cascade traps.
@@ -18,8 +18,8 @@ Two channels, by design:
    corresponding CSS at boot.
 2. **Host CSS** (escape hatch, zero app code): a `[data-theme="name"]`
    variable block in the host page's own CSS, plus the name listed in
-   `theme.available`. This works mechanically; the feature work here is
-   documentation and tests.
+   `theme.available`. This works mechanically; what the app owes it is
+   documentation and an e2e guard (§6).
 
 Both exist because a daisyUI 5 theme is *nothing but* a block of CSS
 custom properties scoped to a `data-theme` selector — the entire feature
@@ -58,7 +58,9 @@ Revisiting one means revisiting this section.
    built-in nor a custom theme is warned but **kept**, so a daisyUI bump
    that adds a theme costs a console line rather than a broken config
    (`BUILTIN_THEMES` in `src/theming/custom-themes.js` exists for that
-   warning only; nothing behaves differently for an unknown base).
+   warning only; nothing behaves differently for an unknown base). An
+   entry with no `extends` and no token is warned too ("defines no
+   token, it will change nothing") and still injected.
 7. **Root-only config.** Theme remains global UI chrome; no per-spec
    custom themes in multi-spec installs. Concretely: `theme.custom` is
    read from the **root** config while `theme.available` comes from the
@@ -115,32 +117,33 @@ Revisiting one means revisiting this section.
 - Core module **`src/theming/custom-themes.js`**, pure functions:
   validate definitions, merge override tokens onto resolved base values,
   render the final CSS text. No DOM, fully Vitest-able.
-- **`app.js` is the only reader of `theme.custom`** (rule 10): the
-  bootstrap validates, resolves `extends` (see below), calls the
+- **`app.js` is the only reader of `theme.custom`** (rule 10); it hands
+  the definitions to the shell injector, `src/shell/themes.js`, which
+  validates, resolves `extends` (see below), calls the
   generator, and injects one `<style data-apidoc-custom-themes>` element.
   The core module receives plain data, never the host config.
 - **`extends` resolution via a computed-style probe.** The base theme's
   values live only in the built CSS (reading `cssRules` of the
-  cross-origin CDN stylesheet would throw), so the bootstrap appends a
+  cross-origin CDN stylesheet would throw), so the injector appends a
   hidden `<div>` carrying `data-theme="<base>"`, reads the ~29
   whitelisted properties with `getComputedStyle`, and removes the probe.
   `display:none` doesn't stop custom properties from resolving, and the
   probe never reaches the layout. Requires `app.css` to be loaded — see
   the timing note in §5.
 - **No storage, no i18n impact.** The persisted theme choice mechanism is
-  untouched: custom names flow through `theme.available`, so
-  `resolveInitialTheme()` and the switcher work unchanged (a stored name
-  whose definition disappeared is already filtered by the
-  `available.includes` guard). No switcher change was needed: the preview
+  not involved: custom names flow through `theme.available`, so
+  `resolveInitialTheme()` and the switcher have no special case (a stored
+  name whose definition disappeared is already filtered by the
+  `available.includes` guard, and the preview
   swatches repaint off their own local `data-theme`, which picks up the
-  injected global rule. Theme names are displayed verbatim.
-- **Rule 3 unchanged**: the built CSS keeps shipping every standard
+  injected global rule). Theme names are displayed verbatim.
+- **Rule 3 holds**: the built CSS keeps shipping every standard
   daisyUI theme; custom themes are additive.
 
-## 5. The two cascade subtleties (implementation contract)
+## 5. The two cascade subtleties
 
-These are the traps this spec exists to record; both were verified against
-`dist/app.css` and in the browser.
+These are the traps this document exists to record; both are verified
+against `dist/app.css` and in the browser.
 
 1. **Selector specificity.** daisyUI 5 does *not* scope themes under bare
    `[data-theme=x]`: the default theme sits under `:where(:root)`
@@ -160,17 +163,19 @@ These are the traps this spec exists to record; both were verified against
 2. **Cascade position and load timing.** The `<style>` element is
    inserted **synchronously right after the injected `app.css` link**, so
    its document-order position (and thus tie-breaking) is guaranteed
-   regardless of network timing. When some definition uses `extends`, the
-   element is inserted empty and its text is filled once the link fires
-   `load` (the probe needs the stylesheet applied); themes without
-   `extends` are filled immediately. Until `app.css` loads nothing is
+   regardless of network timing. The element arrives already filled with
+   the themes that need no base; the `extends`-based ones are appended
+   once the link fires `load` — or `error`, so a dead stylesheet still
+   resolves them instead of leaving them pending — because the probe
+   needs the stylesheet applied. With no link to wait for (dev build),
+   everything is filled immediately. Until `app.css` loads nothing is
    styled anyway, so this adds no visible FOUC beyond the CSS load
    itself.
 
-## 6. Host-CSS escape hatch (documentation contract)
+## 6. Host-CSS escape hatch
 
-What the docs owe the host, because subtlety 1 above applies to it too —
-carried by architecture.md §5.9, the README theming section and
+What the user-facing docs state, because subtlety 1 above applies to it
+too — carried by architecture.md §5.9, the README theming section and
 `config.example.js`:
 
 - For a **new** theme name, a plain block in the host page works:
@@ -190,7 +195,7 @@ carried by architecture.md §5.9, the README theming section and
   same plain block does it: daisyUI ships its themes inside `@layer base`,
   and an unlayered rule beats a layered one whatever its selector — the
   specificity analysis of subtlety 1 never gets a say. Verified in the
-  browser. The docs say so *and* say it rests on daisyUI's layering,
+  browser. The docs state it *and* state it rests on daisyUI's layering,
   recommending the config path for that case since it mirrors the
   `:is(…)` selector and survives a layering change.
 - The daisyUI theme generator is linked as the recommended way to author
@@ -201,7 +206,7 @@ carried by architecture.md §5.9, the README theming section and
 
 ## 7. Testing
 
-- **Vitest** (`src/theming/`): token whitelist filtering and warnings;
+- **Vitest** (`tests/custom-themes.test.js`): token whitelist filtering and warnings;
   value break-out rejection; name pattern rejection; merge precedence
   (override beats base, base fills gaps); `colorScheme` inheritance;
   exact CSS text output including the mirrored `:is(...)` selector.
@@ -223,14 +228,14 @@ carried by architecture.md §5.9, the README theming section and
   - axe sweep stays green on the fixture — with `color-contrast` off, the
     one place it is: the colors on screen are the host's, and so is their
     contrast (architecture.md §12).
-- **Perf**: budgets unchanged; the injection is synchronous string work
-  at boot plus at most one probe read after CSS load.
+- **Perf**: nothing here touches a budget — the injection is synchronous
+  string work at boot plus at most one probe read after CSS load.
 
 ## 8. Demo showcase
 
 Both demo pages (the root `index.html` and `demo/cdn-install.html`, which
 must stay in sync) ship a custom theme, `daisybrand`: it extends `dark`
 and overrides six colors plus two radii — the `extends` use case the
-feature exists for. `theme.default` stays `light`: the demo is also the
+feature exists for. `theme.default` is `system`: the demo is also the
 reference for what a stock install looks like, and the theme is one
-switcher entry away, listed first.
+switcher entry away, listed right after the signature pair.

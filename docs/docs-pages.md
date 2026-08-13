@@ -1,6 +1,6 @@
-# Static docs pages — specification
+# Static docs pages
 
-Status: **implemented**. This document is the functional source of truth for
+This document is the functional source of truth for
 the prose-docs side of the app, alongside `docs/architecture.md` (which
 summarizes it).
 
@@ -58,7 +58,7 @@ normalized model is already in memory at render time.
 | API integration | Enriched links + inline operation cards; **no** try-it embedded in prose |
 | Formats | `.md` (default), `.html` (DOMPurify), `.txt` (`<pre>`) |
 | i18n | `url`/`title` accept a per-language map with fallback |
-| Mermaid | Future track only — diagram rendering is not spec/format work, so the spec/format exception to the closed-runtime-dependencies rule does not open the door for it, and that rule's reasoning (platform-first, no UI/utility deps) applies unchanged |
+| Mermaid | Out of scope (§11) — diagram rendering is not spec/format work, so the spec/format exception to the closed-runtime-dependencies rule does not open the door for it, and that rule's reasoning (platform-first, no UI/utility deps) applies unchanged |
 | External links | First-class nav entries with a distinguishing icon |
 
 ---
@@ -115,8 +115,8 @@ docsPages: '/docs-pages/manifest.json'
 { "pages": [ ...same entry shapes as the inline array... ] }
 ```
 
-The top-level object (rather than a bare array) leaves room for future
-fields. **Relative `url`s inside the manifest resolve against the manifest's
+The top-level object (rather than a bare array) is what keeps the manifest
+format extensible. **Relative `url`s inside the manifest resolve against the manifest's
 own URL**, so a docs folder is fully self-contained: the host page names one
 file, and the folder can be versioned, moved, or generated independently of
 `index.html`. Inline entries resolve against the host page.
@@ -140,7 +140,9 @@ A manifest that fails to load or parse surfaces a visible nav-level error
 ```
 
 Resolution: current UI language → `en` → first declared key. Switching the
-UI language re-resolves and re-renders the open page and the nav labels.
+UI language reloads the page — the app-wide language mechanism
+(`architecture.md` §14.7) — which re-resolves the open page's body and the
+nav labels.
 A plain string means "same in every language" — the common monolingual case
 stays zero-ceremony.
 
@@ -261,8 +263,9 @@ route, never by their file), same full-text search — carried pages simply cost
 no fetch to index. A `contentId` pointing at nothing fails like an unreachable
 file: a visible error naming the id, never a blank page.
 
-**Not covered**: the schema (already `openapi.spec`) and scenario files
-(`scenarios[].url`, still fetch-only) — see §11.
+**Not covered here**: the schema and the scenario documents have inline
+carriers of their own (`openapi.spec`; `scenarios[].document`,
+[scenarios.md](scenarios.md) §3) — this section is the prose side only.
 
 ### 2.7 Which side of the reference
 
@@ -326,17 +329,19 @@ the `format` key and the element type for a carried body (§2.6):
 
 | Format | Ext | Pipeline |
 |---|---|---|
-| `markdown` | `.md` (and anything else) | frontmatter strip → marked (with extensions §4.2–4.4) → DOMPurify → heading anchors → hljs |
+| `markdown` | `.md` (and anything else) | frontmatter strip → marked (fence grouping §4.3, `apidoc:` links §4.4 as extensions) → DOMPurify → DOM decorations (callouts §4.2, tablists and fence headers §4.3) → heading anchors → hljs |
 | `html` | `.html` | DOMPurify (same profile) → heading anchors → hljs. Markdown-only features (callouts, code tabs, operation cards) do not apply. |
 | `text` | `.txt` | escaped text in a `<pre>`; no ToC, no anchors |
 
 Frontmatter: a leading YAML block is **stripped and ignored** — files
-authored for other tools render cleanly; using its fields is a future track.
+authored for other tools render cleanly; its fields are not read (§11).
 
 ### 4.2 Callouts
 
 GFM alert syntax (`> [!NOTE]` on the first line of a blockquote) → daisyUI
-alerts, via a static map (rule 2):
+alerts, via a static map (rule 2), applied as a post-sanitize DOM pass
+(`decorateCallouts` in `src/components/docs-content.js` — the marker
+survives DOMPurify, the classes do not need to):
 
 ```js
 { NOTE: 'alert-info', TIP: 'alert-success', IMPORTANT: 'alert-info',
@@ -534,7 +539,8 @@ Vitest (pure core):
 - Nav zone (§2.7): the default, the split by kind, the top-first ordering of
   the outline and of the flattened pages, the two warnings (unknown value,
   declared inside a group), and the zone an override carries.
-- Marked extensions: callout mapping, adjacent-fence grouping, `apidoc:`
+- Marked extensions and decorations: callout detection (the daisyUI class
+  map itself is pinned in e2e), adjacent-fence grouping, `apidoc:`
   link resolution (both addressings, unresolvable case), frontmatter strip.
 - Operation reference resolver against the normalized model.
 - Section splitter + index builder for full-text search.
@@ -565,26 +571,22 @@ Playwright (packed bundle):
 - Language switch re-renders a bilingual page.
 - a11y sweep on a docs page exercising every feature (§8).
 
-`doc-panel-sync.spec.js` is unaffected: this spec adds no editable surface.
+`doc-panel-sync.spec.js` is not in play: prose declares no editable
+surface (rule 20).
 
 ---
 
-## 11. Future tracks (explicitly out of scope)
+## 11. Out of scope (recorded decisions)
 
-- **Mermaid diagrams** — requires a runtime dependency (~500 kB, would be
-  lazy-loaded only when a page contains a ```` ```mermaid ```` fence).
-  Diagram rendering is outside the closed-runtime-dependencies rule's
-  spec/format exception, so shipping it needs its own recorded decision
-  first. Until then, diagrams are images.
+- **Mermaid diagrams** — requires a runtime dependency (~500 kB), and
+  diagram rendering is outside the closed-runtime-dependencies rule's
+  spec/format exception; shipping it would need its own recorded decision.
+  Diagrams are images.
 - **Unified nav tree** (Scalar model: the reference as a positionable node
-  between prose groups) — revisit if the two-zone layout proves limiting.
+  between prose groups) — the two-zone layout is the decided model.
 - **Try-it embedded in prose** — would make prose an editable surface and
   pull rule 20 into scope; deliberately excluded.
 - **Frontmatter fields** (title/description overrides, per-page ToC opt-out).
-- **Scenario files carried by the host page** — the symmetric of §2.6 for
-  `scenarios[].url`, and the last file a single-page installation still has to
-  serve. Same shape (`scenario: { … }`, the object instead of the URL, as
-  `openapi.spec` does), but it belongs to the scenarios spec, not to this one.
 - **Versioned doc trees**; **breadcrumbs**; **nav collapse-state
   persistence**.
 
@@ -634,7 +636,7 @@ send to block in prose — so its two halves are restated for a page:
 
 Interpolation is a **post-sanitize DOM walk** over text nodes of the
 rendered page (headings, prose, code spans, fences alike — §4 pipeline
-order: … → DOMPurify → anchors → hljs → *interpolate*). Values are
+order: … → DOMPurify → decorations → anchors → hljs → *interpolate*). Values are
 inserted as text nodes and chips as app-built elements, so a value can
 never introduce markup or shift the markdown structure (a base URL full
 of underscores must not become emphasis — which is why interpolating the
@@ -680,7 +682,7 @@ labels reflect the interpolated heading text, refreshed with it.
 Chips carry i18n'd accessible names ("variable {name}, value hidden" /
 "variable {name} is not set — open the environments"); the missing chip is
 a real button, the masked one a `role="img"` — `aria-label` on a bare
-`<span>` is a violation in its own right. The sweep page (§8) gains all
+`<span>` is a violation in its own right. The sweep page (§8) covers all
 three states. Rule 20 is not in play: a chip displays or navigates, it
 never edits. Strings under `page.vars.*`, `en` + `fr` (rule 9).
 

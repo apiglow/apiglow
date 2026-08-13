@@ -31,7 +31,9 @@ Pure module `src/scenarios/model.js` (defensive validation: untrusted input
 
 ```js
 Scenario = {
-  id,            // local: uuid; config: declared slug [a-z0-9-]
+  id,            // local: uuid; config: declared id [A-Za-z0-9._-] — the
+                 //   entry slug is the narrow [a-z0-9-], workflow ids add
+                 //   dots and case (§3)
   name, description,          // description in Markdown (DOMPurify-sanitized)
   source: 'config' | 'local', // config = read-only, duplicable locally
   inputs: {name: string},     // values the scenario carries for its own
@@ -44,8 +46,11 @@ Step = {
   opId,          // operation id from the normalized model (unique PER spec)
   note,          // optional Markdown — the tutorial text in step-by-step mode
   request,       // SAME shape as share.js state: { path, query, queryString,
-                 //   headers: [{name, value}], body, mediaTypeIndex, formFields }
-                 // — TEMPLATE form ({{var}} unresolved), never a sensitive value
+                 //   headers: [{name, value}], cookie, body, bodyFileName,
+                 //   mediaTypeIndex, formFields }
+                 // — TEMPLATE form ({{var}} unresolved), never a sensitive
+                 //   value; bodyFileName is what reserves a file-carrying
+                 //   step for step-by-step mode
   expect: {      // optional; default: 2xx status = success
     status,      // exact code (201) or class ('2xx')
     assertions: [{ pointer /* RFC 6901 into the JSON body */,
@@ -74,8 +79,8 @@ Step = {
   (file content is never stored) → the step requires step-by-step mode,
   where the user re-picks the file.
 - Run variables: at interpolation time, a **run-scope overlay** sits on top
-  of environment variables (`{...envVars, ...runVars}`, run wins on
-  collision).
+  of environment variables, which sit on top of `scenario.inputs`
+  (`{...inputs, ...envVars, ...runVars}`, later wins on collision — §6).
 - Orphan step (opId missing after schema evolution): "operation not found"
   badge in the view, run blocked at that step with an explicit message.
 - Pointers are stored as JSON Pointers (RFC 6901) — the file format and the
@@ -110,17 +115,23 @@ Step = {
   its own name.
 - An invalid or duplicate entry id does **not** take the documentation down
   (unlike a broken spec id, which breaks storage and routing): the entry is
-  discarded and flagged in the console, like an incomplete `docsPages`
-  entry. So is an entry that is not a scenario at all. A **partially
-  supported workflow is not discarded**: it renders with a visible badge
+  dropped at config normalization and flagged in the console, like an
+  incomplete `docsPages` entry. An entry whose document cannot be fetched,
+  or is not a scenario at all, keeps a record carrying its error instead:
+  the nav still lists what the config declared, and the route says why
+  nothing runs. A **partially
+  supported workflow is not discarded** either: it renders with a visible badge
   naming what this documentation cannot execute, and the same list goes to
   the console — no human is watching at boot, so the importer's toast has no
   equivalent here, and a config scenario is read-only anyway (displaying a
   construct we cannot run is not offering to edit it).
 - **The loaded model wins.** A file written for CI points its
   `sourceDescriptions` at the production schema; operations resolve against
-  the schema this documentation loaded, and the disagreement is flagged
-  (`arazzo-source-ambiguous`). Multiple sources stay out of scope while
+  the schema this documentation loaded regardless. When the document
+  declares **several** sources and a step names one explicitly, the choice
+  this app cannot honor is flagged (`arazzo-source-ambiguous`); a
+  single-source document resolves silently — there is only one thing it
+  could mean. Multiple sources stay out of scope while
   cross-spec scenarios are (§9).
 - Declared entries are resolved once, off the boot critical path: the nav
   shows the declared labels until their documents are in, since how many
@@ -152,7 +163,8 @@ Step = {
   user to export or delete one. The cap is per spec so that one busy API
   cannot lock the others out.
 - `ScenarioStore extends EventTarget` (`change` event, same contract as
-  `HistoryStore`): `add/update/remove/list/duplicate`. Reads re-validate
+  `HistoryStore`): `add/update/remove/get/list/duplicate`, plus `count` and
+  `clear` for the settings panel's inventory and reset. Reads re-validate
   through `normalizeScenario` — a record written by an older version is
   untrusted input like any other; an unrecoverable record is skipped rather
   than failing the whole list.
@@ -314,15 +326,17 @@ Step = {
   panel, so the runner sends exactly the same requests
   ([architecture.md](architecture.md) §14.10 covers the design).
 - `src/scenarios/runner.js` — **pure async generator**:
-  `run(scenario, { ops, envVariables, authInjectionFor, sender }) → yield
-  StepResult` per step. The `sender` is injected (the real `send.js` in
+  `runScenario(scenario, { ops, baseUrl, variables, runVariables,
+  authInjectionFor, sender, … }) → yield
+  StepResult` per step — environment variables arrive as `variables`, the
+  run scope as `runVariables`. The `sender` is injected (the real `send.js` in
   production, a fake in tests); auto-run = consume the generator in one go,
   step-by-step = consume it at the pace of manual sends — a single
   orchestration code path (interpolation overlay, extraction, assertions,
   stop/continue). The step-by-step driver is
   `src/scenarios/step-controller.js`, injected the same way and unit-tested
   without a browser.
-- Per step: `buildRequest` with `variables = {...env, ...runScope}` → if
+- Per step: `buildRequest` with `variables = {...inputs, ...env, ...runScope}` → if
   `missing`/`errors` are non-empty, **step fails with the standard signal,
   nothing is sent** → otherwise send → extraction (JSON-parsed body;
   non-JSON, absent pointer, or an empty/null extracted value = extraction
@@ -436,11 +450,14 @@ steps (chaining made explicit), remaining `{{var}}`s become `$inputs.*`;
 conditions). Arazzo names reject dots, so `auth.session` exports as
 `auth_session`. `sourceDescriptions` points at the active schema URL.
 
-The document declares `arazzo: 1.1.0`, and 1.1 is what makes one field
-exportable at all: a step's whole query string goes out as
+The document declares `arazzo: 1.1.0`, and two fields are exportable only
+because of it: a step's whole query string goes out as
 `{name, in: 'querystring', value}`, under the name the operation declares for
 that parameter — before 1.1 there was no spelling for it and the field left
-the document silently. Nothing else here is 1.1-only: outputs stay the short
+the document silently — and a **query extraction** (§6) leaves as the 1.1
+Selector Object (`{ context: '$response.body', selector, type: 'jsonpath' }`),
+the only spelling that can carry a query. Everything else stays 1.0-readable:
+pointer and header outputs keep the short
 `$response.body#/x` expressions rather than Selector Objects (the same thing,
 and readable by a 1.0 tool), and no `$self` is emitted — one workflow from one
 document has no second document to be the base of.
@@ -485,9 +502,14 @@ silently**: a step calling another workflow (no nesting here), an `xpath`
 criterion, a `jsonpath` one whose `context` is anything other than the whole
 response body, a `regex` one whose `context` does not point *inside* it,
 a parameter referencing the Arazzo document's own
-components, `replacements` over a payload, `onSuccess` / `onFailure` actions,
+components, `replacements` over a payload, `onSuccess` / `onFailure` actions
+(workflow- and step-level alike), a workflow's own `outputs` or `dependsOn`,
+a step `dependsOn` the strictly sequential run cannot honor, a `requestBody`
+content type the operation does not declare, an `arazzo` version we do not
+recognize (read as 1.1, and said so),
 an output expression that is not a response expression, a Selector Object
-whose `type` is `jsonpath` or `xpath`, a second `querystring` parameter in one
+whose `type` is `xpath` or anything unknown, a second `querystring` parameter
+in one
 step. And 1.1's **AsyncAPI steps** — `action` (`send` /
 `receive`) over a `channelPath` — which are a documented degradation rather
 than a gap (rule 19): a browser HTTP client has no message transport to run
@@ -565,10 +587,9 @@ waits); Postman scenario export; run report persistence; running a scenario
 on a schedule — no server by charter, and the hand-off of §8.6 is the answer
 rather than a gap.
 
-This list was re-examined in August 2026 against the market; the decided
-evolutions live in [`scenarios-roadmap.md`](scenarios-roadmap.md). It
-remains the implemented boundary until a roadmap workstream graduates back
-into this document.
+The decided evolutions live in [`scenarios-roadmap.md`](scenarios-roadmap.md);
+this list remains the implemented boundary until a roadmap workstream
+graduates back into this document.
 
 ## 11. Tests
 

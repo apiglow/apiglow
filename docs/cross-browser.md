@@ -1,7 +1,7 @@
 # Cross-browser testing — the contract
 
-Goal: guarantee that the distributed bundle works for ~99% of real users,
-through two complementary levers:
+Goal: guarantee that the distributed bundle works for the ~97–98% of real
+users the baseline covers (§2), through two complementary levers:
 
 1. **A declared support baseline enforced at build time** — the only honest
    answer to "old browser versions", since Playwright only ever ships one
@@ -75,13 +75,15 @@ feature-detected and degraded, never called unconditionally (§4.5).
 
 | Project | Engine | Device profile | Runs |
 |---|---|---|---|
-| `chromium` | Chromium | Desktop Chrome | full suite (incl. `perf.spec`, `a11y.spec`) |
+| `chromium` | Chromium | Desktop Chrome | full suite − `mobile.spec` (incl. `perf.spec`, `a11y.spec`) |
 | `firefox` | Firefox | Desktop Firefox | full suite − `perf.spec` − `mobile.spec` |
-| `webkit` | WebKit | Desktop Safari | full suite − `perf.spec` |
+| `webkit` | WebKit | Desktop Safari | full suite − `perf.spec` − `mobile.spec` |
 | `mobile-chrome` | Chromium | Pixel 7 | full suite − `perf.spec` |
 | `mobile-safari` | WebKit | iPhone 14 | full suite − `perf.spec` |
 
-The mobile projects run the *same* specs as their desktop siblings rather
+The mobile projects run the desktop suite **plus** `mobile.spec.js` — the
+one file whose subject is the emulated device itself, which is why every
+desktop project ignores it — rather
 than a hand-picked subset: what they check is that the drawer/sheet layout
 serves the whole product. That works because the shared helpers
 (`tests/e2e/helpers.js`) open whatever hides the thing a desktop-written
@@ -151,10 +153,11 @@ the *payload* the app hands to the clipboard, not the OS integration.
 
 ### 4.2 `isMobile`
 
-Playwright's Firefox does not support `isMobile` — `mobile.spec.js` uses
-it file-level, so the `firefox` project must `testIgnore` it, and no
-mobile project can ever be Firefox-based (there is no mobile Firefox
-profile to emulate faithfully anyway).
+Playwright's Firefox does not support `isMobile`, so no mobile project can
+ever be Firefox-based (there is no mobile Firefox profile to emulate
+faithfully anyway). `mobile.spec.js` itself is ignored by all three desktop
+projects for a different reason: its subject is the emulated device, not
+a layout a desktop viewport could exercise (§3.1).
 
 ### 4.3 Perf budgets
 
@@ -177,8 +180,8 @@ the same treatment.
 
 The `DESKTOP_LAYOUT_ONLY` list in `playwright.config.js` — the blanket
 mobile-ignore mechanism of last resort — is empty and should stay that
-way: no spec's whole subject is desktop-only. Three individual assertions
-are scoped instead, each at its site:
+way: no spec's whole subject is desktop-only. Individual assertions
+are scoped instead, each at its site — currently:
 
 - `tryit.spec.js` "a resized nav column keeps its width" — skipped below
   `lg`: there is no draggable column edge, the nav is a fixed-width drawer.
@@ -220,7 +223,16 @@ Chromium-only run could show:
   on `<body>` instead. `openModal` (`a11y.js`) names its landing point
   with `autofocus`, the hook those steps read, rather than racing them.
 
-Residual gap, accepted: Playwright's WebKit refuses `route.fulfill` on
-any 3xx status ("Cannot fulfill with redirect status"), and there is no
-other way to hand the app a staged `304` — the conditional-replay e2e is
-skipped on the `webkit` project.
+Residual gaps, accepted — Playwright harness limits, not app bugs:
+
+- WebKit refuses `route.fulfill` on any 3xx status ("Cannot fulfill with
+  redirect status"), and there is no other way to hand the app a staged
+  `304` — the conditional-replay e2e is skipped on the `webkit` project.
+- WebKit reports no request post body once it came from a `File`/`Blob`:
+  the upload assertions that need the bytes are gated on `canSeeFileBytes`
+  (`tests/e2e/helpers.js`) and assert everything but the bytes there
+  (`bodies.spec.js`, `swagger2.spec.js`).
+- The demo's full OAuth authorization-code round trip runs on the
+  `chromium` project only (`demo.spec.js`): Playwright's Firefox and
+  WebKit hand the post-consent navigation to the network instead of the
+  service worker that plays the authorization server.

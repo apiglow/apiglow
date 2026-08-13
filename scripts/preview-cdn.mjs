@@ -1,4 +1,4 @@
-// End-to-end CDN simulation (docs/architecture.md §3, acceptance criterion 8):
+// End-to-end CDN simulation (docs/architecture.md §3):
 // 1. build dist/, 2. `npm pack` (the exact tarball that would go to npm),
 // 3. extract, 4. serve the package content under /npm/{name}@{version}/
 //    the way jsDelivr would, plus an allowlist of the repo: demo/,

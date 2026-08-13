@@ -144,11 +144,14 @@ W9 hosted frontier (last, optional, gated)
 
 ## 5. Workstreams
 
-### 5.1 Async execution: retry, polling, delay, timeout
+### 5.1 Async execution: retry, polling, delay
 
 **Why.** The universal hole (§2.3). Async APIs — job submission, payment
 confirmation, provisioning — are the very flows a tutorial wants to walk
 through, and today they dead-end at "now poll this endpoint yourself".
+(The plain per-step Arazzo `timeout` is already shipped — `scenarios.md`
+§6; this workstream is retries and pacing, including the retry policy's
+own overall timeout.)
 
 **Functional design.**
 
@@ -239,13 +242,15 @@ implementation, and everything authored here runs unchanged in CI
 
 **Functional design.**
 
-- **Criteria**: assertions grow the Arazzo criterion types — `regex`,
-  `jsonpath` (RFC 9535), and `xpath` for XML bodies (the browser has a
-  native XPath engine; version caveats documented). The assertion editor
+- **Criteria**: `regex` and `jsonpath` (RFC 9535) are shipped
+  (`scenarios.md` §6); what remains is `xpath` for XML bodies (the browser
+  has a native XPath engine; version caveats to document — today it is the
+  one standing import waiver, `docs/registry/specs-registry.md`). The
+  assertion editor
   keeps the current one-click JSON Pointer path as the default; the richer
   types are an "advanced" drawer, not the front door.
-- **Selectors**: extractions accept the 1.1 Selector Object forms
-  (jsonpath/xpath/jsonpointer + context), superset of today's pointer.
+- **Selectors**: `jsonpointer` and `jsonpath` Selector Objects are shipped
+  (import and export, `scenarios.md` §8.3–§8.4); `xpath` remains.
 - **Composition**: a step may *call another scenario* of the same spec,
   with explicit input mapping (which variables the child receives, which
   outputs come back). One nesting level first — reusable "login and get a
@@ -265,14 +270,16 @@ implementation, and everything authored here runs unchanged in CI
   lives under one home spec (storage, routes unchanged); foreign steps
   render with the foreign spec's badge. Guarded by a config switch, off by
   default.
-- **Workflow-level inputs**: a scenario may declare typed inputs (JSON
-  Schema, the Arazzo `inputs` object). The prerequisites panel becomes the
-  input form; today's "union of unbound `{{vars}}`" behavior remains the
+- **Workflow-level inputs**: input **defaults** are shipped
+  (`Scenario.inputs`, `scenarios.md` §6). What remains is the typed half —
+  JSON Schema inputs with the prerequisites panel becoming the input form;
+  today's "union of unbound `{{vars}}`" behavior remains the
   inferred default when nothing is declared.
 
-**Model delta.** Assertion/extraction type unions; `Step.call` (scenario
-reference + input map); `Step.onSuccess/onFailure` action lists;
-`Scenario.inputs`; qualified opId references.
+**Model delta.** Assertion/extraction type unions (`xpath`); `Step.call`
+(scenario reference + input map); `Step.onSuccess/onFailure` action lists;
+typed `Scenario.inputs` (the untyped defaults exist); qualified opId
+references.
 
 **Arazzo mapping.** This wave *is* the mapping: after it, import warnings
 shrink to (workflow-nesting beyond one level, `context`-scoped criteria if

@@ -1,5 +1,5 @@
 // The shape of the host config: its defaults, and the merge that turns what an
-// installation declares into a complete object (docs/architecture.md §3).
+// installation declares into a complete object (docs/architecture.md §4).
 //
 // It lives here rather than in `src/app.js` because two programs read the same
 // config with the same semantics — the app at boot, and the bake CLI

@@ -1,6 +1,6 @@
 # Host credentials — runtime bridge from the host page
 
-Status: **implemented**. This document is the functional specification.
+This document is the functional source of truth for the feature.
 Code comments reference the numbered sections below; renumber with care.
 Core:
 `src/env/host-credentials.js`. Tests: `tests/host-credentials.test.js`,
@@ -66,7 +66,7 @@ function whenApidocReady(cb) {
 }
 ```
 
-Surface (v1, closed):
+Surface (closed):
 
 | Member | Contract |
 |---|---|
@@ -114,7 +114,9 @@ map = {
   A string value maps to `auth.X`; an object maps each key to `auth.X.<key>`.
   This reuses the conventional-variable machinery (`credentialFields`) —
   the provider cannot invent variable names outside the `auth.` namespace.
-- Values are coerced to `String`. Unknown scheme names are ignored with a
+- Values are coerced to `String`. Unknown scheme names — and, inside an
+  object value, suffixes that are not conventional fields of the scheme
+  (`credentialFields`) — are dropped with a
   `[api-doc]` console warning. `null`/`undefined` (or an empty map) means
   "nothing to offer" and is not an error.
 - A thrown error or rejected promise is caught, logged with `[api-doc]`,
@@ -149,8 +151,10 @@ credential-status computation:
 - The overlay only ever holds `auth.*` names, so resolution of every other
   variable is bit-for-bit unchanged.
 - The environments manager popin shows **only real environment content**:
-  the overlay is not an environment and never appears there. Its only UI
-  surface is the try-it cartouche (§6).
+  the overlay is not an environment and never appears there. Its UI
+  surfaces are the try-it cartouche and the presence half of the
+  missing-credential badges — the env-switcher entries included (§6) —
+  never the manager.
 - Invariants that follow (and are tested): typing a value in the cartouche
   writes the env var and immediately wins; clearing that value falls back
   to the host value; `clearCredentials()` re-exposes the red "missing"
@@ -158,7 +162,8 @@ credential-status computation:
 
 ## 5. Lifecycle
 
-- **Boot fill**: after first render, `whenIdle` → if a provider is
+- **Boot fill**: scheduled during shell construction and deferred through
+  `whenIdle` → if a provider is
   registered and at least one conventional credential variable of the
   active spec's schemes is void, call the provider (`reason: 'initial'`)
   and fill the overlay. Off the critical path by design.
@@ -204,8 +209,8 @@ All strings via `t('key')` (rule 9), `en` + `fr` in the same commit:
 - **Cartouche field** whose env value is void but overlay-covered: the
   input stays empty (it edits the *environment* variable, and typing wins
   per §4) and the row shows the `tryit.credFromHost` badge instead of the
-  red missing badge. v1 deliberately does **not** display the host value in
-  the input, even masked: the input's binding stays "env var only", no leak
+  red missing badge. The input deliberately does **not** display the host value,
+  even masked: the input's binding stays "env var only", no leak
   through the eye toggle, no ambiguity about what editing does.
 - **Missing-credential badges** (env-switcher entries, cartouche): a field
   covered by the overlay counts as present.
@@ -236,21 +241,21 @@ All strings via `t('key')` (rule 9), `en` + `fr` in the same commit:
   `tryIt.requestCredentials` (architecture §4). The provider doc links
   there instead of restating them.
 
-## 8. Impact per subsystem
+## 8. Architecture map
 
-| Where | Change |
+| Where | What |
 |---|---|
-| `src/env/host-credentials.js` (new, core) | `HostCredentials extends EventTarget`: overlay map, provider slot, `fill()/clear()/values()`, `covers(name)`, `supplied(used)`, single-flight `request(reason, schemeName?)`, scheme-map → variable-name expansion. Pure of `window` — instantiated and exposed by the shell, unit-testable headless. |
-| `src/app.js` (shell) | Synchronous creation of the instance + `window.apidoc` + `apidoc:ready` at module top (before any top-level `await` — verify the built bundle preserves this). Idle boot fill; wiring the instance into the try-it panel and badge computations (same pattern as `envStore`). |
+| `src/env/host-credentials.js` (core) | `HostCredentials extends EventTarget`: overlay map, provider slot (`registerProvider`, `hasProvider`), a `context` setter (spec id + schemes), `set(map)/clear()/values()`, `covers(name)`, `supplied(used)`, single-flight `request(reason, schemeName?)`, scheme-map → variable-name expansion. Pure of `window` — instantiated and exposed by the shell, unit-testable headless. |
+| `src/app.js` (shell) | Synchronous creation of the instance + `window.apidoc` + `apidoc:ready` at module top, before any top-level `await` (`tests/e2e/host-credentials.spec.js` exercises the ordering against the packed page). Idle boot fill; wiring the instance into the try-it panel and badge computations (same pattern as `envStore`). |
 | `src/components/api-try-it-panel.js` | Merge helper at the two `variablesOf()` sites (build + `credentialsStatus`); 401 refresh-replay in `#send()`; replay info alert. |
 | `src/components/credentials-form.js` | "From host" badge state; manual refresh button. |
-| `src/env/variables.js` (new, core) | `VariableSource({ envStore, host })`: `for(env, run)` (the one merge), `sourceOf(name, env)` → `'env' \| 'host' \| null` (the one credential-presence rule), and a `change` relay carrying `detail.origin` — an env change and a host fill are not interchangeable to a consumer. Components take this instead of the two stores. |
+| `src/env/variables.js` (core) | `VariableSource({ envStore, host })`: `for(env, run)` (the one merge), `sourceOf(name, env)` → `'env' \| 'host' \| null` (the one credential-presence rule), and a `change` relay carrying `detail.origin` — an env change and a host fill are not interchangeable to a consumer. Components take this instead of the two stores. |
 | `src/i18n/en.json`, `i18n/fr.json` | The three keys of §6, both languages. |
 | `docs/architecture.md` | §5.4 bullet pointing here; storage note (ephemeral, no policy needed). |
 | `CONTRIBUTING.md` | Feature→test map row. |
-| `config.example.js` | No new config key (the API is runtime-only); a short comment pointing to this doc where `oauth` is documented. |
+| `config.example.js` | No config key (the API is runtime-only); a short comment pointing to this doc where `oauth` is documented. |
 
-## 9. Tests and acceptance criteria
+## 9. Tests
 
 Vitest (`tests/host-credentials.test.js` and `tests/variable-source.test.js`),
 pure core:
@@ -283,15 +288,17 @@ fixture page registering an inline provider:
   the missing badge;
 - axe sweep (`a11y.spec.js`) stays green.
 
-Acceptance: all of the above, plus non-regression — a page that never
-touches `window.apidoc` behaves bit-for-bit as today.
+A page that never touches `window.apidoc` behaves bit-for-bit as if the
+feature did not exist — pinned by the rest of the suite, which runs
+without a provider.
 
-## 10. Non-goals (v1) and future extensions
+## 10. Out of scope (recorded decisions)
 
 - **Declarative bootstrap URL in the JSON config**: deliberately
   excluded. If ever needed for JSON-only hosts, it becomes a
-  *built-in provider* layered on this exact overlay — nothing in v1 blocks
-  it, and the trust analysis of config-declared URLs can happen then.
+  *built-in provider* layered on this exact overlay — nothing here blocks
+  it, and the trust analysis of config-declared URLs belongs to that
+  decision.
 - **postMessage / iframe bridge**: only relevant for embedded-iframe
   installs; same layering argument.
 - **Proactive expiry** (`expires_in` timers): the 401-driven refresh

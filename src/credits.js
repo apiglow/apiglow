@@ -1,7 +1,7 @@
 // Third-party components that TRAVEL IN THE BUNDLE: the five runtime
 // dependencies plus the two CSS libraries compiled into app.css. Build tooling
 // (Vite, Vitest, Playwright, Biome) is deliberately absent — none of it reaches
-// the reader's browser, and listing it would bury the seven notices that
+// the reader's browser, and listing it would bury the few notices that
 // legally do ship.
 //
 // Versions and SPDX ids are restated here rather than read from package.json:

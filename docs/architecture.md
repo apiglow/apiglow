@@ -22,7 +22,9 @@ scenarios, deep linking, i18n.
 **Nothing the reader does leaves the browser.** History, environments,
 scenarios, drafts and metrics live in that reader's own storage; the only
 requests the app makes are the ones it was told to make — the schema, the
-docs pages, and the API calls a reader sends themselves. There is no
+docs pages, the API calls a reader sends themselves, and, when the host
+declares a `feedback.url`, the yes/no verdict a reader explicitly clicks on
+a docs page (a page slug and a verdict, nothing else — §5.8). There is no
 analytics channel and no account, which is a product decision before it is a
 technical one: it also fixes the ceiling of what any usage figure here can
 honestly mean (§5.6).
@@ -56,10 +58,12 @@ What it does:
 - **Tailwind CSS 4 + daisyUI 5**, versions pinned in `package.json`.
 - **Bundler: Vite** — dev server for development (readable, unbundled ESM
   sources), library-mode build for distribution. Output: `dist/app.js`
-  (minified ESM) + `dist/app.css` + `dist/i18n/*.json`.
-- **Runtime dependencies** — short by design, no longer a closed list. An
-  addition must do **spec or format work** *and* correspond to a job we
-  actually want done in full, then be justified in the README with its
+  (minified ESM) + `dist/app.css` + `dist/i18n/*.json` + `dist/fonts/`,
+  plus — from a second pass that shares nothing with the first — the
+  author-side `dist/bake.js` CLI (§3, [seo.md](seo.md) §4).
+- **Runtime dependencies** — short by design, open only for spec/format
+  work. An addition must do **spec or format work** *and* correspond to a
+  job we actually want done in full, then be justified in this list with its
   weight (the full admission rule and its reasons: §14.2):
   - `@apidevtools/json-schema-ref-parser` — `$ref` resolution (internal,
     external HTTP, circular) + YAML parsing;
@@ -145,6 +149,7 @@ Config keys (all optional except one of `openapi.url` / `openapi.spec`):
 | `openapi.specs[]` | Several schemas in one installation — see [multi-spec.md](multi-spec.md). |
 | `openapi.hide` | Patterns hiding operations from the documentation (see §5.2). |
 | `openapi.overlays[]` | OpenAPI Overlay 1.1 documents applied to the schema at load — URL (JSON or YAML) or inline object (see §5.1.2). |
+| `openapi.userOverlay` | Starting patch seeded into the reader's own overlay slot when their browser holds none yet — document or URL, overridable per spec by replacement (§5.1.2, [user-overlay.md](user-overlay.md) decision 11). |
 | `theme.default` / `theme.available` | Initial theme + list offered in the selector. `'system'` as default follows the OS scheme within the first light/dark pair of `available` (§5.9). |
 | `theme.custom[]` | Host-defined daisyUI themes, generated at boot with no rebuild: `{ name, extends?, colorScheme?, tokens }` — see §5.9 and [custom-themes.md](custom-themes.md). Root-only. |
 | `language.default` / `language.available` | Same pattern for the UI language. `'browser'` as default — the built-in one — follows `navigator.languages` within `available`, matching on the primary subtag (`fr-CA` → `fr`); the selector offers it back as "Automatic" (§14.7). |
@@ -154,6 +159,7 @@ Config keys (all optional except one of `openapi.url` / `openapi.spec`):
 | `scenarios[]` | Scenarios shipped with the docs — see [scenarios.md](scenarios.md). |
 | `features` | Feature switches: `scenarios` / `audit` / `ci` (on by default, `false` removes the feature entirely — `ci` being the "Automate this scenario" panel of `docs/scenario-handoff.md` §4, and that panel alone: what a declared scenario publishes never depends on it), `onboarding` (off by default, `true` adds the generated "First call" page — §5.5.7). |
 | `branding` | `{ productName, logoUrl, footerLinks[] }` — `footerLinks` = `{ label, url }` entries added to the footer bar (§5.13). |
+| `feedback.url` | Endpoint receiving the docs-page "Was this page helpful?" verdict (`POST { page, verdict }`). `null` by default: without it no feedback row renders and nothing ever leaves the browser (§5.8, [docs-pages.md](docs-pages.md)). |
 | `tryIt.proxyUrl` | Optional CORS proxy template, e.g. `"https://my-proxy.example.com/?url={{target}}"`. `null` by default. |
 | `tryIt.requestCredentials` | `credentials` mode of try-it requests (`"omit"` / `"same-origin"` / `"include"`). `"same-origin"` by default. `"include"` is required for session-cookie auth when the docs are not hosted on the API's origin (the server must then respond `Access-Control-Allow-Credentials: true` with an explicit origin, and the cookie must be `SameSite=None; Secure`). |
 | `oauth` | Per-scheme default `clientId` for the OAuth2 flows the try-it can run. Never a secret. |
@@ -268,8 +274,8 @@ per spec — the merge rules live in [multi-spec.md §2](multi-spec.md).
   gates the **XML chips in the schema tree** (`schemaTree`'s `xml` option):
   `<book>`, "wrapped", "attribute" describe a document, and the JSON and XML
   variants of a body usually share one schema — under `application/json` they
-  would describe a body nobody sends, and they made the media type selector
-  look inert.
+  would describe a body nobody sends and make the media type selector look
+  inert.
 - **Cycles**: ref-parser materializes circular refs as circular JS
   references. The internal model marks cyclic nodes; rendering does **lazy
   expansion with a max depth** (default 3, "expand" button beyond). No
@@ -424,8 +430,7 @@ stays ours is turning each matched node's location into the place to edit, and
 the rule 7 bounds. Those are worth stating precisely, because delegating the
 traversal changed what can be bounded: the engine caps how **deep** a `$..`
 descent may nest, and we cap how many **matches** an action may act on — but
-nothing caps the number of nodes a descent *visits*, which the hand-written
-resolver used to. A filtered descent that matches nothing therefore walks the
+nothing caps the number of nodes a descent *visits*. A filtered descent that matches nothing therefore walks the
 whole document; that document is one we have already parsed and hold in
 memory, so the walk is finite. `remove` deletes the node from its parent.
 
@@ -433,7 +438,7 @@ memory, so the walk is finite. `remove` deletes the node from its parent.
 merges recursively; an **array** concatenates with an array update and appends
 anything else; a **primitive** is replaced by a primitive update. Inside a
 merge, a key present on both sides follows the same rules — and an array there
-concatenates, where 1.0 left the question open and this app replaced. The two
+concatenates, 1.1's answer to a question 1.0 left open. The two
 crossings the spec calls incompatible (object told to merge with a primitive,
 and the reverse) change nothing and are named in a warning.
 
@@ -458,8 +463,8 @@ load, a revision we do not know. An overlay never breaks a load.
 - Menu generated from OpenAPI **tags** (groups) + paths/operations; fallback
   group when tags are absent; order = schema order.
 - A closed group's link list is **built on demand** (first open — summary
-  click, route, or toggle), not at boot: on a heavy schema the folded menu
-  held thousands of links nobody had asked for. Every group still declares
+  click, route, or toggle), not at boot: on a heavy schema a folded menu
+  built eagerly would hold thousands of links nobody asked for. Every group still declares
   its operations on `data-ops`, which is how outside code (the e2e helper
   included) finds the group an operation lives in without its link existing
   yet. The first group is built eagerly either way — its links are the DOM's
@@ -798,7 +803,7 @@ media type  →  discriminator variant  →  fields / file pickers
 Applied out of order, a pass fills editors that are about to be thrown away
 and leaves their replacements empty. Applied only partially, the page keeps
 looking plausible while the two columns edit different things — which is why
-every one of these bugs has been silent. Three rules follow:
+this class of bug is silent. Three rules follow:
 
 - **Every editable surface is two-way or it is a bug.** A value added to
   `currentValues()` without a matching branch in `#applyTryItValues()` (or
@@ -854,6 +859,10 @@ warnings }`.
 - `har.js` — `log.entries[].request`, `postData.params` preferred over
   `postData.text`. Recorded cookies are dropped with a warning (T3).
 - `index.js` — format detection by content, never by file extension.
+
+The directory also holds the scenario-side importers — `arazzo.js`
+([scenarios.md](scenarios.md) §8.4) and `draft.js` — which produce scenarios
+rather than request drafts and are out of this section's scope.
 
 `match.js` is the only module there that knows the model exists.
 `matchOperation(model, draft, { baseUrls })` strips a known server prefix
@@ -1049,8 +1058,9 @@ Functional source of truth: [docs-pages.md](docs-pages.md). Summary:
     than as a dead link. No try-it in prose — the card is a link, so rule 20
     is not in play.
 - **Page chrome** on every page, takeover home included: a ToC derived from
-  `h2`/`h3` (right-hand column from `xl`, folded dropdown below) and prev/next
-  links following the flattened nav order.
+  `h2`/`h3` (right-hand column from `xl`, folded dropdown below), prev/next
+  links following the flattened nav order, and — only when the host declares
+  `feedback.url` (§4) — the "Was this page helpful?" row.
 - **Home takeover**: `home: true` on one page makes `#/` render it; the
   technical welcome view moves to `#/overview` and gains a nav entry heading
   the reference zone.
@@ -1128,15 +1138,18 @@ Design record and rationale: [custom-themes.md](custom-themes.md).
   selector and survives a layering change.
 
 Implementation: `src/theming/custom-themes.js` is pure (validate, merge,
-render CSS text), `app.js` is the only reader of the host config (rule 10).
-It appends one `<style data-apidoc-custom-themes>` **synchronously right
+render CSS text); `app.js` reads the config key (rule 10) and hands it to
+`src/shell/themes.js`, whose injector appends one
+`<style data-apidoc-custom-themes>` **synchronously right
 after the `app.css` link**, so document order — what breaks the tie at equal
-specificity — never depends on the network. Base values for `extends` cannot
+specificity — never depends on the network. The element arrives already
+filled with the themes that need no base; base values for `extends` cannot
 be read from `cssRules` (the CDN stylesheet is cross-origin), so the
-bootstrap reads them off a hidden `data-theme` probe with
-`getComputedStyle`, once the link has loaded; themes without `extends` are
-filled immediately. Rule 3 is untouched: the build still ships every standard
-theme, custom ones are additive.
+injector reads them off a hidden `data-theme` probe with
+`getComputedStyle`, once the link has fired `load` — or `error`, so a dead
+stylesheet still resolves the themes rather than leaving them pending. Rule
+3 is untouched: the build still ships every standard theme, custom ones are
+additive.
 
 ### 5.10 UI i18n
 
@@ -1159,9 +1172,11 @@ least prominent tool there, with no label at any breakpoint. Nothing in it
 serves reading the doc, and a discoverable "erase everything" would be a
 hazard rather than a feature.
 
-- **Stored data**: one row per dataset of the §6.2 inventory, with its
-  count and a targeted purge. The user-facing counterpart of the
-  bounded-storage policy — the numbers §6.1 bounds are otherwise invisible.
+- **Stored data**: one row per dataset group of the §6.2 inventory —
+  history, scenarios, snapshots, environments, header memory, and one row
+  folding every preference-sized key — with its count and a targeted purge.
+  The user-facing counterpart of the bounded-storage policy — the numbers
+  §6.1 bounds are otherwise invisible.
 - **Schema audit**: title, one line, one button to `#/audit` (§5.12) — the
   audit's only entry point, absent when `features.audit` is `false`. No grade
   is shown here: displaying one would force the report to be computed every
@@ -1228,7 +1243,8 @@ What matters at this level:
 - **Computed on first visit only**, then kept in memory for the page's
   lifetime. Nothing runs at boot: the perf budget is a contract (rule 14) and
   the audit walks the whole raw document.
-- **The audit is the only consumer of the raw schema** besides normalization
+- **The audit and the user overlay's dry run are the only consumers of the
+  raw schema** besides normalization
   (rule 6 governs rendering, and this page renders findings, not the schema).
   The loader therefore returns both raw shapes next to the model: the document
   as served, `$ref`s intact, and its dereferenced twin
@@ -1246,8 +1262,9 @@ What matters at this level:
   the same perf contract as the rest of the page.
 - **Nothing persisted**: no entry in the storage inventory (§6.2), no policy
   to declare.
-- **Exported as Markdown** from the page's only action (`src/export/`, pure
-  generator like the others) — the report as a ticket or a commit message.
+- **Exported as Markdown** from the page's copy action (`src/export/`, pure
+  generator like the others; the page's other action is the schema download
+  of §5.1.2) — the report as a ticket or a commit message.
   It is the one export that is not English-only: its substance exists only as
   i18n strings, so it travels in the language it was read in. Nothing to
   redact, no value the user typed ever enters a report.
@@ -1272,14 +1289,15 @@ Three properties worth stating, because they are what the design turns on:
   those notices reach the people running the code, so removing it would drop
   an obligation rather than a decoration. A host with its own legal or
   contact pages adds them next to "About" through `branding.footerLinks`.
-- **Credits list what ships, and only that** — every runtime dependency, plus
-  Tailwind and daisyUI, whose output is compiled into `app.css`. Build
+- **Credits list what ships, and only that** — every runtime dependency,
+  Tailwind and daisyUI (whose output is compiled into `app.css`), and the
+  bundled Source Serif 4 face (§5.9). Build
   tooling never reaches the browser and is deliberately absent.
   `src/credits.js` is the declaration; `tests/credits.test.js` fails the
   moment it disagrees with `package.json` or with `LICENSE`, which is also
   what makes the dependency rule (§14.2) self-enforcing:
-  now that the list is open for spec and format work, the test is what
-  guarantees a new dependency cannot land uncredited — and the README table
+  the list being open for spec and format work, the test is what
+  guarantees a new dependency cannot land uncredited — and the §2 list
   is where its role and weight are argued.
 - **Every claim has one source.** The identity comes from `package.json`
   through Vite's `define` (like the §5.11 diagnostics), the version lines from
@@ -1589,12 +1607,14 @@ above are assertions, not intentions.
 
 ## 7. Core vs shell
 
-Strict separation between the **core** (`src/openapi`, `src/components`,
-`src/scenarios`, `src/storage`, `src/export`, `src/search`, `src/i18n`) and
-the **shell** (`src/app.js` = bootstrap, config reading, branding).
-`app.js` is **the only module** that reads the host config and instantiates
-the core. The core never imports UI modules and never sees the host config
-directly.
+Strict separation between the **core** — `src/openapi`, `src/components`,
+`src/scenarios`, `src/storage`, `src/export`, `src/import`, `src/search`,
+`src/audit`, `src/env`, `src/docs`, `src/theming`, `src/i18n` — and the
+**shell**: `src/app.js` (bootstrap, config reading, branding) plus the
+`src/shell/` modules it drives (§9). The host config is read in exactly two
+files — `app.js`, and `src/boot-prefetch.js`, whose whole job is firing the
+schema fetch before the bundle finishes evaluating (§14.20). The core never
+imports the shell and never sees the host config directly.
 
 ## 8. Security model
 
@@ -1634,15 +1654,18 @@ directly.
 │   └── scenarios/          # the scenario shipped with the demo
 ├── config.example.js       # annotated config reference (user-facing)
 ├── src/
-│   ├── app.js              # bootstrap (shell) — sole reader of the host config
+│   ├── app.js              # bootstrap (shell) — reads the host config
+│   ├── boot-prefetch.js    # pre-bundle schema fetch — the one other config reader (§14.20)
 │   ├── config.js           # host-config reading, shared by the app and the bake CLI
-│   ├── shell/              # views, panels, toolbar, head.js (per-route <head>)
+│   ├── shell/              # views, panels, toolbar, themes, head.js (per-route <head>)
 │   ├── openapi/            # loader, $ref resolution, model.js (normalization),
 │   │                       # auth.js, send.js, sample.js, diff.js, hide.js
 │   ├── components/         # light-DOM web components
 │   ├── scenarios/          # scenario model, loader, runner, pointer, step controller
 │   ├── audit/              # schema audit engine + one file per rule (pure)
 │   ├── search/             # Cmd+K index
+│   ├── docs/               # docs-pages model: manifest, markdown extensions, sections, vars
+│   ├── theming/            # custom theme validation/generation (§5.9, pure)
 │   ├── credits.js          # third-party components shipped in the bundle (§5.13)
 │   ├── router.js           # hash routing
 │   ├── specs.js            # multi-spec config normalization
@@ -1740,13 +1763,13 @@ exercising every prose feature at once, gating on
 `apiglow` — the sweep stores the choice itself, so a fixture that still asks
 for stock `light` is measured on the pair anyway — plus one pass on
 `apiglow-dark`, and `color-contrast` is enforced like any other rule. What
-that promise covers is exactly the default install. Three things had to
-change for it to hold, and they are the shape of the design layer rather
+that promise covers is exactly the default install. Three properties hold
+it up, and they are the shape of the design layer rather
 than scanner appeasement:
 
 - **secondary text is a color, never an opacity** — `text-subtle` (70 % of
-  the ink) and `text-faint` (66 %) replaced `opacity-40…80` on text
-  throughout the components. Opacity multiplies: a `opacity-60` caption
+  the ink) and `text-faint` (66 %) carry every secondary text
+  throughout the components, never `opacity-40…80`. Opacity multiplies: a `opacity-60` caption
   inside a `text-white/70` chip lands at 0.42 of the ink, and no ratio
   computed on the token predicts it;
 - **daisyUI's own dimmed roles are ours now** — `menu-title`, `stat-title`,
@@ -1781,7 +1804,7 @@ so declaring anything looser would be a lie about a bundle whose CSS layer
 could not paint; and it matches the web-platform "widely available"
 Baseline. Combined with evergreen auto-update on Chrome/Edge/Firefox, it
 covers ~97–98% of global traffic, the residual being browsers the CSS
-already cannot serve. Plan and locked decisions: `docs/cross-browser.md`.
+already cannot serve. Decision record: `docs/cross-browser.md`.
 
 **One source of truth.** The `browserslist` field in `package.json`. Nothing
 else states a version:
@@ -1790,8 +1813,7 @@ else states a version:
    `browserslist-to-esbuild` — no hardcoded `es20xx` to drift.
 2. Tailwind's Lightning CSS pass reads the same target, and emits only the
    fallbacks the baseline needs: deriving it keeps some 35 kB of duplicated
-   pre-`oklch` color declarations out of `dist/app.css`, which is why the
-   file weighs ~247 kB and not ~282 kB.
+   pre-`oklch` color declarations out of `dist/app.css`.
 3. `npm run check:syntax` (`es-check checkBrowser … --checkFeatures`) reads
    the same field and validates `dist/app.js` after every CI build. It is
    the only guard between a `build.target` regression and a bundle no
@@ -1839,8 +1861,8 @@ Three things are deliberately not cross-engine, each for a reason that is not
 Two harness limitations are recorded where they bite: Playwright's WebKit
 reports no post body once it came from a `File`/`Blob` (the upload specs
 assert everything but the bytes there), and it refuses to fulfill any 3xx —
-which costs the conditional-replay 304 test on that engine and made the
-simulated OAuth authorization server hand back a navigating page instead of
+which costs the conditional-replay 304 test on that engine and is why the
+simulated OAuth authorization server hands back a navigating page instead of
 a redirect.
 
 ### 13.1 Platform APIs vs the floor
@@ -2065,16 +2087,20 @@ Rule 6 keeps every consumer on the normalized model — but the audit must
 report exactly what normalization erases (`nullable` in a 3.1 document, a
 3.2-only keyword in a 3.0 one, unreferenced components, shapes inlined six
 times), which are unreachable from the model. The audit engine is therefore
-a **second legitimate consumer of the raw schema**: the loader returns
-`{ model, source, document }` — `source` as served with `$ref`s intact,
-`document` dereferenced from a clone against the same URL, `model` used by
+a **second legitimate consumer of the raw schema** (the user overlay's dry
+run, [user-overlay.md](user-overlay.md), is the third and last): the loader
+returns the two raw shapes next to the model — `source`, a lazy getter over
+the document as served with `$ref`s intact, and `document`, dereferenced
+from a clone against the same URL — with `model` used by
 the engine only as the hide filter's verdict (a hidden operation's findings
 carry a badge instead of a dead link). Rule 6 is unchanged: it governs
 rendering, and the audit page renders findings, not the schema. No view,
 export or search reads `source` or `document`; version branches exist in
 exactly two named places — normalization, and the version-awareness rules
 whose purpose is comparing a spelling with the declared version. When
-`features.audit` is `false`, neither extra reference is kept. Any future
+`features.audit` is `false`, the audit's own input is dropped; the parsed
+source outlives it either way, because the dry run and the schema download
+still read it. Any future
 consumer of the raw schema is a new decision, not a precedent this one
 grants.
 
@@ -2113,10 +2139,11 @@ table is a contract pinned test by test in `tests/swagger2.test.js`.
 A guest `<script>` inherits its audience's browsers and cannot ask anyone
 to upgrade, so platform-feature adoption needs an arbiter that answers the
 same way every time: **Baseline (web-platform-dx), Widely available tier**.
-Newly available is a watch state, not a green light (current example: CSS
-`contrast-color()`, which is what would let a soft badge stay readable on a
-theme we do not author — the half of §12 still out of reach — and it
-waits). The `es2022` build target moves
+Newly available is a watch state, not a green light: CSS
+`contrast-color()` — which would let a soft badge stay readable on a
+theme we do not author, the half of §12 out of reach — is Newly available
+today, and therefore not adopted. The build target (derived from
+`browserslist`, §13) moves
 only when the policy covers the syntax being adopted and some code actually
 wants it. No polyfills, no transpilation fallbacks — Baseline compliance is
 what makes them unnecessary. The tier is a floor for *adoption*, not a
@@ -2264,12 +2291,12 @@ an inline schema (§5.14).
 
 ### 14.20 The boot pipeline is staged, and a session pays only for what it opens
 
-The load of a heavy document used to run as one task — parse, clone,
-dereference, normalize, all chained through microtasks that never let the
-browser breathe — and everything else the first screen might ever need was
-built while the reader waited: the full nav, the search index, the language
+Run as one task, the load of a heavy document — parse, clone, dereference,
+normalize, chained through microtasks that never let the
+browser breathe — would build everything the first screen might ever need
+while the reader waits: the full nav, the search index, the language
 menu, a clone of the schema kept for panels most sessions never open. The perf
-contract (rule 14) is what forced the split, and the shape it forced is a
+contract (rule 14) forbids that shape, and what holds instead is a
 principle, not a list of tweaks:
 
 - **Stages are macrotasks.** The loader yields between parse, dereference and

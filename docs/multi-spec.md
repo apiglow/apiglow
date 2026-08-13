@@ -1,6 +1,6 @@
 # Multi-spec — several OpenAPI schemas in one installation
 
-Functional specification of the multi-spec feature, as implemented. Code
+The functional source of truth for the multi-spec feature. Code
 comments reference the numbered sections below; renumber with care.
 
 ## 1. Product model
@@ -9,12 +9,10 @@ comments reference the numbered sections below; renumber with care.
   a time** (same model as Scalar's `sources`). A selector in the header
   switches between them.
 - **Only the active spec is downloaded, parsed and indexed.** Inactive specs
-  cost nothing until selected — no merged nav, no cross-spec Cmd+K search
-  (possible evolution: cross-spec search with lazy loading of the other specs
-  on first keystroke).
+  cost nothing until selected — no merged nav, no cross-spec Cmd+K search.
 - **In single-spec form (`openapi.url`), nothing changes**: no selector,
-  identical routes and storage keys. Non-regression of existing installations
-  is an acceptance criterion.
+  identical routes and storage keys. Non-regression of the single-spec form
+  is pinned by e2e (§7).
 
 ## 2. Configuration
 
@@ -41,9 +39,13 @@ comments reference the numbered sections below; renumber with care.
 - `title`: selector label. Needed because inactive specs are never loaded
   (their `info.title` is unknown); falls back to `id`. Once the active spec is
   loaded, the selector can display its version (`info.version`).
+- An entry carries its schema by `url` **or inline by `spec`** (the document
+  itself, exactly as at the root — `spec` wins over `url` with a console
+  warning when both are declared; an entry declaring neither is a config
+  error).
 - **Almost the entire config can be overridden per spec.** The root carries
   the values common to the installation; a `specs[]` entry redeclares what is
-  specific to it. Three merge rules, chosen by the nature of the value:
+  specific to it. Four merge rules, chosen by the nature of the value:
   - **settings objects** (`tryIt`, `branding`, `theme`, `language`,
     `features`, `oauth`): key-by-key merge, the spec wins. A key not
     redeclared keeps the root value; a declared key wins even at `null` (a
@@ -53,20 +55,24 @@ comments reference the numbered sections below; renumber with care.
   - **lists of patterns** (`hide`): accumulate — hiding cannot be
     "unhidden". Same rule for `overlays`, where the accumulation order is
     also the application order: the root's overlays run first, the spec's
-    own edit what they produced.
+    own edit what they produced;
+  - **lone scalars and documents** (`environmentsLocked`,
+    `openapi.userOverlay`): replaced if the spec declares them — the
+    starting patch is one document per spec (user-overlay.md decision 1),
+    so stacking two of them would need an order the reader's single storage
+    slot cannot hold; `null` on an entry refuses the root's.
 
-  `environmentsLocked` (boolean) is replaced if declared, and so is
-  `openapi.userOverlay` — the starting patch is one document per spec
-  (user-overlay.md decision 1), so stacking two of them would need an order
-  the reader's single storage slot cannot hold; `null` on an entry refuses the
-  root's. `scenarios` is an
+  `scenarios` is an
   exception: in multi-spec, only the entry's own declarations count (a
   scenario references operation ids that belong to one specific spec); root
   declarations are ignored with an explicit warning.
-- **Only `history` stays root-only**: retention is a browser storage cap
-  whose purge applies to all specs at once (`HistoryStore#purge`) — two
-  competing values would make the effective retention depend on the last spec
-  visited. Any other key set on a `specs[]` entry is ignored and **flagged by
+- **Two keys stay root-only**: `history` — retention is a browser storage
+  cap whose purge applies to all specs at once (`HistoryStore#purge`), and
+  two competing values would make the effective retention depend on the last
+  spec visited — and `seo`, because indexability describes the served page,
+  which every spec shares (one URL, one `<meta>`). (`openapi` itself is
+  root-only by construction: the entries live inside it.) Any other key set
+  on a `specs[]` entry is ignored and **flagged by
   name** in the console (root-only key, or unknown key): a silently inert
   setting is a treasure hunt.
 - One key **inside** an overridable block is root-only too: `theme.custom`
@@ -117,7 +123,7 @@ comments reference the numbered sections below; renumber with care.
   mechanics as the language selector. Rationale: `appLayout()` wires ~800
   lines with no teardown (window/router/EnvStore listeners are never
   removed); hot re-rendering would require a risky refactor for a marginal
-  gain, to revisit if the reload flash becomes a problem.
+  gain.
 
 ## 4. Routing and deep links
 
@@ -158,6 +164,9 @@ keys keep being used as-is (zero migration for existing data).
   field + index. The history list only shows entries of the active spec; in
   single-spec, `specId = "default"` is written but everything displays as
   before.
+- **Scenarios (IndexedDB `apidoc-scenarios`)**: `specId` field + index; the
+  nav, the routes and the 200-per-spec cap all act on the active spec's
+  slice ([scenarios.md](scenarios.md) §4, §9).
 - **Diff snapshots (`apidoc-schema`)**: already keyed by schema URL — they
   work per spec as-is. The "Schema changed" badge only concerns the active
   spec (no multi-spec aggregate, which would require loading every spec at
@@ -191,12 +200,12 @@ keys keep being used as-is (zero migration for existing data).
 - **History exports** (cURL, Postman, HAR, Markdown, Debug, share): operate
   on history entries — **neutral**, no change.
 
-## 7. Tests and acceptance criteria
+## 7. Tests
 
 Unit (Vitest): `parseHash`/`opHash`/`pageHash` with and without the spec
 segment (legacy-form compatibility); active-spec resolution (priority rules);
 config normalization (`url` alone, `specs[]`, both, invalid/duplicate ids).
-E2E (Playwright): two-spec fixture in `tests/e2e/fixtures/`.
+E2E (Playwright): two-spec fixture in `tests/e2e/fixtures/`, pinning:
 
 1. A config with two `specs[]` entries shows the selector in the header;
    switching changes nav, doc, try-it, environments and history.
