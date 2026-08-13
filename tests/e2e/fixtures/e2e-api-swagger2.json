@@ -1,0 +1,100 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Swagger 2.0 E2E API",
+    "version": "1.0.0",
+    "description": "A **legacy** document, read through the 2.0 → 3.0 conversion."
+  },
+  "host": "api.e2e.test",
+  "basePath": "/v3",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "tags": [{ "name": "Books", "description": "Everything about books" }],
+  "securityDefinitions": {
+    "api_key": { "type": "apiKey", "name": "X-Api-Key", "in": "header" }
+  },
+  "paths": {
+    "/books": {
+      "get": {
+        "operationId": "listBooks",
+        "tags": ["Books"],
+        "summary": "List books",
+        "parameters": [
+          {
+            "name": "shelves",
+            "in": "query",
+            "description": "Shelves to look in.",
+            "type": "array",
+            "items": { "type": "string" },
+            "collectionFormat": "pipes"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Repeated, one pair per value.",
+            "type": "array",
+            "items": { "type": "string" },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "columns",
+            "in": "query",
+            "description": "Tab-delimited in the source: 3.0 has no such style.",
+            "type": "array",
+            "items": { "type": "string" },
+            "collectionFormat": "tsv"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of books",
+            "schema": { "type": "array", "items": { "$ref": "#/definitions/Book" } },
+            "examples": { "application/json": [{ "id": 1, "title": "Dune" }] }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBook",
+        "tags": ["Books"],
+        "summary": "Create a book",
+        "parameters": [{ "$ref": "#/parameters/BookBody" }],
+        "responses": { "201": { "description": "Created", "schema": { "$ref": "#/definitions/Book" } } }
+      }
+    },
+    "/books/{bookId}/cover": {
+      "post": {
+        "operationId": "uploadCover",
+        "tags": ["Books"],
+        "summary": "Upload a cover",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          { "name": "bookId", "in": "path", "required": true, "type": "integer", "format": "int64" },
+          { "name": "caption", "in": "formData", "description": "Shown under the cover.", "type": "string" },
+          { "name": "cover", "in": "formData", "description": "The image file.", "type": "file", "required": true }
+        ],
+        "responses": { "200": { "description": "Uploaded" } }
+      }
+    }
+  },
+  "parameters": {
+    "BookBody": {
+      "name": "body",
+      "in": "body",
+      "description": "The book to create.",
+      "required": true,
+      "schema": { "$ref": "#/definitions/Book" }
+    }
+  },
+  "definitions": {
+    "Book": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "id": { "type": "integer", "format": "int64", "readOnly": true },
+        "title": { "type": "string", "default": "Dune" },
+        "shelf": { "type": "string", "x-nullable": true, "enum": ["scifi", "classics"] }
+      }
+    }
+  }
+}

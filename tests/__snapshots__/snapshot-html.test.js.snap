@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`baked HTML snapshot > wraps the mirror in the head a crawler reads 1`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>List pets — Petstore</title>
+<meta name="description" content="Returns every pet.">
+<link rel="canonical" href="https://docs.example.com/api/op/listPets.html">
+<link rel="alternate" type="text/markdown" href="https://docs.example.com/api/op/listPets.md">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"APIReference","name":"List pets","identifier":"listPets"}</script>
+<style>:root{color-scheme:light dark}
+body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,sans-serif}
+main{max-width:48rem;margin:0 auto}
+.snapshot-open{margin:0 0 2rem;font-weight:600}
+pre{overflow-x:auto;padding:.75rem;border-radius:.5rem;background:rgba(127,127,127,.15)}
+code{font-size:.9em}
+table{border-collapse:collapse}
+th,td{border:1px solid rgba(127,127,127,.4);padding:.25rem .5rem;text-align:left}</style>
+</head>
+<body>
+<main>
+<p class="snapshot-open"><a href="https://docs.example.com/api/index.html#/op/listPets">Open in the interactive documentation</a></p>
+<article>
+<h1>List pets</h1>
+<p>Returns every pet, <code>{{petId}}</code> included.</p>
+<pre><code class="language-http">GET https://api.example.com/pets
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>int</td>
+</tr>
+</tbody></table>
+</article>
+</main>
+</body>
+</html>
+"
+`;

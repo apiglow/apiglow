@@ -1,0 +1,29 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Circular", "version": "1.0.0" },
+  "paths": {
+    "/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "parent": { "$ref": "#/components/schemas/Category" },
+          "children": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } }
+        }
+      }
+    }
+  }
+}

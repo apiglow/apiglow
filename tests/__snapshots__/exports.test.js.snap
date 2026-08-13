@@ -1,0 +1,315 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Debug export (everything) > full dump of request + response + variables, redacted by default 1`] = `
+"=== DEBUG REPORT ===
+Date: 2025-06-15T15:06:40.000Z
+Operation: addPet (POST /pet)
+Environment: staging
+Duration: 123 ms
+Proxied: no
+
+--- Request ---
+POST https://api.example.com/v1/pet
+api_key: ••••
+Content-Type: application/json
+
+{"name":"Rex","secret":"••••"}
+
+--- Response ---
+HTTP 201 Created
+content-type: application/json
+
+{"id":7}
+
+--- Environment variables used ---
+auth.api_key = ••••  (sensitive)
+host = api.example.com
+"
+`;
+
+exports[`Debug export (everything) > network failure: error section, no response 1`] = `
+"=== DEBUG REPORT ===
+Date: 2025-06-15T15:06:40.000Z
+Operation: getPet (GET /pet/{petId})
+Environment: staging
+Duration: 45 ms
+Proxied: no
+
+--- Request ---
+GET https://api.example.com/v1/pet/42?verbose=true
+api_key: ••••
+Accept: application/json
+
+--- Response ---
+(no response received)
+
+--- Error ---
+network
+
+--- Environment variables used ---
+auth.api_key = ••••  (sensitive)
+host = api.example.com
+"
+`;
+
+exports[`Debug export (everything) > unredacted when redaction is disabled 1`] = `
+"=== DEBUG REPORT ===
+Date: 2025-06-15T15:06:40.000Z
+Operation: getPet (GET /pet/{petId})
+Environment: staging
+Duration: 123 ms
+Proxied: no
+
+--- Request ---
+GET https://api.example.com/v1/pet/42?verbose=true
+api_key: sk-123
+Accept: application/json
+
+--- Response ---
+HTTP 200 OK
+content-type: application/json
+
+{"id":42,"ownerKey":"sk-123"}
+
+--- Environment variables used ---
+auth.api_key = sk-123  (sensitive)
+host = api.example.com
+"
+`;
+
+exports[`HAR 1.2 export > full entry 1`] = `
+{
+  "log": {
+    "creator": {
+      "name": "apiglow",
+      "version": "0.1.0",
+    },
+    "entries": [
+      {
+        "cache": {},
+        "request": {
+          "bodySize": 0,
+          "cookies": [],
+          "headers": [
+            {
+              "name": "api_key",
+              "value": "••••",
+            },
+            {
+              "name": "Accept",
+              "value": "application/json",
+            },
+          ],
+          "headersSize": -1,
+          "httpVersion": "HTTP/1.1",
+          "method": "GET",
+          "queryString": [
+            {
+              "name": "verbose",
+              "value": "true",
+            },
+          ],
+          "url": "https://api.example.com/v1/pet/42?verbose=true",
+        },
+        "response": {
+          "bodySize": 27,
+          "content": {
+            "mimeType": "application/json",
+            "size": 27,
+            "text": "{"id":42,"ownerKey":"••••"}",
+          },
+          "cookies": [],
+          "headers": [
+            {
+              "name": "content-type",
+              "value": "application/json",
+            },
+          ],
+          "headersSize": -1,
+          "httpVersion": "HTTP/1.1",
+          "redirectURL": "",
+          "status": 200,
+          "statusText": "OK",
+        },
+        "startedDateTime": "2025-06-15T15:06:40.000Z",
+        "time": 123,
+        "timings": {
+          "receive": 13,
+          "send": 0,
+          "wait": 110,
+        },
+      },
+    ],
+    "version": "1.2",
+  },
+}
+`;
+
+exports[`Markdown export > full report: request + response + context 1`] = `
+"# \`POST\` /pet
+
+- **Environment**: staging
+- **Date**: 2025-06-15T15:06:40.000Z
+- **Duration**: 123 ms
+- **Status**: 201 Created
+
+## Request
+
+\`\`\`http
+POST https://api.example.com/v1/pet
+api_key: ••••
+Content-Type: application/json
+\`\`\`
+
+\`\`\`json
+{"name":"Rex","secret":"••••"}
+\`\`\`
+
+## Response
+
+\`\`\`http
+201 Created
+content-type: application/json
+\`\`\`
+
+\`\`\`json
+{"id":7}
+\`\`\`
+"
+`;
+
+exports[`Markdown export > network failure: no response section 1`] = `
+"# \`GET\` /pet/{petId}
+
+- **Environment**: staging
+- **Date**: 2025-06-15T15:06:40.000Z
+- **Duration**: 45 ms
+- **Status**: network error (no response)
+
+## Request
+
+\`\`\`http
+GET https://api.example.com/v1/pet/42?verbose=true
+api_key: ••••
+Accept: application/json
+\`\`\`
+"
+`;
+
+exports[`Postman v2.1 export > importable collection, redacted by default 1`] = `
+{
+  "info": {
+    "name": "GET /pet/{petId}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+  },
+  "item": [
+    {
+      "name": "getPet",
+      "request": {
+        "header": [
+          {
+            "key": "api_key",
+            "value": "••••",
+          },
+          {
+            "key": "Accept",
+            "value": "application/json",
+          },
+        ],
+        "method": "GET",
+        "url": {
+          "host": [
+            "api",
+            "example",
+            "com",
+          ],
+          "path": [
+            "v1",
+            "pet",
+            "42",
+          ],
+          "protocol": "https",
+          "query": [
+            {
+              "key": "verbose",
+              "value": "true",
+            },
+          ],
+          "raw": "https://api.example.com/v1/pet/42?verbose=true",
+        },
+      },
+      "response": [],
+    },
+  ],
+}
+`;
+
+exports[`Postman v2.1 export > raw JSON body for a POST 1`] = `
+{
+  "info": {
+    "name": "POST /pet",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+  },
+  "item": [
+    {
+      "name": "addPet",
+      "request": {
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json",
+            },
+          },
+          "raw": "{"name":"Rex","secret":"sk-123"}",
+        },
+        "header": [
+          {
+            "key": "api_key",
+            "value": "sk-123",
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+          },
+        ],
+        "method": "POST",
+        "url": {
+          "host": [
+            "api",
+            "example",
+            "com",
+          ],
+          "path": [
+            "v1",
+            "pet",
+          ],
+          "protocol": "https",
+          "query": [],
+          "raw": "https://api.example.com/v1/pet",
+        },
+      },
+      "response": [],
+    },
+  ],
+}
+`;
+
+exports[`cURL export > redacts secrets by default 1`] = `
+"curl -X GET 'https://api.example.com/v1/pet/42?verbose=true' \\
+  -H 'api_key: ••••' \\
+  -H 'Accept: application/json'"
+`;
+
+exports[`cURL export > template mode: variable values turn back into {{var}} 1`] = `
+"curl -X GET 'https://{{host}}/v1/pet/42?verbose=true' \\
+  -H 'api_key: {{auth.api_key}}' \\
+  -H 'Accept: application/json'"
+`;
+
+exports[`cURL export > unredacted output when redaction is explicitly disabled 1`] = `
+"curl -X POST 'https://api.example.com/v1/pet' \\
+  -H 'api_key: sk-123' \\
+  -H 'Content-Type: application/json' \\
+  --data '{"name":"Rex","secret":"sk-123"}'"
+`;

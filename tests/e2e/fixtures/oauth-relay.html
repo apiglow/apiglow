@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- Same-origin hop inserted in the middle of an OAuth round trip, to simulate
+     what a second tab would do: change the shared `spec.selected` preference
+     while the login is away. On the way back the hash is gone and the
+     preference names another spec, so the pending handshake is the only thing
+     that still knows which spec asked for the token. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OAuth relay</title>
+  </head>
+  <body>
+    <script>
+      const params = new URLSearchParams(location.search)
+      localStorage.setItem('apidoc:spec.selected', JSON.stringify(params.get('select')))
+      location.replace(params.get('to'))
+    </script>
+  </body>
+</html>

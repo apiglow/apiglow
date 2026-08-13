@@ -1,0 +1,311 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`JSON Schema 2020-12 keywords > normalizes the whole keyword schema the same way twice 1`] = `
+{
+  "conditional": {
+    "else": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "iban",
+          "required": true,
+          "schema": {
+            "kind": "primitive",
+            "type": "string",
+          },
+        },
+      ],
+      "required": [
+        "iban",
+      ],
+      "type": "object",
+    },
+    "if": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "method",
+          "required": false,
+          "schema": {
+            "enum": [
+              "card",
+            ],
+            "kind": "primitive",
+            "type": "string",
+          },
+        },
+      ],
+      "type": "object",
+    },
+    "then": {
+      "kind": "object",
+      "properties": [
+        {
+          "name": "cardNumber",
+          "required": true,
+          "schema": {
+            "kind": "primitive",
+            "type": "string",
+          },
+        },
+      ],
+      "required": [
+        "cardNumber",
+      ],
+      "type": "object",
+    },
+  },
+  "dependentRequired": {
+    "cardNumber": [
+      "cvv",
+    ],
+  },
+  "dependentSchemas": [
+    {
+      "name": "iban",
+      "schema": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "bic",
+            "required": false,
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+            },
+          },
+        ],
+        "type": "object",
+      },
+    },
+  ],
+  "kind": "object",
+  "not": {
+    "kind": "object",
+    "required": [
+      "legacyToken",
+    ],
+    "type": "object",
+  },
+  "properties": [
+    {
+      "name": "method",
+      "required": true,
+      "schema": {
+        "enum": [
+          "card",
+          "transfer",
+        ],
+        "kind": "primitive",
+        "type": "string",
+      },
+    },
+    {
+      "name": "currency",
+      "required": false,
+      "schema": {
+        "enum": [
+          "EUR",
+          "USD",
+        ],
+        "kind": "primitive",
+        "schemaName": "Currency",
+        "type": "string",
+      },
+    },
+    {
+      "name": "refundCurrency",
+      "required": false,
+      "schema": {
+        "enum": [
+          "EUR",
+          "USD",
+        ],
+        "kind": "primitive",
+        "schemaName": "Currency",
+        "type": "string",
+      },
+    },
+    {
+      "name": "labels",
+      "required": false,
+      "schema": {
+        "kind": "object",
+        "patternProperties": [
+          {
+            "pattern": "^x-",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+            },
+          },
+          {
+            "pattern": "^n-",
+            "schema": {
+              "kind": "primitive",
+              "type": "integer",
+            },
+          },
+        ],
+        "propertyNames": {
+          "kind": "any",
+          "pattern": "^[a-z-]+$",
+        },
+        "type": "object",
+        "unevaluatedProperties": false,
+      },
+    },
+    {
+      "name": "attachment",
+      "required": false,
+      "schema": {
+        "contentEncoding": "base64",
+        "contentMediaType": "image/png",
+        "kind": "primitive",
+        "type": "string",
+      },
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "schema": {
+        "contains": {
+          "enum": [
+            "priority",
+          ],
+          "kind": "primitive",
+          "type": "string",
+        },
+        "kind": "array",
+        "maxContains": 2,
+        "minContains": 1,
+        "type": "array",
+        "unevaluatedItems": false,
+      },
+    },
+  ],
+  "required": [
+    "method",
+  ],
+  "schemaName": "Payment",
+  "type": "object",
+}
+`;
+
+exports[`discriminator > normalizes the whole polymorphic schema the same way twice 1`] = `
+{
+  "composite": {
+    "keyword": "oneOf",
+    "variants": [
+      {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "petType",
+            "required": true,
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+            },
+          },
+          {
+            "name": "livesLeft",
+            "required": true,
+            "schema": {
+              "kind": "primitive",
+              "type": "integer",
+            },
+          },
+        ],
+        "required": [
+          "petType",
+          "livesLeft",
+        ],
+        "schemaName": "Cat",
+        "type": "object",
+      },
+      {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "petType",
+            "required": true,
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+            },
+          },
+          {
+            "name": "packSize",
+            "required": false,
+            "schema": {
+              "kind": "primitive",
+              "type": "integer",
+            },
+          },
+        ],
+        "required": [
+          "petType",
+        ],
+        "schemaName": "Dog",
+        "type": "object",
+      },
+      {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "petType",
+            "required": true,
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+            },
+          },
+          {
+            "name": "coldBlooded",
+            "required": false,
+            "schema": {
+              "kind": "primitive",
+              "type": "boolean",
+            },
+          },
+        ],
+        "required": [
+          "petType",
+        ],
+        "schemaName": "Lizard",
+        "type": "object",
+      },
+    ],
+  },
+  "discriminator": {
+    "defaultIndex": 1,
+    "mapping": [
+      {
+        "key": "cat",
+        "schemaName": "Cat",
+        "variantIndex": 0,
+      },
+      {
+        "default": true,
+        "key": "dog",
+        "schemaName": "Dog",
+        "variantIndex": 1,
+      },
+      {
+        "key": "bird",
+        "schemaName": "Bird",
+        "variantIndex": null,
+      },
+      {
+        "key": "Lizard",
+        "schemaName": "Lizard",
+        "variantIndex": 2,
+      },
+    ],
+    "propertyName": "petType",
+  },
+  "kind": "composite",
+  "schemaName": "Pet",
+}
+`;

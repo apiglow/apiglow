@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Variant of app.html with the schema audit cut off by config
+     (features.audit: false): the feature must leave no entry point at all,
+     settings block and #/audit route included. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (no audit)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "light", "available": ["light", "dark", "corporate"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" },
+      "features": { "audit": false }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- Variant of app.html with the generated onboarding page turned on
+     (features.onboarding): the endpoint it walks through is picked from the
+     schema, so the fixture declares nothing about it — that choice is exactly
+     what the test checks. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (onboarding)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "apiglow", "available": ["apiglow", "apiglow-dark", "light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" },
+      "features": { "onboarding": true },
+      "environments": [
+        {
+          "name": "e2e",
+          "baseUrl": "https://api.e2e.test/v1",
+          "variables": {
+            "auth.bearerAuth": { "value": "e2e-bearer-token", "sensitive": true }
+          }
+        }
+      ]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

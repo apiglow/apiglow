@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ApiGlow — dev</title>
+    <meta name="description" content="ApiGlow development page — the demo petstore on unbundled sources." />
+    <link rel="icon" href="/demo/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <!-- The demo petstore API (/demo-api/…) is answered in the browser by a
+         service worker: no backend, no CORS. Registered before the app so the
+         worker is in control by the time anything can be sent. -->
+    <script src="/demo/register-mock-sw.js"></script>
+    <!-- A docs page carried by this very file (docs/docs-pages.md §2.6): the
+         config below names it by id, no file involved. The type must be
+         non-executable — a bare <script> would run this markdown as
+         JavaScript — and the indentation shared by every line is removed by
+         the loader, so the block can sit in the page like any other markup. -->
+    <script type="text/markdown" id="doc-carried">
+      # Carried by the page
+
+      This page is not a file. Its markdown lives in a
+      `<script type="text/markdown">` of `index.html`, and the config names it
+      by id — the form to use when a doc sits behind a login, or when the app
+      serving it has one route and no static folder.
+
+      > [!NOTE]
+      > Nothing is degraded: callouts, code tabs, API references, the table of
+      > contents, prev/next, the search index and the exports all treat it as
+      > any other page.
+
+      ## Referring to the API
+
+      References resolve the same way, so [add a pet](apidoc:addPet) still
+      links straight to the operation.
+
+      ```bash cURL
+      curl '/demo-api/v3/pet/1'
+      ```
+      ```js Node.js
+      await fetch('/demo-api/v3/pet/1')
+      ```
+
+      ## The other form
+
+      A backend that generates its config puts the markdown straight in it,
+      under `content` — see the CDN demo page, whose manifest does exactly
+      that.
+    </script>
+    <!-- "daisybrand" in theme.custom is the showcase host-defined theme
+         (docs/custom-themes.md): the built-in dark rebranded, no rebuild. -->
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "specs": [
+          {
+            "id": "petstore",
+            "title": "Petstore (demo)",
+            "url": "/demo/schemas/petstore.json",
+            "branding": { "productName": "Petstore", "logoUrl": "/demo/logos/petstore.svg" },
+            "oauth": { "petstore_auth": { "clientId": "demo-client" } },
+            "environments": [
+              {
+                "name": "demo (mocked API)",
+                "color": "green",
+                "variables": {
+                  "auth.petstore_auth": { "value": "demo-oauth-token", "sensitive": true },
+                  "auth.bearerAuth": { "value": "demo-bearer-token", "sensitive": true },
+                  "auth.api_key": { "value": "demo-api-key", "sensitive": true },
+                  "auth.basicAuth.username": { "value": "user1", "sensitive": false },
+                  "auth.basicAuth.password": { "value": "hunter2", "sensitive": true }
+                }
+              }
+            ],
+            "docsPages": [
+              { "slug": "welcome", "title": "Welcome", "url": "/docs-pages/welcome.md", "home": true },
+              { "slug": "getting-started", "title": "Getting started", "url": "/docs-pages/getting-started.md" },
+              {
+                "group": "Guides",
+                "id": "guides",
+                "pages": [
+                  { "slug": "pagination", "title": "Pagination", "url": "/docs-pages/pagination.md" },
+                  { "slug": "errors", "title": "Errors", "url": "/docs-pages/errors.md" },
+                  { "slug": "carried", "title": "Carried by the page", "contentId": "doc-carried" }
+                ]
+              },
+              {
+                "group": "Reference",
+                "id": "reference",
+                "collapsed": true,
+                "nav": "bottom",
+                "pages": [
+                  { "slug": "changelog", "title": "Changelog", "url": "/docs-pages/changelog.md" },
+                  { "slug": "release-notes", "title": "Raw release notes", "url": "/docs-pages/release-notes.txt" },
+                  { "slug": "status", "title": "Service status", "url": "/docs-pages/status.html" },
+                  { "title": "OpenAPI specification", "href": "/demo/schemas/petstore.json" }
+                ]
+              },
+              { "title": "llmstxt.org", "href": "https://llmstxt.org", "nav": "bottom" }
+            ],
+            "scenarios": [
+              { "id": "order-a-pet", "title": "Order a pet", "url": "/demo/scenarios/petstore-order.json", "pinned": true }
+            ]
+          },
+          {
+            "id": "github",
+            "title": "GitHub REST API (frozen)",
+            "url": "/demo/schemas/github.json",
+            "branding": { "productName": "GitHub REST API" },
+            "environments": [
+              { "name": "api.github.com", "baseUrl": "https://api.github.com" }
+            ]
+          }
+        ],
+        "default": "petstore"
+      },
+      "theme": {
+        "default": "system",
+        "available": [
+          "apiglow", "apiglow-dark", "daisybrand",
+          "light", "dark", "abyss", "acid", "aqua", "autumn", "black", "bumblebee", "business",
+          "caramellatte", "cmyk", "coffee", "corporate", "cupcake", "cyberpunk", "dim", "dracula",
+          "emerald", "fantasy", "forest", "garden", "halloween", "lemonade", "lofi", "luxury",
+          "night", "nord", "pastel", "retro", "silk", "sunset", "synthwave", "valentine", "winter",
+          "wireframe"
+        ],
+        "custom": [
+          {
+            "name": "daisybrand",
+            "extends": "dark",
+            "tokens": {
+              "--color-primary": "#7c3aed",
+              "--color-primary-content": "#f5f3ff",
+              "--color-secondary": "#f472b6",
+              "--color-secondary-content": "#2a0a1a",
+              "--color-accent": "#22d3ee",
+              "--color-accent-content": "#042f2e",
+              "--radius-box": "0.5rem",
+              "--radius-field": "0.5rem"
+            }
+          }
+        ]
+      },
+      "language": { "default": "browser", "available": ["en", "fr"] },
+      "branding": { "productName": "ApiGlow demo" },
+      "tryIt": { "proxyUrl": null, "requestCredentials": "same-origin" },
+      "history": { "maxEntries": 500, "maxAgeDays": 30 },
+      "features": { "onboarding": true }
+    }
+    </script>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

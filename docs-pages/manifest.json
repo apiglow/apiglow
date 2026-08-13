@@ -1,0 +1,32 @@
+{
+  "pages": [
+    { "slug": "welcome", "title": "Welcome", "url": "welcome.md", "home": true },
+    { "slug": "getting-started", "title": "Getting started", "url": "getting-started.md" },
+    {
+      "group": "Guides",
+      "id": "guides",
+      "pages": [
+        { "slug": "pagination", "title": "Pagination", "url": "pagination.md" },
+        { "slug": "errors", "title": "Errors", "url": "errors.md" },
+        {
+          "slug": "carried",
+          "title": "Carried by the config",
+          "content": "# Carried by the config\n\nThis page has no file. Its markdown is a string in the manifest itself,\nwhich is what an API doc behind a login needs: the prose travels with the\nconfig its backend already generates.\n\n> [!NOTE]\n> Everything else is unchanged — callouts, anchors, the table of contents,\n> the search index and the `llms-full.txt` export all read it like any other\n> page.\n\n## The other way round\n\nWhen the config is written by hand rather than generated, `contentId` points\nat a `<script type=\"text/markdown\">` in the host page instead — see the dev\nindex page for that form.\n"
+        }
+      ]
+    },
+    {
+      "group": "Reference",
+      "id": "reference",
+      "collapsed": true,
+      "nav": "bottom",
+      "pages": [
+        { "slug": "changelog", "title": "Changelog", "url": "changelog.md" },
+        { "slug": "release-notes", "title": "Raw release notes", "url": "release-notes.txt" },
+        { "slug": "status", "title": "Service status", "url": "status.html" },
+        { "title": "OpenAPI specification", "href": "/demo/schemas/petstore.json" }
+      ]
+    },
+    { "title": "llmstxt.org", "href": "https://llmstxt.org", "nav": "bottom" }
+  ]
+}

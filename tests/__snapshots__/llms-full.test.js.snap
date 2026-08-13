@@ -1,0 +1,211 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`llms-full.txt export > concatenates info, pages, workflows and operations with separators 1`] = `
+"# Petstore
+
+> Version 2.0.0 — OpenAPI 3.1.0
+
+Base URL: https://api.example.com/v1
+
+A sample API.
+
+Manage your pets.
+
+---
+
+# Page: Guides
+
+# Getting started
+
+Read this first.
+
+---
+
+# Workflow: Adopt a pet
+
+1 step, run in order.
+
+## Prerequisites
+
+These variables are referenced by the steps and produced by none of them — set them before running the scenario:
+
+- \`{{pageSize}}\`
+
+## Step 1 — List pets
+
+\`\`\`http
+GET https://api.example.com/v1/pets
+\`\`\`
+
+Find one that is still available.
+
+Sends:
+
+- Query \`limit\`: \`{{pageSize}}\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+
+Extracts, under the names the later steps reference as \`{{var}}\`:
+
+- \`petId\` — response body at \`/0/id\`
+
+## Arazzo recipe
+
+\`\`\`json
+{
+  "arazzo": "1.1.0",
+  "info": {
+    "title": "Adopt a pet",
+    "version": "1.0.0"
+  },
+  "sourceDescriptions": [
+    {
+      "name": "openapi",
+      "url": "https://api.example.com/openapi.json",
+      "type": "openapi"
+    }
+  ],
+  "workflows": [
+    {
+      "workflowId": "adopt-a-pet",
+      "summary": "Adopt a pet",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "pageSize": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageSize"
+        ]
+      },
+      "steps": [
+        {
+          "stepId": "listpets",
+          "description": "Find one that is still available.",
+          "operationPath": "{$sourceDescriptions.openapi.url}#/paths/~1pets/get",
+          "parameters": [
+            {
+              "name": "limit",
+              "in": "query",
+              "value": "$inputs.pageSize"
+            }
+          ],
+          "successCriteria": [
+            {
+              "condition": "$statusCode >= 200 && $statusCode <= 299"
+            }
+          ],
+          "outputs": {
+            "petId": "$response.body#/0/id"
+          }
+        }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+---
+
+# Workflow: Cleanup — Remove a pet
+
+1 step, run in order.
+
+## Prerequisites
+
+These variables are referenced by the steps and produced by none of them — set them before running the scenario:
+
+- \`{{petId}}\`
+
+## Step 1 — DELETE /pets/{petId}
+
+\`\`\`http
+DELETE https://api.example.com/v1/pets/{petId}
+\`\`\`
+
+Sends:
+
+- Path \`petId\`: \`{{petId}}\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+
+## Arazzo recipe
+
+\`\`\`json
+{
+  "arazzo": "1.1.0",
+  "info": {
+    "title": "Cleanup",
+    "version": "3.2.0"
+  },
+  "sourceDescriptions": [
+    {
+      "name": "petstore",
+      "url": "https://ci.example.com/spec.yaml",
+      "type": "openapi"
+    }
+  ],
+  "workflows": [
+    {
+      "workflowId": "cleanup",
+      "steps": [
+        {
+          "stepId": "drop",
+          "operationId": "delete-pets-petid",
+          "parameters": [
+            {
+              "name": "petId",
+              "in": "path",
+              "value": "$inputs.petId"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+\`\`\`
+
+---
+
+# List pets
+
+\`\`\`http
+GET https://api.example.com/v1/pets
+\`\`\`
+
+## Query parameters
+
+- \`limit\` (integer) [max: 100]
+
+## Responses
+
+### 200 — A list of pets
+
+Body \`application/json\`:
+
+- \`id\` (integer, required)
+
+---
+
+# DELETE /pets/{petId}
+
+\`\`\`http
+DELETE https://api.example.com/v1/pets/{petId}
+\`\`\`
+
+## Path parameters
+
+- \`petId\` (integer, required)
+
+## Responses
+
+### 204 — Deleted
+"
+`;

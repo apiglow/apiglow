@@ -1,0 +1,98 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`model-derived exports keep pace with the model > renders the whole construct set the same way run to run 1`] = `
+"# Completeness API
+
+> Version 9.0.0 — OpenAPI 3.1.0
+
+Base URL: https://api.example.test/v9
+
+More: https://docs.example.test — Handbook
+
+Every construct a normalized operation can carry, in one document.
+
+## Servers
+
+- https://api.example.test/v9 — Production
+
+## Authentication
+
+- \`apiKeyAuth\` (apiKey, header \`X-Api-Key\`)
+
+Applies to every operation unless overridden — one of:
+
+- \`apiKeyAuth\`
+
+---
+
+# Create a thing
+
+\`\`\`http
+POST https://api.example.test/v9/things/{thingId}
+\`\`\`
+
+> Deprecated
+
+- Operation ID: \`createThing\`
+- Tags: Things
+- More: https://docs.example.test/things
+
+Creates a thing and schedules its indexing.
+
+## Servers
+
+These override the base URL above for this operation:
+
+- https://ops.example.test/v9 — Ops plane
+
+## Authentication
+
+One of the following (each line = every scheme in it):
+
+- \`apiKeyAuth\` (scopes: things:write)
+
+## Path parameters
+
+- \`thingId\` (string, required) — Identifier of the thing.
+
+## Request body — \`application/json\` (required)
+
+- \`label\` (string, required)
+
+## Responses
+
+### 201 — Created.
+
+Body \`application/json\`:
+
+- \`id\` (string)
+
+## Callbacks
+
+### indexed — POST {$request.body#/callbackUrl}
+
+Sent once the thing is indexed.
+
+Payload \`application/json\`:
+
+- \`id\` (string)
+
+Expected responses from your server:
+
+- 204 — Acknowledged.
+
+---
+
+# Webhook: Thing changed
+
+> Event "thingChanged" sent by the API to your webhook endpoint via POST.
+
+## Request body — \`application/json\`
+
+- \`id\` (string)
+
+## Responses
+
+### 204 — Acknowledged.
+"
+`;

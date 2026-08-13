@@ -1,0 +1,1323 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the converted document through the whole pipeline > matches the recorded model 1`] = `
+{
+  "convertedFrom": "2.0",
+  "externalDocs": {
+    "description": "Find out more",
+    "url": "https://example.com/docs",
+  },
+  "groups": [
+    {
+      "description": "Everything about pets",
+      "operationIds": [
+        "listPets",
+        "addPet",
+        "getPet",
+        "uploadPetImage",
+        "deletePet",
+        "updatePetWithForm",
+        "getPetPhoto",
+      ],
+      "tag": "pets",
+    },
+  ],
+  "info": {
+    "contact": {
+      "email": "api@example.com",
+      "name": "API team",
+    },
+    "description": "Fixture exercising the whole Swagger 2.0 conversion table: host/basePath/schemes, consumes/produces, body and formData parameters, every collectionFormat, moved components, securityDefinitions, string discriminator.",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT",
+    },
+    "termsOfService": "https://example.com/terms",
+    "title": "Petstore 2.0",
+    "version": "1.0.0",
+  },
+  "operations": [
+    {
+      "description": "Returns **all pets**.",
+      "id": "listPets",
+      "method": "get",
+      "operationId": "listPets",
+      "parameters": [
+        {
+          "description": "Shared by every operation of this path",
+          "examples": [],
+          "explode": false,
+          "in": "header",
+          "name": "X-Trace",
+          "required": false,
+          "schema": {
+            "kind": "primitive",
+            "type": "string",
+          },
+          "style": "simple",
+        },
+        {
+          "description": "Statuses to filter by",
+          "examples": [],
+          "explode": true,
+          "in": "query",
+          "name": "status",
+          "required": true,
+          "schema": {
+            "items": {
+              "enum": [
+                "available",
+                "pending",
+                "sold",
+              ],
+              "kind": "primitive",
+              "type": "string",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "form",
+        },
+        {
+          "description": "Default collection format",
+          "examples": [],
+          "explode": false,
+          "in": "query",
+          "name": "tags",
+          "required": false,
+          "schema": {
+            "items": {
+              "kind": "primitive",
+              "type": "string",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "form",
+        },
+        {
+          "examples": [],
+          "explode": false,
+          "in": "query",
+          "name": "ids",
+          "required": false,
+          "schema": {
+            "items": {
+              "format": "int64",
+              "kind": "primitive",
+              "type": "integer",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "pipeDelimited",
+        },
+        {
+          "examples": [],
+          "explode": false,
+          "in": "query",
+          "name": "sort",
+          "required": false,
+          "schema": {
+            "items": {
+              "kind": "primitive",
+              "type": "string",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "spaceDelimited",
+        },
+        {
+          "examples": [],
+          "explode": false,
+          "in": "query",
+          "name": "fields",
+          "required": false,
+          "schema": {
+            "items": {
+              "kind": "primitive",
+              "type": "string",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "form",
+        },
+        {
+          "examples": [],
+          "explode": false,
+          "in": "header",
+          "name": "X-Regions",
+          "required": false,
+          "schema": {
+            "items": {
+              "kind": "primitive",
+              "type": "string",
+            },
+            "kind": "array",
+            "type": "array",
+          },
+          "style": "simple",
+        },
+        {
+          "allowEmptyValue": true,
+          "description": "Page size",
+          "examples": [],
+          "explode": true,
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 20,
+            "exclusiveMaximum": 100,
+            "format": "int32",
+            "kind": "primitive",
+            "minimum": 1,
+            "type": "integer",
+          },
+          "style": "form",
+        },
+      ],
+      "path": "/pets",
+      "requestBody": null,
+      "responses": [
+        {
+          "contents": [
+            {
+              "examples": [
+                {
+                  "value": [
+                    {
+                      "id": 1,
+                      "name": "Rex",
+                    },
+                  ],
+                },
+              ],
+              "mediaType": "application/json",
+              "schema": {
+                "items": {
+                  "discriminator": {
+                    "mapping": [
+                      {
+                        "key": "Dog",
+                        "schemaName": "Dog",
+                        "variantIndex": null,
+                      },
+                      {
+                        "key": "Cat",
+                        "schemaName": "Cat",
+                        "variantIndex": null,
+                      },
+                    ],
+                    "propertyName": "petType",
+                  },
+                  "examples": [
+                    {
+                      "id": 1,
+                      "name": "Rex",
+                      "petType": "Dog",
+                    },
+                  ],
+                  "kind": "object",
+                  "properties": [
+                    {
+                      "name": "id",
+                      "required": true,
+                      "schema": {
+                        "format": "int64",
+                        "kind": "primitive",
+                        "readOnly": true,
+                        "type": "integer",
+                      },
+                    },
+                    {
+                      "name": "name",
+                      "required": true,
+                      "schema": {
+                        "kind": "primitive",
+                        "minLength": 1,
+                        "type": "string",
+                      },
+                    },
+                    {
+                      "name": "petType",
+                      "required": true,
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "string",
+                      },
+                    },
+                    {
+                      "name": "tag",
+                      "required": false,
+                      "schema": {
+                        "kind": "primitive",
+                        "nullable": true,
+                        "type": "string",
+                      },
+                    },
+                    {
+                      "name": "status",
+                      "required": false,
+                      "schema": {
+                        "enum": [
+                          "available",
+                          "pending",
+                          "sold",
+                        ],
+                        "kind": "primitive",
+                        "type": "string",
+                      },
+                    },
+                  ],
+                  "required": [
+                    "id",
+                    "name",
+                    "petType",
+                  ],
+                  "schemaName": "Pet",
+                  "type": "object",
+                },
+                "kind": "array",
+                "type": "array",
+              },
+            },
+          ],
+          "description": "A paged array of pets",
+          "headers": [
+            {
+              "description": "Next page token",
+              "name": "X-Next",
+              "schema": {
+                "kind": "primitive",
+                "type": "string",
+              },
+            },
+            {
+              "name": "X-Pages",
+              "schema": {
+                "items": {
+                  "kind": "primitive",
+                  "type": "integer",
+                },
+                "kind": "array",
+                "type": "array",
+              },
+            },
+          ],
+          "status": "200",
+        },
+        {
+          "contents": [
+            {
+              "examples": [],
+              "mediaType": "application/json",
+              "schema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "code",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "message",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "code",
+                  "message",
+                ],
+                "schemaName": "Error",
+                "type": "object",
+              },
+            },
+            {
+              "examples": [],
+              "mediaType": "application/xml",
+              "schema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "code",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "message",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "code",
+                  "message",
+                ],
+                "schemaName": "Error",
+                "type": "object",
+              },
+            },
+          ],
+          "description": "Unexpected error",
+          "headers": [],
+          "status": "default",
+        },
+      ],
+      "security": null,
+      "servers": null,
+      "summary": "List pets",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "addPet",
+      "method": "post",
+      "operationId": "addPet",
+      "parameters": [
+        {
+          "description": "Shared by every operation of this path",
+          "examples": [],
+          "explode": false,
+          "in": "header",
+          "name": "X-Trace",
+          "required": false,
+          "schema": {
+            "kind": "primitive",
+            "type": "string",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets",
+      "requestBody": {
+        "contents": [
+          {
+            "examples": [],
+            "mediaType": "application/json",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "name",
+                  "required": true,
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+                {
+                  "name": "tags",
+                  "required": false,
+                  "schema": {
+                    "items": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                    "kind": "array",
+                    "type": "array",
+                  },
+                },
+              ],
+              "required": [
+                "name",
+              ],
+              "schemaName": "NewPet",
+              "type": "object",
+            },
+          },
+          {
+            "examples": [],
+            "mediaType": "application/xml",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "name",
+                  "required": true,
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+                {
+                  "name": "tags",
+                  "required": false,
+                  "schema": {
+                    "items": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                    "kind": "array",
+                    "type": "array",
+                  },
+                },
+              ],
+              "required": [
+                "name",
+              ],
+              "schemaName": "NewPet",
+              "type": "object",
+            },
+          },
+        ],
+        "description": "Pet to add to the store",
+        "required": true,
+      },
+      "responses": [
+        {
+          "contents": [
+            {
+              "examples": [
+                {
+                  "value": {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                },
+              ],
+              "mediaType": "application/json",
+              "schema": {
+                "discriminator": {
+                  "mapping": [
+                    {
+                      "key": "Dog",
+                      "schemaName": "Dog",
+                      "variantIndex": null,
+                    },
+                    {
+                      "key": "Cat",
+                      "schemaName": "Cat",
+                      "variantIndex": null,
+                    },
+                  ],
+                  "propertyName": "petType",
+                },
+                "examples": [
+                  {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                ],
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                      "format": "int64",
+                      "kind": "primitive",
+                      "readOnly": true,
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "name",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "minLength": 1,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "petType",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "tag",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "nullable": true,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "status",
+                    "required": false,
+                    "schema": {
+                      "enum": [
+                        "available",
+                        "pending",
+                        "sold",
+                      ],
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "id",
+                  "name",
+                  "petType",
+                ],
+                "schemaName": "Pet",
+                "type": "object",
+              },
+            },
+            {
+              "examples": [
+                {
+                  "value": {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                },
+              ],
+              "mediaType": "application/xml",
+              "schema": {
+                "discriminator": {
+                  "mapping": [
+                    {
+                      "key": "Dog",
+                      "schemaName": "Dog",
+                      "variantIndex": null,
+                    },
+                    {
+                      "key": "Cat",
+                      "schemaName": "Cat",
+                      "variantIndex": null,
+                    },
+                  ],
+                  "propertyName": "petType",
+                },
+                "examples": [
+                  {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                ],
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                      "format": "int64",
+                      "kind": "primitive",
+                      "readOnly": true,
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "name",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "minLength": 1,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "petType",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "tag",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "nullable": true,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "status",
+                    "required": false,
+                    "schema": {
+                      "enum": [
+                        "available",
+                        "pending",
+                        "sold",
+                      ],
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "id",
+                  "name",
+                  "petType",
+                ],
+                "schemaName": "Pet",
+                "type": "object",
+              },
+            },
+          ],
+          "description": "Created",
+          "headers": [],
+          "status": "201",
+        },
+        {
+          "contents": [],
+          "description": "Invalid input",
+          "headers": [],
+          "status": "405",
+        },
+      ],
+      "security": [
+        {
+          "petstore_auth": [
+            "write:pets",
+          ],
+        },
+      ],
+      "servers": [
+        {
+          "url": "https://api.example.com/v2",
+          "variables": [],
+        },
+      ],
+      "summary": "Create a pet",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "getPet",
+      "method": "get",
+      "operationId": "getPet",
+      "parameters": [
+        {
+          "description": "ID of the pet",
+          "examples": [],
+          "explode": false,
+          "in": "path",
+          "name": "petId",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "kind": "primitive",
+            "type": "integer",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets/{petId}",
+      "requestBody": null,
+      "responses": [
+        {
+          "contents": [
+            {
+              "examples": [
+                {
+                  "value": {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                },
+              ],
+              "mediaType": "application/json",
+              "schema": {
+                "discriminator": {
+                  "mapping": [
+                    {
+                      "key": "Dog",
+                      "schemaName": "Dog",
+                      "variantIndex": null,
+                    },
+                    {
+                      "key": "Cat",
+                      "schemaName": "Cat",
+                      "variantIndex": null,
+                    },
+                  ],
+                  "propertyName": "petType",
+                },
+                "examples": [
+                  {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                ],
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                      "format": "int64",
+                      "kind": "primitive",
+                      "readOnly": true,
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "name",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "minLength": 1,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "petType",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "tag",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "nullable": true,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "status",
+                    "required": false,
+                    "schema": {
+                      "enum": [
+                        "available",
+                        "pending",
+                        "sold",
+                      ],
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "id",
+                  "name",
+                  "petType",
+                ],
+                "schemaName": "Pet",
+                "type": "object",
+              },
+            },
+            {
+              "examples": [
+                {
+                  "value": {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                },
+              ],
+              "mediaType": "application/xml",
+              "schema": {
+                "discriminator": {
+                  "mapping": [
+                    {
+                      "key": "Dog",
+                      "schemaName": "Dog",
+                      "variantIndex": null,
+                    },
+                    {
+                      "key": "Cat",
+                      "schemaName": "Cat",
+                      "variantIndex": null,
+                    },
+                  ],
+                  "propertyName": "petType",
+                },
+                "examples": [
+                  {
+                    "id": 1,
+                    "name": "Rex",
+                    "petType": "Dog",
+                  },
+                ],
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                      "format": "int64",
+                      "kind": "primitive",
+                      "readOnly": true,
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "name",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "minLength": 1,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "petType",
+                    "required": true,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "tag",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "nullable": true,
+                      "type": "string",
+                    },
+                  },
+                  {
+                    "name": "status",
+                    "required": false,
+                    "schema": {
+                      "enum": [
+                        "available",
+                        "pending",
+                        "sold",
+                      ],
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "required": [
+                  "id",
+                  "name",
+                  "petType",
+                ],
+                "schemaName": "Pet",
+                "type": "object",
+              },
+            },
+          ],
+          "description": "OK",
+          "headers": [],
+          "status": "200",
+        },
+        {
+          "contents": [],
+          "description": "Not found",
+          "headers": [],
+          "status": "404",
+        },
+      ],
+      "security": null,
+      "servers": null,
+      "summary": "Get a pet by id",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "uploadPetImage",
+      "method": "post",
+      "operationId": "uploadPetImage",
+      "parameters": [
+        {
+          "description": "ID of the pet",
+          "examples": [],
+          "explode": false,
+          "in": "path",
+          "name": "petId",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "kind": "primitive",
+            "type": "integer",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets/{petId}",
+      "requestBody": {
+        "contents": [
+          {
+            "encodings": [
+              {
+                "explode": true,
+                "property": "labels",
+                "style": "form",
+              },
+            ],
+            "examples": [],
+            "mediaType": "multipart/form-data",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "metadata",
+                  "required": false,
+                  "schema": {
+                    "description": "Additional data to pass to the server",
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+                {
+                  "name": "file",
+                  "required": true,
+                  "schema": {
+                    "description": "The file to upload",
+                    "format": "binary",
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+                {
+                  "name": "labels",
+                  "required": false,
+                  "schema": {
+                    "items": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                    "kind": "array",
+                    "type": "array",
+                  },
+                },
+              ],
+              "required": [
+                "file",
+              ],
+              "type": "object",
+            },
+          },
+        ],
+        "required": true,
+      },
+      "responses": [
+        {
+          "contents": [
+            {
+              "examples": [],
+              "mediaType": "application/json",
+              "schema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "code",
+                    "required": false,
+                    "schema": {
+                      "format": "int32",
+                      "kind": "primitive",
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "message",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "schemaName": "ApiResponse",
+                "type": "object",
+              },
+            },
+            {
+              "examples": [],
+              "mediaType": "application/xml",
+              "schema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "code",
+                    "required": false,
+                    "schema": {
+                      "format": "int32",
+                      "kind": "primitive",
+                      "type": "integer",
+                    },
+                  },
+                  {
+                    "name": "message",
+                    "required": false,
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                    },
+                  },
+                ],
+                "schemaName": "ApiResponse",
+                "type": "object",
+              },
+            },
+          ],
+          "description": "Uploaded",
+          "headers": [],
+          "status": "200",
+        },
+      ],
+      "security": null,
+      "servers": null,
+      "summary": "Upload an image",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "deletePet",
+      "method": "delete",
+      "operationId": "deletePet",
+      "parameters": [
+        {
+          "description": "ID of the pet",
+          "examples": [],
+          "explode": false,
+          "in": "path",
+          "name": "petId",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "kind": "primitive",
+            "type": "integer",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets/{petId}",
+      "requestBody": null,
+      "responses": [
+        {
+          "contents": [],
+          "description": "Deleted",
+          "headers": [],
+          "status": "204",
+        },
+      ],
+      "security": [],
+      "servers": null,
+      "summary": "Delete a pet",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "updatePetWithForm",
+      "method": "post",
+      "operationId": "updatePetWithForm",
+      "parameters": [
+        {
+          "examples": [],
+          "explode": false,
+          "in": "path",
+          "name": "petId",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "kind": "primitive",
+            "type": "integer",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets/{petId}/form",
+      "requestBody": {
+        "contents": [
+          {
+            "examples": [],
+            "mediaType": "application/x-www-form-urlencoded",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "name",
+                  "required": true,
+                  "schema": {
+                    "description": "Updated name",
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+                {
+                  "name": "status",
+                  "required": false,
+                  "schema": {
+                    "description": "Updated status",
+                    "kind": "primitive",
+                    "type": "string",
+                  },
+                },
+              ],
+              "required": [
+                "name",
+              ],
+              "type": "object",
+            },
+          },
+        ],
+        "required": true,
+      },
+      "responses": [
+        {
+          "contents": [],
+          "description": "Updated",
+          "headers": [],
+          "status": "200",
+        },
+      ],
+      "security": null,
+      "servers": null,
+      "summary": "Update a pet with form data",
+      "tags": [
+        "pets",
+      ],
+    },
+    {
+      "id": "getPetPhoto",
+      "method": "get",
+      "operationId": "getPetPhoto",
+      "parameters": [
+        {
+          "examples": [],
+          "explode": false,
+          "in": "path",
+          "name": "petId",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "kind": "primitive",
+            "type": "integer",
+          },
+          "style": "simple",
+        },
+      ],
+      "path": "/pets/{petId}/photo",
+      "requestBody": null,
+      "responses": [
+        {
+          "contents": [
+            {
+              "examples": [],
+              "mediaType": "image/png",
+              "schema": {
+                "format": "binary",
+                "kind": "primitive",
+                "type": "string",
+              },
+            },
+          ],
+          "description": "The photo",
+          "headers": [],
+          "status": "200",
+        },
+      ],
+      "security": null,
+      "servers": null,
+      "summary": "Download the pet photo",
+      "tags": [
+        "pets",
+      ],
+    },
+  ],
+  "security": [
+    {
+      "petstore_auth": [
+        "read:pets",
+      ],
+    },
+  ],
+  "securitySchemes": [
+    {
+      "description": "HTTP basic",
+      "name": "basic_auth",
+      "scheme": "basic",
+      "type": "http",
+    },
+    {
+      "in": "header",
+      "name": "api_key",
+      "paramName": "api_key",
+      "type": "apiKey",
+    },
+    {
+      "flows": [
+        {
+          "authorizationUrl": "https://example.com/oauth/authorize",
+          "key": "authorizationCode",
+          "scopes": {
+            "read:pets": "read your pets",
+            "write:pets": "modify pets in your account",
+          },
+          "tokenUrl": "https://example.com/oauth/token",
+        },
+      ],
+      "name": "petstore_auth",
+      "type": "oauth2",
+    },
+    {
+      "flows": [
+        {
+          "authorizationUrl": "https://example.com/oauth/authorize",
+          "key": "implicit",
+          "scopes": {
+            "read:pets": "read your pets",
+          },
+        },
+      ],
+      "name": "implicit_auth",
+      "type": "oauth2",
+    },
+    {
+      "flows": [
+        {
+          "key": "clientCredentials",
+          "scopes": {},
+          "tokenUrl": "https://example.com/oauth/token",
+        },
+      ],
+      "name": "app_auth",
+      "type": "oauth2",
+    },
+  ],
+  "servers": [
+    {
+      "url": "https://api.example.com/v2",
+      "variables": [],
+    },
+    {
+      "url": "http://api.example.com/v2",
+      "variables": [],
+    },
+  ],
+  "sourceVersion": "3.0.4",
+  "tags": [
+    {
+      "description": "Everything about pets",
+      "name": "pets",
+    },
+  ],
+  "webhooks": [],
+}
+`;

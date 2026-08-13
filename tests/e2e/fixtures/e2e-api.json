@@ -1,0 +1,351 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "E2E Test API",
+    "version": "1.0.0",
+    "description": "Small controlled schema for the e2e tests: bearer + apiKey auth, enums, required body, multi-status examples, webhook + callback."
+  },
+  "servers": [{ "url": "https://api.e2e.test/v1" }],
+  "security": [{ "bearerAuth": [] }],
+  "tags": [
+    { "name": "Pets", "description": "Everything about pets" },
+    { "name": "Orders", "description": "Store orders" }
+  ],
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "tags": ["Pets"],
+        "summary": "List all pets",
+        "description": "Returns the pets, optionally filtered by **status**.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["available", "pending", "sold"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "breed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "akita",
+                "beagle",
+                "boxer",
+                "bulldog",
+                "collie",
+                "dalmatian",
+                "husky",
+                "labrador",
+                "poodle",
+                "pug",
+                "rottweiler",
+                "shiba"
+              ]
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "description": "Filter by tags (repeated pair per value)",
+            "schema": { "type": "array", "items": { "type": "string" } }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "description": "Owner filter, one pair per property",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "city": { "type": "string" },
+                "since": { "type": "string", "format": "date" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paged array of pets",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } },
+                "example": [{ "id": 1, "name": "Rex", "status": "available" }]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "code": 401, "message": "Missing bearer token" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPet",
+        "tags": ["Pets"],
+        "summary": "Create a pet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NewPet" },
+              "example": { "name": "Rex", "status": "available" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pet created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Pet" },
+                "example": { "id": 2, "name": "Rex", "status": "available" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "code": 400, "message": "name is required" }
+              }
+            }
+          }
+        },
+        "callbacks": {
+          "onPetStatus": {
+            "{$request.body#/callbackUrl}": {
+              "post": {
+                "summary": "Status changed",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": { "petId": { "type": "integer" }, "status": { "type": "string" } }
+                      }
+                    }
+                  }
+                },
+                "responses": { "200": { "description": "Callback received" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "get": {
+        "operationId": "getPet",
+        "tags": ["Pets"],
+        "summary": "Get a pet by id",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "example": 1,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The pet",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Pet" },
+                "example": { "id": 1, "name": "Rex", "status": "available" }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "tags": ["Orders"],
+        "summary": "List orders",
+        "security": [{ "apiKeyAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Orders",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrder",
+        "tags": ["Orders"],
+        "summary": "Create an order",
+        "security": [{ "oauth2Auth": ["write:orders"] }],
+        "responses": {
+          "201": {
+            "description": "Order created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" },
+                "example": { "id": 7, "petId": 1, "quantity": 2 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account": {
+      "get": {
+        "operationId": "getAccount",
+        "tags": ["Orders"],
+        "summary": "Account details",
+        "security": [{ "basicAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "integer" }, "email": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "petAdopted": {
+      "post": {
+        "summary": "Pet adopted",
+        "description": "Sent to your server when a pet is adopted.",
+        "parameters": [
+          { "name": "X-Webhook-Signature", "in": "header", "required": true, "schema": { "type": "string" }, "example": "sha256=abc" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["petId"],
+                "properties": {
+                  "petId": { "type": "integer" },
+                  "adopterEmail": { "type": "string" }
+                }
+              },
+              "example": { "petId": 1, "adopterEmail": "jane@example.com" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Acknowledged" } }
+      }
+    },
+    "petSynced": {
+      "put": {
+        "summary": "Pet synced",
+        "description": "Sent to your server when a pet record is replaced upstream.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "petId": { "type": "integer" } } },
+              "example": { "petId": 2 }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Acknowledged" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "apiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-Api-Key" },
+      "basicAuth": { "type": "http", "scheme": "basic" },
+      "oauth2Auth": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://auth.e2e.test/authorize",
+            "tokenUrl": "https://auth.e2e.test/token",
+            "scopes": { "read:orders": "Read the orders", "write:orders": "Create orders" }
+          },
+          "clientCredentials": {
+            "tokenUrl": "https://auth.e2e.test/token",
+            "scopes": { "read:orders": "Read the orders" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["available", "pending", "sold"] }
+        }
+      },
+      "NewPet": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "age": { "type": "integer" },
+          "status": { "type": "string", "enum": ["available", "pending", "sold"] },
+          "metadata": {
+            "type": "object",
+            "description": "Free-form labels",
+            "additionalProperties": { "type": "string" }
+          },
+          "coords": {
+            "type": "array",
+            "description": "Fixed [lat, lon] pair",
+            "prefixItems": [{ "type": "number" }, { "type": "number" }]
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "petId": { "type": "integer" },
+          "quantity": { "type": "integer" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

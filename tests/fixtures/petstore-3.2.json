@@ -1,0 +1,108 @@
+{
+  "openapi": "3.2.0",
+  "$self": "https://api.example.com/openapi.json",
+  "info": { "title": "Petstore 3.2", "version": "1.0.0", "summary": "Fixture exercising the 3.2 novelties." },
+  "servers": [{ "name": "prod", "url": "https://api.example.com/v1", "description": "Production" }],
+  "tags": [
+    { "name": "pets", "summary": "Pets", "description": "Everything about pets", "kind": "nav" },
+    { "name": "search", "summary": "Search", "parent": "pets", "kind": "nav" }
+  ],
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "tags": ["pets"],
+        "summary": "List pets",
+        "responses": {
+          "200": {
+            "summary": "A paged array of pets",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } },
+                "examples": {
+                  "one": { "summary": "A dog", "dataValue": [{ "id": 1, "name": "Rex" }] }
+                }
+              }
+            }
+          }
+        }
+      },
+      "query": {
+        "operationId": "searchPets",
+        "tags": ["search"],
+        "summary": "Search pets with a body",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "q": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Matches" } }
+      },
+      "additionalOperations": {
+        "PURGE": {
+          "operationId": "purgePets",
+          "summary": "Purge the pet cache",
+          "responses": { "204": { "summary": "Purged" } }
+        },
+        "GET": {
+          "operationId": "ignoredDuplicate",
+          "responses": { "200": { "description": "Forbidden by the spec, ignored" } }
+        }
+      }
+    },
+    "/pets/stream": {
+      "get": {
+        "operationId": "streamPets",
+        "tags": ["pets"],
+        "responses": {
+          "200": {
+            "summary": "Server-sent events",
+            "content": {
+              "text/event-stream": {
+                "itemSchema": { "$ref": "#/components/schemas/Pet" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pets/find": {
+      "get": {
+        "operationId": "findPets",
+        "tags": ["search"],
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "querystring",
+            "description": "JSONPath filter, whole query string",
+            "schema": { "type": "string" },
+            "examples": { "byName": { "serializedValue": "$.pets[?(@.name=='Rex')]" } }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "legacyKey": { "type": "apiKey", "in": "header", "name": "X-Api-Key", "deprecated": true },
+      "deviceAuth": {
+        "type": "oauth2",
+        "oauth2MetadataUrl": "https://auth.example.com/.well-known/oauth-authorization-server",
+        "flows": {
+          "deviceAuthorization": {
+            "deviceAuthorizationUrl": "https://auth.example.com/device",
+            "tokenUrl": "https://auth.example.com/token",
+            "scopes": { "pets:read": "Read pets" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": { "id": { "type": "integer" }, "name": { "type": "string" } }
+      }
+    }
+  }
+}

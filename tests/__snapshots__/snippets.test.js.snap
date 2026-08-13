@@ -1,0 +1,863 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`binary body > csharp: reads the file, never inlines it 1`] = `
+"using System;
+using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/v1/pet/42/uploadImage");
+
+request.Content = new StreamContent(File.OpenRead("cat.png"));
+request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`binary body > fetch: reads the file, never inlines it 1`] = `
+"// @cat.png (2.0 kB, image/png)
+const file = fileInput.files[0]
+
+const response = await fetch('https://api.example.com/v1/pet/42/uploadImage', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/octet-stream',
+  },
+  body: file,
+})
+
+const data = await response.json()"
+`;
+
+exports[`binary body > go: reads the file, never inlines it 1`] = `
+"package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	payload, _ := os.Open("cat.png")
+	defer payload.Close()
+
+	req, _ := http.NewRequest("POST", "https://api.example.com/v1/pet/42/uploadImage", payload)
+	req.Header.Set("Content-Type", "application/octet-stream")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`binary body > httpie: reads the file, never inlines it 1`] = `
+"http POST 'https://api.example.com/v1/pet/42/uploadImage' \\
+  'Content-Type:application/octet-stream' \\
+  < 'cat.png'"
+`;
+
+exports[`binary body > java: reads the file, never inlines it 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Path;
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com/v1/pet/42/uploadImage"))
+    .header("Content-Type", "application/octet-stream")
+    .method("POST", HttpRequest.BodyPublishers.ofFile(Path.of("cat.png")))
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`binary body > node: reads the file, never inlines it 1`] = `
+"import axios from 'axios'
+import { createReadStream } from 'node:fs'
+
+// @cat.png (2.0 kB, image/png)
+const payload = createReadStream('cat.png')
+
+const response = await axios({
+  method: 'post',
+  url: 'https://api.example.com/v1/pet/42/uploadImage',
+  headers: {
+    'Content-Type': 'application/octet-stream',
+  },
+  data: payload,
+})
+
+console.log(response.data)"
+`;
+
+exports[`binary body > php: reads the file, never inlines it 1`] = `
+"<?php
+$ch = curl_init('https://api.example.com/v1/pet/42/uploadImage');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/octet-stream',
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('cat.png'));
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`binary body > python: reads the file, never inlines it 1`] = `
+"import requests
+
+response = requests.post(
+    "https://api.example.com/v1/pet/42/uploadImage",
+    headers={
+        "Content-Type": "application/octet-stream",
+    },
+    data=open("cat.png", "rb"),
+)
+
+print(response.json())"
+`;
+
+exports[`binary body > ruby: reads the file, never inlines it 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://api.example.com/v1/pet/42/uploadImage")
+request = Net::HTTP::Post.new(uri)
+request["Content-Type"] = "application/octet-stream"
+request.body_stream = File.open("cat.png", "rb")
+request.content_length = File.size("cat.png")
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > csharp 1`] = `
+"using System;
+using System.Net.Http;
+using System.Text;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/o'brien");
+request.Headers.Add("X-Note", "says \\"hi\\"");
+
+request.Content = new StringContent("line1\\nline2 with 'single' and \\"double\\" and \\\\backslash", Encoding.UTF8, "application/json");
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > fetch 1`] = `
+"const response = await fetch('https://api.example.com/o\\'brien', {
+  method: 'POST',
+  headers: {
+    'X-Note': 'says "hi"',
+  },
+  body: 'line1\\nline2 with \\'single\\' and "double" and \\\\backslash',
+})
+
+const data = await response.json()"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > go 1`] = `
+"package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+)
+
+func main() {
+	payload := strings.NewReader(\`line1
+line2 with 'single' and "double" and \\backslash\`)
+
+	req, _ := http.NewRequest("POST", "https://api.example.com/o'brien", payload)
+	req.Header.Set("X-Note", "says \\"hi\\"")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > httpie 1`] = `
+"http POST 'https://api.example.com/o'\\''brien' \\
+  'X-Note:says "hi"' \\
+  --raw 'line1
+line2 with '\\''single'\\'' and "double" and \\backslash'"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > java 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com/o'brien"))
+    .header("X-Note", "says \\"hi\\"")
+    .method("POST", HttpRequest.BodyPublishers.ofString("line1\\nline2 with 'single' and \\"double\\" and \\\\backslash"))
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > node 1`] = `
+"import axios from 'axios'
+
+const response = await axios({
+  method: 'post',
+  url: 'https://api.example.com/o\\'brien',
+  headers: {
+    'X-Note': 'says "hi"',
+  },
+  data: 'line1\\nline2 with \\'single\\' and "double" and \\\\backslash',
+})
+
+console.log(response.data)"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > php 1`] = `
+"<?php
+$ch = curl_init('https://api.example.com/o\\'brien');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'X-Note: says "hi"',
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, 'line1
+line2 with \\'single\\' and "double" and \\\\backslash');
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > python 1`] = `
+"import requests
+
+response = requests.post(
+    "https://api.example.com/o'brien",
+    headers={
+        "X-Note": 'says "hi"',
+    },
+    data='line1\\nline2 with \\'single\\' and "double" and \\\\backslash',
+)
+
+print(response.json())"
+`;
+
+exports[`escaping > quotes and line breaks in the body do not invalidate literals > ruby 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://api.example.com/o'brien")
+request = Net::HTTP::Post.new(uri)
+request["X-Note"] = "says \\"hi\\""
+request.body = "line1\\nline2 with 'single' and \\"double\\" and \\\\backslash"
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;
+
+exports[`multipart body > csharp: file part and field part 1`] = `
+"using System;
+using System.IO;
+using System.Net.Http;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/fr/api/library/documents");
+request.Headers.Add("api_key", "sk-123");
+
+var form = new MultipartFormDataContent();
+form.Add(new StreamContent(File.OpenRead("cni.jpg")), "file", "cni.jpg");
+form.Add(new StringContent("IDENTITE"), "categorie");
+request.Content = form;
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`multipart body > fetch: file part and field part 1`] = `
+"const form = new FormData()
+form.append('file', fileInput.files[0], 'cni.jpg')
+form.append('categorie', 'IDENTITE')
+
+const response = await fetch('https://api.example.com/fr/api/library/documents', {
+  method: 'POST',
+  headers: {
+    'api_key': 'sk-123',
+  },
+  body: form,
+})
+
+const data = await response.json()"
+`;
+
+exports[`multipart body > go: file part and field part 1`] = `
+"package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+)
+
+func main() {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	file, _ := os.Open("cni.jpg")
+	part, _ := w.CreateFormFile("file", "cni.jpg")
+	io.Copy(part, file)
+	file.Close()
+	w.WriteField("categorie", "IDENTITE")
+	w.Close()
+
+	req, _ := http.NewRequest("POST", "https://api.example.com/fr/api/library/documents", &buf)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("api_key", "sk-123")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`multipart body > httpie: file part and field part 1`] = `
+"http --form POST 'https://api.example.com/fr/api/library/documents' \\
+  file@'cni.jpg' \\
+  'categorie=IDENTITE' \\
+  'api_key:sk-123'"
+`;
+
+exports[`multipart body > java: file part and field part 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+String boundary = "ApiGlowBoundary";
+List<byte[]> parts = new ArrayList<>();
+parts.add(("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\"file\\"; filename=\\"cni.jpg\\"\\r\\nContent-Type: application/octet-stream\\r\\n\\r\\n").getBytes(StandardCharsets.UTF_8));
+parts.add(Files.readAllBytes(Path.of("cni.jpg")));
+parts.add("\\r\\n".getBytes(StandardCharsets.UTF_8));
+parts.add(("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\"categorie\\"\\r\\n\\r\\nIDENTITE\\r\\n").getBytes(StandardCharsets.UTF_8));
+parts.add(("--" + boundary + "--\\r\\n").getBytes(StandardCharsets.UTF_8));
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com/fr/api/library/documents"))
+    .header("api_key", "sk-123")
+    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+    .method("POST", HttpRequest.BodyPublishers.ofByteArrays(parts))
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`multipart body > node: file part and field part 1`] = `
+"import axios from 'axios'
+import { openAsBlob } from 'node:fs'
+
+const form = new FormData()
+form.append('file', await openAsBlob('cni.jpg'), 'cni.jpg')
+form.append('categorie', 'IDENTITE')
+
+const response = await axios({
+  method: 'post',
+  url: 'https://api.example.com/fr/api/library/documents',
+  headers: {
+    'api_key': 'sk-123',
+  },
+  data: form,
+})
+
+console.log(response.data)"
+`;
+
+exports[`multipart body > php: file part and field part 1`] = `
+"<?php
+$ch = curl_init('https://api.example.com/fr/api/library/documents');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'api_key: sk-123',
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, [
+    'file' => new CURLFile('cni.jpg'),
+    'categorie' => 'IDENTITE',
+]);
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`multipart body > python: file part and field part 1`] = `
+"import requests
+
+response = requests.post(
+    "https://api.example.com/fr/api/library/documents",
+    headers={
+        "api_key": "sk-123",
+    },
+    files={
+        "file": open("cni.jpg", "rb"),
+    },
+    data={
+        "categorie": "IDENTITE",
+    },
+)
+
+print(response.json())"
+`;
+
+exports[`multipart body > ruby: file part and field part 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://api.example.com/fr/api/library/documents")
+request = Net::HTTP::Post.new(uri)
+request["api_key"] = "sk-123"
+request.set_form([
+  ["file", File.open("cni.jpg")],
+  ["categorie", "IDENTITE"],
+], 'multipart/form-data')
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;
+
+exports[`snippet csharp > GET redacted by default 1`] = `
+"using System;
+using System.Net.Http;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/v1/pet/42?verbose=true");
+request.Headers.Add("api_key", "••••");
+request.Headers.Add("Accept", "application/json");
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`snippet csharp > POST JSON in clear when redaction is disabled 1`] = `
+"using System;
+using System.Net.Http;
+using System.Text;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/v1/pet");
+request.Headers.Add("api_key", "sk-123");
+
+request.Content = new StringContent("{\\"name\\":\\"Rex\\",\\"secret\\":\\"sk-123\\"}", Encoding.UTF8, "application/json");
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`snippet csharp > template mode: variable values become {{var}} again 1`] = `
+"using System;
+using System.Net.Http;
+
+var client = new HttpClient();
+var request = new HttpRequestMessage(HttpMethod.Get, "https://{{host}}/v1/pet/42?verbose=true");
+request.Headers.Add("api_key", "{{auth.api_key}}");
+request.Headers.Add("Accept", "application/json");
+
+var response = await client.SendAsync(request);
+Console.WriteLine(await response.Content.ReadAsStringAsync());"
+`;
+
+exports[`snippet fetch > GET redacted by default 1`] = `
+"const response = await fetch('https://api.example.com/v1/pet/42?verbose=true', {
+  method: 'GET',
+  headers: {
+    'api_key': '••••',
+    'Accept': 'application/json',
+  },
+})
+
+const data = await response.json()"
+`;
+
+exports[`snippet fetch > POST JSON in clear when redaction is disabled 1`] = `
+"const response = await fetch('https://api.example.com/v1/pet', {
+  method: 'POST',
+  headers: {
+    'api_key': 'sk-123',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({"name":"Rex","secret":"sk-123"}),
+})
+
+const data = await response.json()"
+`;
+
+exports[`snippet fetch > template mode: variable values become {{var}} again 1`] = `
+"const response = await fetch('https://{{host}}/v1/pet/42?verbose=true', {
+  method: 'GET',
+  headers: {
+    'api_key': '{{auth.api_key}}',
+    'Accept': 'application/json',
+  },
+})
+
+const data = await response.json()"
+`;
+
+exports[`snippet go > GET redacted by default 1`] = `
+"package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://api.example.com/v1/pet/42?verbose=true", nil)
+	req.Header.Set("api_key", "••••")
+	req.Header.Set("Accept", "application/json")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`snippet go > POST JSON in clear when redaction is disabled 1`] = `
+"package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+)
+
+func main() {
+	payload := strings.NewReader(\`{"name":"Rex","secret":"sk-123"}\`)
+
+	req, _ := http.NewRequest("POST", "https://api.example.com/v1/pet", payload)
+	req.Header.Set("api_key", "sk-123")
+	req.Header.Set("Content-Type", "application/json")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`snippet go > template mode: variable values become {{var}} again 1`] = `
+"package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
+
+func main() {
+	req, _ := http.NewRequest("GET", "https://{{host}}/v1/pet/42?verbose=true", nil)
+	req.Header.Set("api_key", "{{auth.api_key}}")
+	req.Header.Set("Accept", "application/json")
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	fmt.Println(string(body))
+}"
+`;
+
+exports[`snippet httpie > GET redacted by default 1`] = `
+"http GET 'https://api.example.com/v1/pet/42?verbose=true' \\
+  'api_key:••••' \\
+  'Accept:application/json'"
+`;
+
+exports[`snippet httpie > POST JSON in clear when redaction is disabled 1`] = `
+"http POST 'https://api.example.com/v1/pet' \\
+  'api_key:sk-123' \\
+  'Content-Type:application/json' \\
+  --raw '{"name":"Rex","secret":"sk-123"}'"
+`;
+
+exports[`snippet httpie > template mode: variable values become {{var}} again 1`] = `
+"http GET 'https://{{host}}/v1/pet/42?verbose=true' \\
+  'api_key:{{auth.api_key}}' \\
+  'Accept:application/json'"
+`;
+
+exports[`snippet java > GET redacted by default 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com/v1/pet/42?verbose=true"))
+    .header("api_key", "••••")
+    .header("Accept", "application/json")
+    .method("GET", HttpRequest.BodyPublishers.noBody())
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`snippet java > POST JSON in clear when redaction is disabled 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com/v1/pet"))
+    .header("api_key", "sk-123")
+    .header("Content-Type", "application/json")
+    .method("POST", HttpRequest.BodyPublishers.ofString("{\\"name\\":\\"Rex\\",\\"secret\\":\\"sk-123\\"}"))
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`snippet java > template mode: variable values become {{var}} again 1`] = `
+"import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://{{host}}/v1/pet/42?verbose=true"))
+    .header("api_key", "{{auth.api_key}}")
+    .header("Accept", "application/json")
+    .method("GET", HttpRequest.BodyPublishers.noBody())
+    .build();
+
+HttpResponse<String> response = HttpClient.newHttpClient()
+    .send(request, HttpResponse.BodyHandlers.ofString());
+
+System.out.println(response.body());"
+`;
+
+exports[`snippet node > GET redacted by default 1`] = `
+"import axios from 'axios'
+
+const response = await axios({
+  method: 'get',
+  url: 'https://api.example.com/v1/pet/42?verbose=true',
+  headers: {
+    'api_key': '••••',
+    'Accept': 'application/json',
+  },
+})
+
+console.log(response.data)"
+`;
+
+exports[`snippet node > POST JSON in clear when redaction is disabled 1`] = `
+"import axios from 'axios'
+
+const response = await axios({
+  method: 'post',
+  url: 'https://api.example.com/v1/pet',
+  headers: {
+    'api_key': 'sk-123',
+    'Content-Type': 'application/json',
+  },
+  data: {"name":"Rex","secret":"sk-123"},
+})
+
+console.log(response.data)"
+`;
+
+exports[`snippet node > template mode: variable values become {{var}} again 1`] = `
+"import axios from 'axios'
+
+const response = await axios({
+  method: 'get',
+  url: 'https://{{host}}/v1/pet/42?verbose=true',
+  headers: {
+    'api_key': '{{auth.api_key}}',
+    'Accept': 'application/json',
+  },
+})
+
+console.log(response.data)"
+`;
+
+exports[`snippet php > GET redacted by default 1`] = `
+"<?php
+$ch = curl_init('https://api.example.com/v1/pet/42?verbose=true');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'api_key: ••••',
+    'Accept: application/json',
+]);
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`snippet php > POST JSON in clear when redaction is disabled 1`] = `
+"<?php
+$ch = curl_init('https://api.example.com/v1/pet');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'api_key: sk-123',
+    'Content-Type: application/json',
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, '{"name":"Rex","secret":"sk-123"}');
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`snippet php > template mode: variable values become {{var}} again 1`] = `
+"<?php
+$ch = curl_init('https://{{host}}/v1/pet/42?verbose=true');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'api_key: {{auth.api_key}}',
+    'Accept: application/json',
+]);
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;"
+`;
+
+exports[`snippet python > GET redacted by default 1`] = `
+"import requests
+
+response = requests.get(
+    "https://api.example.com/v1/pet/42?verbose=true",
+    headers={
+        "api_key": "••••",
+        "Accept": "application/json",
+    },
+)
+
+print(response.json())"
+`;
+
+exports[`snippet python > POST JSON in clear when redaction is disabled 1`] = `
+"import requests
+
+response = requests.post(
+    "https://api.example.com/v1/pet",
+    headers={
+        "api_key": "sk-123",
+        "Content-Type": "application/json",
+    },
+    data='{"name":"Rex","secret":"sk-123"}',
+)
+
+print(response.json())"
+`;
+
+exports[`snippet python > template mode: variable values become {{var}} again 1`] = `
+"import requests
+
+response = requests.get(
+    "https://{{host}}/v1/pet/42?verbose=true",
+    headers={
+        "api_key": "{{auth.api_key}}",
+        "Accept": "application/json",
+    },
+)
+
+print(response.json())"
+`;
+
+exports[`snippet ruby > GET redacted by default 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://api.example.com/v1/pet/42?verbose=true")
+request = Net::HTTP::Get.new(uri)
+request["api_key"] = "••••"
+request["Accept"] = "application/json"
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;
+
+exports[`snippet ruby > POST JSON in clear when redaction is disabled 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://api.example.com/v1/pet")
+request = Net::HTTP::Post.new(uri)
+request["api_key"] = "sk-123"
+request["Content-Type"] = "application/json"
+request.body = "{\\"name\\":\\"Rex\\",\\"secret\\":\\"sk-123\\"}"
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;
+
+exports[`snippet ruby > template mode: variable values become {{var}} again 1`] = `
+"require 'net/http'
+require 'uri'
+
+uri = URI("https://{{host}}/v1/pet/42?verbose=true")
+request = Net::HTTP::Get.new(uri)
+request["api_key"] = "{{auth.api_key}}"
+request["Accept"] = "application/json"
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+  http.request(request)
+end
+
+puts response.body"
+`;

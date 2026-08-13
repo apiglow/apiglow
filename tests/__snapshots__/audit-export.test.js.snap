@@ -1,0 +1,50 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`audit Markdown export > renders grade, scores and findings 1`] = `
+"# Schema audit — Swagger Petstore
+
+**Grade C** — 78 / 100 · Version 1.0.11 · OpenAPI 3.1.0
+Generated on 2026-08-05 19:42:07
+
+Contact: API team · api@petstore.test — License: Apache 2.0 · https://apache.org/licenses/LICENSE-2.0
+
+Operations: 19 · Groups: 3 · Webhooks: 2 · Security schemes: 2 · Schemas: 64
+
+1 error(s) · 1 warning(s) · 1 note(s)
+
+- Correctness: 60 % — 1 error(s)
+- Documentation: 100 %
+- Docs readiness: 74 % — 1 warning(s) · 1 note(s)
+
+## Correctness — 60 % · 1 error(s)
+
+- **Error** — operationId “getPet” is used by more than one operation.
+  \`GET /pet/{petId}\` · \`/paths/~1pet~1{petId}/get\`
+  *Why it matters*: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation. Rename one of them.
+
+## Docs readiness — 74 % · 1 warning(s) · 1 note(s)
+
+- **Warning** — Security scheme “apiKey” has no description.
+  \`components.securitySchemes.apiKey\` · \`/components/securitySchemes/apiKey\`
+  *Why it matters*: The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
+- **Note** — This operation carries no tag.
+  \`DELETE /admin/reset\` · (Hidden operation) · \`/paths/~1admin~1reset/delete\`
+  *Why it matters*: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to. Give it at least one tag.
+"
+`;
+
+exports[`audit Markdown export > states the empty case rather than showing an empty list 1`] = `
+"# Schema audit
+
+**Grade A** — 100 / 100 · OpenAPI 3.1.0
+Generated on 2026-08-05 19:42:07
+
+Operations: 4 · Groups: 1 · Webhooks: 0 · Security schemes: 1 · Schemas: 3
+
+No finding
+
+- Correctness: 100 %
+
+> No findings. Every applicable check passes on this schema.
+"
+`;

@@ -1,0 +1,110 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Polymorphism E2E API", "version": "1.0.0" },
+  "servers": [{ "url": "https://api.e2e.test/v3" }],
+  "tags": [{ "name": "Pets" }],
+  "paths": {
+    "/pets": {
+      "post": {
+        "operationId": "createPet",
+        "tags": ["Pets"],
+        "summary": "Create a pet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/animals": {
+      "post": {
+        "operationId": "createAnimal",
+        "tags": ["Pets"],
+        "summary": "Create an animal",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/Animal" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Kitten" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/Cat" },
+          { "$ref": "#/components/schemas/Dog" },
+          { "$ref": "#/components/schemas/Lizard" }
+        ],
+        "discriminator": {
+          "propertyName": "petType",
+          "mapping": {
+            "cat": "#/components/schemas/Cat",
+            "dog": "Dog",
+            "bird": "https://pets.example.com/schemas/Bird"
+          }
+        }
+      },
+      "Cat": {
+        "type": "object",
+        "required": ["petType"],
+        "properties": {
+          "petType": { "type": "string", "description": "Which pet this is" },
+          "livesLeft": { "type": "integer" }
+        }
+      },
+      "Dog": {
+        "type": "object",
+        "required": ["petType"],
+        "properties": {
+          "petType": { "type": "string" },
+          "packSize": { "type": "integer" }
+        }
+      },
+      "Lizard": {
+        "type": "object",
+        "required": ["petType"],
+        "properties": {
+          "petType": { "type": "string" },
+          "coldBlooded": { "type": "boolean" }
+        }
+      },
+      "Animal": {
+        "type": "object",
+        "required": ["species"],
+        "properties": {
+          "species": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "discriminator": {
+          "propertyName": "species",
+          "mapping": { "feline": "#/components/schemas/Kitten" }
+        }
+      },
+      "Kitten": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Animal" },
+          { "type": "object", "properties": { "weaned": { "type": "boolean" } } }
+        ]
+      },
+      "Puppy": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Animal" },
+          { "type": "object", "properties": { "chipped": { "type": "boolean" } } }
+        ]
+      }
+    }
+  }
+}

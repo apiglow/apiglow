@@ -1,0 +1,39 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Webhooks API", "version": "1.0.0", "description": "3.1 fixture with no paths: top-level webhooks only." },
+  "webhooks": {
+    "petAdopted": {
+      "post": {
+        "summary": "Pet adopted",
+        "description": "Sent when a pet is adopted.",
+        "parameters": [
+          { "name": "X-Webhook-Signature", "in": "header", "required": true, "schema": { "type": "string" }, "example": "sha256=abc" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["petId"],
+                "properties": {
+                  "petId": { "type": "integer" },
+                  "adopterEmail": { "type": "string", "format": "email" }
+                }
+              },
+              "example": { "petId": 1, "adopterEmail": "jane@example.com" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Acknowledged" } }
+      }
+    },
+    "petLost": {
+      "post": {
+        "operationId": "petLostHook",
+        "summary": "Pet lost",
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,183 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bake > emits a snapshot, a mirror and a sitemap entry per route 1`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://docs.example.com/overview.html</loc></url>
+  <url><loc>https://docs.example.com/page/getting-started.html</loc></url>
+  <url><loc>https://docs.example.com/scenario/onboarding.html</loc></url>
+  <url><loc>https://docs.example.com/op/listPets.html</loc></url>
+  <url><loc>https://docs.example.com/op/createPet.html</loc></url>
+  <url><loc>https://docs.example.com/op/getPet.html</loc></url>
+  <url><loc>https://docs.example.com/op/listOrders.html</loc></url>
+  <url><loc>https://docs.example.com/op/createOrder.html</loc></url>
+  <url><loc>https://docs.example.com/op/getAccount.html</loc></url>
+  <url><loc>https://docs.example.com/op/webhook-post-petadopted.html</loc></url>
+  <url><loc>https://docs.example.com/op/webhook-put-petsynced.html</loc></url>
+</urlset>
+"
+`;
+
+exports[`bake > emits a snapshot, a mirror and a sitemap entry per route 2`] = `
+"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>List all pets — E2E Test API</title>
+<meta name="description" content="Returns the pets, optionally filtered by status.">
+<link rel="canonical" href="https://docs.example.com/op/listPets.html">
+<link rel="alternate" type="text/markdown" href="https://docs.example.com/op/listPets.md">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"APIReference","name":"List all pets","description":"Returns the pets, optionally filtered by status.","identifier":"listPets","assemblyVersion":"1.0.0","isPartOf":{"@type":"WebAPI","name":"E2E Test API"}}</script>
+<style>:root{color-scheme:light dark}
+body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,sans-serif}
+main{max-width:48rem;margin:0 auto}
+.snapshot-open{margin:0 0 2rem;font-weight:600}
+pre{overflow-x:auto;padding:.75rem;border-radius:.5rem;background:rgba(127,127,127,.15)}
+code{font-size:.9em}
+table{border-collapse:collapse}
+th,td{border:1px solid rgba(127,127,127,.4);padding:.25rem .5rem;text-align:left}</style>
+</head>
+<body>
+<main>
+<p class="snapshot-open"><a href="https://docs.example.com/#/op/listPets">Open in the interactive documentation</a></p>
+<article>
+<h1>List all pets</h1>
+<pre><code class="language-http">GET https://api.e2e.test/v1/pets
+</code></pre>
+<ul>
+<li>Operation ID: <code>listPets</code></li>
+<li>Tags: Pets</li>
+</ul>
+<p>Returns the pets, optionally filtered by <strong>status</strong>.</p>
+<h2>Query parameters</h2>
+<ul>
+<li><code>status</code> (string) [values: &quot;available&quot;, &quot;pending&quot;, &quot;sold&quot;]</li>
+<li><code>limit</code> (integer) [default: 20, min: 1, max: 100]</li>
+<li><code>breed</code> (string) [values: &quot;akita&quot;, &quot;beagle&quot;, &quot;boxer&quot;, &quot;bulldog&quot;, &quot;collie&quot;, &quot;dalmatian&quot;, &quot;husky&quot;, &quot;labrador&quot;, &quot;poodle&quot;, &quot;pug&quot;, &quot;rottweiler&quot;, &quot;shiba&quot;]</li>
+<li><code>tags</code> (array&lt;string&gt;) — Filter by tags (repeated pair per value)</li>
+<li><code>owner</code> (object) — Owner filter, one pair per property</li>
+</ul>
+<h2>Responses</h2>
+<h3>200 — A paged array of pets</h3>
+<p>Body <code>application/json</code>:</p>
+<ul>
+<li><code>id</code> (integer, required)</li>
+<li><code>name</code> (string, required)</li>
+<li><code>status</code> (string) [values: &quot;available&quot;, &quot;pending&quot;, &quot;sold&quot;]</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: 1,
+    &quot;name&quot;: &quot;Rex&quot;,
+    &quot;status&quot;: &quot;available&quot;
+  }
+]
+</code></pre>
+<h3>401 — Unauthorized</h3>
+<p>Body <code>application/json</code>:</p>
+<ul>
+<li><code>code</code> (integer, required)</li>
+<li><code>message</code> (string, required)</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-json">{
+  &quot;code&quot;: 401,
+  &quot;message&quot;: &quot;Missing bearer token&quot;
+}
+</code></pre>
+</article>
+</main>
+</body>
+</html>
+"
+`;
+
+exports[`bake > emits a snapshot, a mirror and a sitemap entry per route 3`] = `
+"# Getting started
+
+Welcome to the **Petstore API** guide. This page is rendered from a plain
+Markdown file declared in the host page config (\`docsPages\`).
+
+## Authentication
+
+Most endpoints accept an API key header. Pick an environment, add the
+suggested \`auth.api_key\` variable, and the header is injected automatically:
+
+\`\`\`bash cURL
+curl -X GET '/demo-api/v3/pet/10' \\
+  -H 'api_key: your-key-here'
+\`\`\`
+\`\`\`js Node.js
+await fetch('/demo-api/v3/pet/10', {
+  headers: { api_key: 'your-key-here' },
+})
+\`\`\`
+\`\`\`python Python
+requests.get('/demo-api/v3/pet/10', headers={'api_key': 'your-key-here'})
+\`\`\`
+
+> [!NOTE]
+> The demo ships an environment with every credential prefilled — the mocked
+> API verifies none of them, it only reflects what you send.
+
+## Sending your first request
+
+1. Pick an environment in the header switcher.
+2. Open an operation in the left navigation — say
+   [get a pet by id](apidoc:getPetById).
+3. Fill the parameters and press **Send**.
+
+The response is stored in the local history — nothing ever leaves your
+browser.
+
+\`\`\`json
+{
+  "id": 1,
+  "name": "Rex",
+  "status": "available"
+}
+\`\`\`
+
+## Troubleshooting
+
+> [!WARNING]
+> If a request fails before reaching the server, it is usually a CORS
+> restriction on the API side, not a bug in this documentation app.
+
+> [!CAUTION]
+> [Deleting a pet](apidoc:DELETE /pet/{petId}) is not reversible, even in the
+> sandbox: the record is gone until the browser recycles the mock data.
+"
+`;
+
+exports[`bake > writes the tree of docs/seo.md §4 1`] = `
+[
+  "llms-full.txt",
+  "llms.txt",
+  "op/createOrder.html",
+  "op/createOrder.md",
+  "op/createPet.html",
+  "op/createPet.md",
+  "op/getAccount.html",
+  "op/getAccount.md",
+  "op/getPet.html",
+  "op/getPet.md",
+  "op/listOrders.html",
+  "op/listOrders.md",
+  "op/listPets.html",
+  "op/listPets.md",
+  "op/webhook-post-petadopted.html",
+  "op/webhook-post-petadopted.md",
+  "op/webhook-put-petsynced.html",
+  "op/webhook-put-petsynced.md",
+  "overview.html",
+  "page/getting-started.html",
+  "page/getting-started.md",
+  "scenario/onboarding.arazzo.json",
+  "scenario/onboarding.html",
+  "scenario/onboarding.md",
+  "sitemap.xml",
+]
+`;

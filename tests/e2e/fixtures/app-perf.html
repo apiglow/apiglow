@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- Host page for the perf budgets (tests/e2e/perf.spec.js): the demo's GitHub
+     REST schema, alone, through the same packed-bundle mechanics as every other
+     fixture. It is the heaviest document the repo ships (~12 MB, 1220
+     operations, ~970 schemas) and it is vendored, not fetched: the budget only
+     moves when someone deliberately refreshes demo/schemas/github.json. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E perf — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/demo/schemas/github.json" },
+      "theme": { "default": "light", "available": ["light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "GitHub API" },
+      "environments": [
+        { "name": "api.github.com", "baseUrl": "https://api.github.com" }
+      ],
+      "history": { "maxEntries": 500, "maxAgeDays": 30 }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

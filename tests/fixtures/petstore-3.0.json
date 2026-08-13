@@ -1,0 +1,128 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Petstore 3.0", "version": "1.0.0", "description": "Fixture exercising the 3.0 idioms: nullable, boolean exclusiveMaximum, scalar example." },
+  "servers": [{ "url": "https://api.example.com/v1", "description": "Production" }],
+  "tags": [{ "name": "pets", "description": "Everything about pets" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "tags": ["pets"],
+        "summary": "List pets",
+        "description": "Returns **all pets**.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size",
+            "schema": { "type": "integer", "format": "int32", "minimum": 1, "maximum": 100, "exclusiveMaximum": true, "default": 20, "example": 10 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["available", "pending", "sold"], "nullable": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paged array of pets",
+            "headers": { "x-next": { "description": "Next page token", "schema": { "type": "string" } } },
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Pet" } },
+                "example": [{ "id": 1, "name": "Rex" }]
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["pets"],
+        "summary": "Create a pet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NewPet" },
+              "examples": {
+                "doggie": { "summary": "A dog", "value": { "name": "Rex", "tag": "dog" } }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } },
+        "callbacks": {
+          "onPetStatus": {
+            "{$request.body#/callbackUrl}": {
+              "post": {
+                "summary": "Status update",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "object", "properties": { "petId": { "type": "integer" }, "status": { "type": "string" } } }
+                    }
+                  }
+                },
+                "responses": { "200": { "description": "Received" } }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/pets/{petId}": {
+      "parameters": [
+        { "name": "petId", "in": "path", "required": true, "description": "ID of the pet", "schema": { "type": "integer", "format": "int64" } }
+      ],
+      "get": {
+        "operationId": "getPet",
+        "tags": ["pets"],
+        "summary": "Get a pet by id",
+        "parameters": [
+          { "name": "petId", "in": "path", "required": true, "description": "Overridden at operation level", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "readOnly": true },
+          "name": { "type": "string", "minLength": 1 },
+          "tag": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["available", "pending", "sold"] }
+        }
+      },
+      "NewPet": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Pet" },
+          { "type": "object", "properties": { "certificate": { "type": "string", "example": "AB-123" } } }
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": { "code": { "type": "integer" }, "message": { "type": "string" } }
+      }
+    }
+  }
+}

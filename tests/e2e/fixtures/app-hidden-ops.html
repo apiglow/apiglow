@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Variant of app.html hiding one operation (openapi.hide): the audit still
+     sees the full schema — an author wants the whole picture — but a finding on
+     a hidden operation must not link to a view the reader cannot reach. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (hidden operations)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json", "hide": ["getAccount"] },
+      "theme": { "default": "light", "available": ["light", "dark", "corporate"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

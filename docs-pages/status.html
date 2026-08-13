@@ -1,0 +1,23 @@
+<h1>Service status</h1>
+
+<p>This page is authored as plain HTML rather than Markdown, to show that
+<code>docsPages</code> accepts both. It goes through the same sanitizer as
+every other external content, keeps its heading anchors and gets the same page
+chrome — but the Markdown-only features (callouts, code tabs,
+<code>apidoc:</code> references) do not apply here.</p>
+
+<h2>Current status</h2>
+
+<p>The demo API runs in a service worker inside your browser. Its status is
+therefore exactly the status of this tab.</p>
+
+<h2>Planned maintenance</h2>
+
+<p>None. There is no server to maintain.</p>
+
+<h2>Incident history</h2>
+
+<ul>
+  <li>The browser recycled the mock data. It came back on the next request.</li>
+  <li>A hard refresh cleared the local history. That one was you.</li>
+</ul>

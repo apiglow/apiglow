@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Host page for the JSON Schema 2020-12 keyword suite: conditional branches,
+     `not`, patternProperties, propertyNames, dependent*, unevaluated*, contains,
+     contentEncoding/contentMediaType. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E keywords — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api-keywords.json" },
+      "branding": { "productName": "E2E keywords" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v3" }]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

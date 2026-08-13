@@ -1,0 +1,125 @@
+{
+  "openapi": "3.2.0",
+  "$self": "https://api.example.com/specs/request.json",
+  "info": { "title": "Request fidelity", "version": "1.0" },
+  "servers": [{ "url": "/v2" }],
+  "paths": {
+    "/search": {
+      "get": {
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "allowReserved": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "allowEmptyValue": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "session",
+            "in": "cookie",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "flags",
+            "in": "cookie",
+            "style": "form",
+            "explode": true,
+            "schema": { "type": "array", "items": { "type": "string" } }
+          }
+        ],
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/upload": {
+      "post": {
+        "operationId": "upload",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": { "type": "object", "properties": { "name": { "type": "string" } } },
+                  "cover": { "type": "string", "format": "binary" }
+                }
+              },
+              "encoding": {
+                "metadata": {
+                  "contentType": "application/json",
+                  "headers": {
+                    "X-Part-Trace": { "schema": { "type": "string", "default": "trace-1" } },
+                    "Content-Type": { "schema": { "type": "string" } }
+                  }
+                },
+                "cover": { "contentType": "image/png" }
+              },
+              "prefixEncoding": [{ "contentType": "text/plain" }],
+              "itemEncoding": { "contentType": "application/json" }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "path": { "type": "string" }
+                }
+              },
+              "encoding": {
+                "tags": { "style": "form", "explode": true },
+                "path": { "allowReserved": true }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/books": {
+      "post": {
+        "operationId": "createBook",
+        "requestBody": {
+          "content": {
+            "application/xml": { "schema": { "$ref": "#/components/schemas/Book" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/xml": { "schema": { "$ref": "#/components/schemas/Book" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Book": {
+        "type": "object",
+        "xml": { "name": "book", "namespace": "https://example.com/ns", "prefix": "b" },
+        "properties": {
+          "id": { "type": "integer", "xml": { "nodeType": "attribute" }, "default": 7 },
+          "title": { "type": "string", "default": "Dune & Sons <best>" },
+          "blurb": { "type": "string", "xml": { "nodeType": "cdata" }, "default": "a <b>bold</b> book" },
+          "authors": {
+            "type": "array",
+            "xml": { "wrapped": true },
+            "items": { "type": "string", "xml": { "name": "author" }, "default": "Frank" }
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "xml": { "name": "tag" }, "default": "sci-fi" }
+          },
+          "legacyAttr": { "type": "string", "xml": { "attribute": true }, "default": "old" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Clean E2E API",
+    "version": "1.0.0",
+    "description": "A schema written to pass every audit rule: it exists so the audit's perfect state stays reachable, and so the page's empty state has something to render.",
+    "contact": { "name": "API team", "email": "api@e2e.test" },
+    "license": { "name": "MIT", "identifier": "MIT" }
+  },
+  "servers": [{ "url": "https://api.e2e.test/clean", "description": "Test server." }],
+  "tags": [{ "name": "Widgets", "description": "Everything about widgets." }],
+  "security": [{ "apiKey": [] }],
+  "paths": {
+    "/widgets": {
+      "get": {
+        "operationId": "listWidgets",
+        "tags": ["Widgets"],
+        "summary": "List widgets",
+        "description": "Returns every widget the caller may see.",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "How many widgets to return in one page.",
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The widgets of the requested page.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Widget" } },
+                "example": [{ "widgetId": "w-1", "displayName": "First widget" }]
+              }
+            }
+          },
+          "403": {
+            "description": "The API key does not grant access to widgets.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "message": "Forbidden." }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWidget",
+        "tags": ["Widgets"],
+        "summary": "Create a widget",
+        "description": "Registers a new widget and returns it with its generated identifier.",
+        "requestBody": {
+          "description": "The widget to create; the identifier is assigned by the server.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Widget" },
+              "example": { "widgetId": "w-2", "displayName": "Second widget" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The widget as stored.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Widget" },
+                "example": { "widgetId": "w-2", "displayName": "Second widget" }
+              }
+            }
+          },
+          "400": {
+            "description": "The widget is malformed.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "message": "displayName is required." }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key",
+        "description": "Ask the API team for a key, then send it on every call."
+      }
+    },
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "description": "One widget.",
+        "required": ["widgetId", "displayName"],
+        "properties": {
+          "widgetId": {
+            "type": "string",
+            "description": "Server-assigned identifier of the widget."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Name shown to the end user."
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Error payload returned by every failing call.",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation of what went wrong."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "openapi": "3.2.0",
+  "info": { "title": "OpenAPI 3.2 E2E API", "version": "1.0.0" },
+  "servers": [{ "name": "e2e", "url": "https://api.e2e.test/v3" }],
+  "tags": [{ "name": "Pets", "summary": "Pets" }],
+  "paths": {
+    "/pets": {
+      "query": {
+        "operationId": "searchPets",
+        "tags": ["Pets"],
+        "summary": "Search pets",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "q": { "type": "string" } } },
+              "examples": { "byName": { "dataValue": { "q": "Rex" } } }
+            }
+          }
+        },
+        "responses": { "200": { "summary": "Matching pets" } }
+      },
+      "additionalOperations": {
+        "PURGE": {
+          "operationId": "purgePets",
+          "tags": ["Pets"],
+          "summary": "Purge the pet cache",
+          "responses": { "204": { "summary": "Purged" } }
+        }
+      }
+    },
+    "/pets/find": {
+      "get": {
+        "operationId": "findPets",
+        "tags": ["Pets"],
+        "summary": "Find pets",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "querystring",
+            "description": "Whole query string, JSONPath syntax",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "summary": "Matches" } }
+      }
+    },
+    "/pets/stream": {
+      "get": {
+        "operationId": "streamPets",
+        "tags": ["Pets"],
+        "summary": "Stream pets",
+        "responses": {
+          "200": {
+            "summary": "Server-sent events",
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "integer" }, "name": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

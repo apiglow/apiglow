@@ -1,0 +1,2916 @@
+{
+  "openapi": "3.2.0",
+  "info": {
+    "title": "Petstore (demo)",
+    "summary": "A demo pet store you can actually call from this page.",
+    "description": "Fake pet store API used as the ApiGlow demo playground. Based on the official [Swagger Petstore](https://petstore3.swagger.io) schema, enriched with extra auth schemes (bearer, basic, OAuth2 authorization code + client credentials) and named examples to exercise every try-it feature.\n\nThe server is **same-origin and answered in the browser** by a service worker (`demo/mock-sw.js`): every operation below really runs — create a pet, order it, read it back — with no backend, no CORS and no proxy. The data lives in the worker's memory and resets when the browser recycles it. Credentials are never verified — except by the **Failure showcase** tag, whose `/failures/protected` endpoint really enforces the demo bearer token.\n\nThe OAuth2 flows run against the same worker (`/demo-api/oauth/`), consent page included: all four flows really answer, wherever the demo is hosted. Two top-level `webhooks` (OpenAPI 3.1) and the callbacks of `POST /pet/{petId}/subscribe` are declarative only — no delivery is ever sent; they exist to exercise the webhook simulator and the callbacks section. The schema is written in OpenAPI **3.2** and showcases its novelties — `query` and `additionalOperations` methods, `querystring` parameters, sequential media types (`itemSchema`), response `summary`, tag hierarchy, named servers, deprecated security schemes and the device authorization flow.",
+    "termsOfService": "https://apiglow.dev/demo/",
+    "contact": {
+      "name": "ApiGlow",
+      "url": "https://apiglow.dev"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "1.0.27"
+  },
+  "externalDocs": {
+    "description": "ApiGlow — the documentation app this demo showcases",
+    "url": "https://apiglow.dev"
+  },
+  "servers": [
+    {
+      "name": "demo",
+      "url": "/demo-api/v3",
+      "description": "Same-origin demo API, answered in the browser by `demo/mock-sw.js`. Relative on purpose: the doc resolves it against its own URL, so the demo works on whatever host and port serves it."
+    }
+  ],
+  "tags": [
+    {
+      "name": "pet",
+      "summary": "Pet management",
+      "kind": "nav",
+      "description": "Everything about your Pets"
+    },
+    {
+      "name": "store",
+      "summary": "Orders and inventory",
+      "kind": "nav",
+      "description": "Access to Petstore orders"
+    },
+    {
+      "name": "user",
+      "summary": "User accounts",
+      "kind": "nav",
+      "description": "Operations about user"
+    },
+    {
+      "name": "stream",
+      "summary": "Live streams",
+      "kind": "nav",
+      "parent": "pet",
+      "description": "Streaming endpoints, declared as a child of `pet` via the OpenAPI 3.2 tag hierarchy (`parent`). The demo mock streams three status changes and then closes the connection."
+    },
+    {
+      "name": "errors",
+      "summary": "Failure showcase",
+      "kind": "nav",
+      "description": "Endpoints that exist to demonstrate how this documentation renders failure: server errors, throttling, auth walls, validation, latency and broken payloads. Each one really produces what it declares."
+    }
+  ],
+  "paths": {
+    "/pet": {
+      "put": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Update an existing pet.",
+        "description": "Update an existing pet by Id.",
+        "operationId": "updatePet",
+        "requestBody": {
+          "description": "Update an existent pet in the store",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Add a new pet to the store.",
+        "description": "Add a new pet to the store.",
+        "operationId": "addPet",
+        "requestBody": {
+          "description": "Create a new pet in the store",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              },
+              "examples": {
+                "dog": {
+                  "summary": "A dog, minimal fields",
+                  "value": {
+                    "name": "Rex",
+                    "photoUrls": [],
+                    "status": "available"
+                  }
+                },
+                "cat-full": {
+                  "summary": "A cat, every field set",
+                  "value": {
+                    "id": 42,
+                    "name": "Misty",
+                    "category": {
+                      "id": 1,
+                      "name": "Cats"
+                    },
+                    "photoUrls": [
+                      "https://example.com/misty.jpg"
+                    ],
+                    "tags": [
+                      {
+                        "id": 7,
+                        "name": "fluffy"
+                      }
+                    ],
+                    "status": "pending"
+                  }
+                }
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              },
+              "examples": {
+                "dog": {
+                  "summary": "A dog, minimal fields",
+                  "value": {
+                    "name": "Rex",
+                    "photoUrls": [],
+                    "status": "available"
+                  }
+                },
+                "cat-full": {
+                  "summary": "A cat, every field set",
+                  "value": {
+                    "id": 42,
+                    "name": "Misty",
+                    "category": {
+                      "id": 1,
+                      "name": "Cats"
+                    },
+                    "photoUrls": [
+                      "https://example.com/misty.jpg"
+                    ],
+                    "tags": [
+                      {
+                        "id": 7,
+                        "name": "fluffy"
+                      }
+                    ],
+                    "status": "pending"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              },
+              "examples": {
+                "dog": {
+                  "summary": "A dog, minimal fields",
+                  "value": {
+                    "name": "Rex",
+                    "photoUrls": [],
+                    "status": "available"
+                  }
+                },
+                "cat-full": {
+                  "summary": "A cat, every field set",
+                  "value": {
+                    "id": 42,
+                    "name": "Misty",
+                    "category": {
+                      "id": 1,
+                      "name": "Cats"
+                    },
+                    "photoUrls": [
+                      "https://example.com/misty.jpg"
+                    ],
+                    "tags": [
+                      {
+                        "id": 7,
+                        "name": "fluffy"
+                      }
+                    ],
+                    "status": "pending"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            },
+            "links": {
+              "GetPetById": {
+                "operationId": "getPetById",
+                "description": "Read the pet back, by the id the store just assigned it.",
+                "parameters": {
+                  "petId": "$response.body#/id"
+                }
+              },
+              "UploadPetImage": {
+                "operationId": "uploadFile",
+                "description": "Attach a photo to the pet that was just created.",
+                "parameters": {
+                  "petId": "$response.body#/id"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/findByStatus": {
+      "get": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Finds Pets by status.",
+        "description": "Multiple status values can be provided with comma separated strings.",
+        "operationId": "findPetsByStatus",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Status values that need to be considered for filter",
+            "required": true,
+            "explode": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "available",
+                "pending",
+                "sold"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page to return, starting at 1. Out-of-range values clamp to the nearest page; the `Link` response header carries `next`/`prev`/`first`/`last` — follow those instead of computing offsets.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/findByTags": {
+      "get": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Finds Pets by tags.",
+        "description": "Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3 for testing.\n\n**Deprecated**: use `QUERY /pet/search` instead, which filters on tags and status at once and takes its criteria in a body. This endpoint is removed in the next major version.",
+        "operationId": "findPetsByTags",
+        "parameters": [
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Tags to filter by",
+            "required": true,
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid tag value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/pet/search": {
+      "get": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Filter pets with a raw query string.",
+        "description": "OpenAPI 3.2 — the whole query string is described by a single parameter `in: querystring`, instead of individual `name=value` pairs. Made for filter languages (RSQL, JSONPath, GraphQL…) whose syntax does not survive being split into pairs, nor being re-encoded. The demo mock understands a small RSQL subset: `field==value`, `field!=value` and `field=in=(a,b)`, joined by `;`.",
+        "operationId": "filterPets",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "querystring",
+            "description": "RSQL expression, sent verbatim as the query string.",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "status==available;tags=in=(dog,puppy)"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "summary": "Matching pets",
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "summary": "Malformed filter expression",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "read:pets"
+            ]
+          }
+        ]
+      },
+      "query": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Search pets with a structured body.",
+        "description": "OpenAPI 3.2 — `query` joins `get`, `post`… as a Path Item field: a safe and idempotent read that carries a request body, which `GET` cannot describe. The examples use the new `dataValue` (structured) and `serializedValue` (already-serialized string) fields, which replace the ambiguous `value`.",
+        "operationId": "searchPets",
+        "requestBody": {
+          "description": "Search criteria",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PetSearch"
+              },
+              "examples": {
+                "availableDogs": {
+                  "summary": "Available dogs, 10 max",
+                  "dataValue": {
+                    "status": [
+                      "available"
+                    ],
+                    "tags": [
+                      "dog"
+                    ],
+                    "limit": 10
+                  }
+                },
+                "byName": {
+                  "summary": "By name, every status",
+                  "dataValue": {
+                    "name": "doggie"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PetSearch"
+              },
+              "examples": {
+                "compact": {
+                  "summary": "Same search, already serialized",
+                  "description": "A `serializedValue` is a string in the wire format of the media type — no re-encoding is applied to it.",
+                  "serializedValue": "status=available&tags=dog&limit=10"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "summary": "Matching pets",
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pet"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "summary": "Invalid search body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/{petId}": {
+      "get": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Find pet by ID.",
+        "description": "Returns a single pet.",
+        "operationId": "getPetById",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "ID of pet to return",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "summary": "The pet, if it exists.",
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Updates a pet in the store with form data.",
+        "description": "Updates a pet resource based on the form data.",
+        "operationId": "updatePetWithForm",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "ID of pet that needs to be updated",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Name of pet that needs to be updated",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Status of pet that needs to be updated",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Deletes a pet.",
+        "description": "Delete a pet.",
+        "operationId": "deletePet",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "Pet id to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pet deleted"
+          },
+          "400": {
+            "description": "Invalid pet value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/{petId}/uploadImage": {
+      "post": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Uploads an image.",
+        "description": "Upload image of the pet.",
+        "operationId": "uploadFile",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "ID of pet to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "additionalMetadata",
+            "in": "query",
+            "description": "Additional Metadata",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "The image itself, either as a raw byte stream or as a multipart form alongside its metadata.",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image to attach to the pet"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Caption stored next to the image"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/{petId}/subscribe": {
+      "post": {
+        "tags": [
+          "pet"
+        ],
+        "summary": "Subscribe to a pet.",
+        "description": "Registers a URL of yours: the store then calls it back on every event listed in `events`, until you unsubscribe or the endpoint answers `410`.",
+        "operationId": "subscribeToPet",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "ID of pet to follow",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Where and what to deliver.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "callbackUrl"
+                ],
+                "properties": {
+                  "callbackUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "HTTPS URL called back on each event.",
+                    "example": "https://hooks.example.com/petstore"
+                  },
+                  "events": {
+                    "type": "array",
+                    "description": "Events to receive. All of them by default.",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "status.changed",
+                        "order.placed"
+                      ]
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "statusOnly": {
+                  "summary": "Status changes only",
+                  "value": {
+                    "callbackUrl": "https://hooks.example.com/petstore",
+                    "events": [
+                      "status.changed"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid callback URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "callbacks": {
+          "onPetStatus": {
+            "{$request.body#/callbackUrl}": {
+              "post": {
+                "summary": "Status change delivered to your URL",
+                "description": "Same payload as the `petStatusChanged` webhook, sent only for the pet you subscribed to.",
+                "operationId": "onPetStatusCallback",
+                "parameters": [
+                  {
+                    "name": "X-Petstore-Signature",
+                    "in": "header",
+                    "description": "HMAC-SHA256 of the raw body, keyed with the secret shown when you registered the endpoint. Reject the delivery if it does not match.",
+                    "required": true,
+                    "schema": {
+                      "type": "string"
+                    },
+                    "example": "sha256=3f8a1c9e77b2d4a6e0f5c8b1d2a4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8"
+                  }
+                ],
+                "requestBody": {
+                  "required": true,
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/PetStatusEvent"
+                      },
+                      "examples": {
+                        "sold": {
+                          "value": {
+                            "eventId": "5e1c2f7a-9d0b-4a1f-8f4e-2c9b7d3a11c0",
+                            "petId": 10,
+                            "name": "doggie",
+                            "status": "sold",
+                            "previousStatus": "available",
+                            "changedAt": "2026-07-31T09:24:11Z"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Acknowledged."
+                  },
+                  "410": {
+                    "description": "Endpoint gone: the subscription is dropped."
+                  }
+                }
+              }
+            }
+          },
+          "onSubscriptionExpiring": {
+            "{$request.body#/callbackUrl}?event=expiring": {
+              "post": {
+                "summary": "Subscription about to expire",
+                "description": "Sent 48 hours before the subscription expires. Renew it with the same call to keep receiving events.",
+                "operationId": "onSubscriptionExpiringCallback",
+                "requestBody": {
+                  "required": true,
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "subscriptionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "examples": {
+                        "expiring": {
+                          "value": {
+                            "subscriptionId": "9a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9",
+                            "expiresAt": "2026-08-05T00:00:00Z"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "Acknowledged."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/pet/{petId}/events": {
+      "get": {
+        "tags": [
+          "stream"
+        ],
+        "summary": "Stream a pet's status changes.",
+        "description": "OpenAPI 3.2 — sequential media types: `itemSchema` describes **one item** of the stream (one SSE event, one JSON line), where `schema` would have to describe the whole, endless body. This response also shows the other 3.2 relaxation: `description` is now optional on a response, `summary` alone is enough.",
+        "operationId": "streamPetEvents",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "description": "ID of pet to watch",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "summary": "Open stream, one item per status change.",
+            "content": {
+              "text/event-stream": {
+                "itemSchema": {
+                  "$ref": "#/components/schemas/PetStatusEvent"
+                }
+              },
+              "application/jsonl": {
+                "itemSchema": {
+                  "$ref": "#/components/schemas/PetStatusEvent"
+                }
+              }
+            }
+          },
+          "404": {
+            "summary": "Pet not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "petstore_auth": [
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/store/inventory": {
+      "get": {
+        "tags": [
+          "store"
+        ],
+        "summary": "Returns pet inventories by status.",
+        "description": "Returns a map of status codes to quantities.",
+        "operationId": "getInventory",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "additionalOperations": {
+        "PURGE": {
+          "tags": [
+            "store"
+          ],
+          "summary": "Purge the cached inventory.",
+          "description": "OpenAPI 3.2 — `additionalOperations` documents methods outside the fixed HTTP verb list (here a cache `PURGE`), which previous versions could not express at all. The demo mock answers it with the declared `204`.",
+          "operationId": "purgeInventory",
+          "responses": {
+            "204": {
+              "summary": "Cache purged, next read hits the database."
+            },
+            "401": {
+              "summary": "Missing or invalid API key"
+            }
+          },
+          "security": [
+            {
+              "api_key": []
+            }
+          ]
+        }
+      }
+    },
+    "/store/order": {
+      "post": {
+        "tags": [
+          "store"
+        ],
+        "summary": "Place an order for a pet.",
+        "description": "Place a new order in the store.",
+        "operationId": "placeOrder",
+        "requestBody": {
+          "description": "The order to place. `id` and `status` are assigned by the store and ignored on input; `petId` and `quantity` are what you decide.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Order"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Order"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Order"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            },
+            "links": {
+              "GetOrderById": {
+                "operationId": "getOrderById",
+                "description": "Follow the order that was just placed.",
+                "parameters": {
+                  "orderId": "$response.body#/id"
+                }
+              },
+              "CancelOrder": {
+                "operationRef": "#/paths/~1store~1order~1{orderId}/delete",
+                "description": "Cancel it while it is still `placed`.",
+                "parameters": {
+                  "orderId": "$response.body#/id"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/store/order/{orderId}": {
+      "get": {
+        "tags": [
+          "store"
+        ],
+        "summary": "Find purchase order by ID.",
+        "description": "For valid response try integer IDs with value <= 5 or > 10. Other values will generate exceptions.",
+        "operationId": "getOrderById",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID of order that needs to be fetched",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "store"
+        ],
+        "summary": "Delete purchase order by identifier.",
+        "description": "For valid response try integer IDs with value < 1000. Anything above 1000 or non-integers will generate API errors.",
+        "operationId": "deleteOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "ID of the order that needs to be deleted",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "order deleted"
+          },
+          "400": {
+            "description": "Invalid ID supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/user": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Create user.",
+        "description": "This can only be done by the logged in user.",
+        "operationId": "createUser",
+        "requestBody": {
+          "description": "Created user object",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            },
+            "links": {
+              "LoginAsUser": {
+                "operationId": "loginUser",
+                "description": "Log in with the credentials that were just registered.",
+                "parameters": {
+                  "username": "$request.body#/username",
+                  "password": "$request.body#/password"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/user/createWithList": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Creates list of users with given input array.",
+        "description": "Creates list of users with given input array.",
+        "operationId": "createUsersWithListInput",
+        "requestBody": {
+          "description": "The users to create, in one batch. The whole list is rejected if any entry is invalid.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/user/login": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Logs user into the system.",
+        "description": "Log into the system.",
+        "operationId": "loginUser",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "query",
+            "description": "The user name for login",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "description": "The password for login in clear text",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "headers": {
+              "X-Rate-Limit": {
+                "description": "calls per hour allowed by the user",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              },
+              "X-Expires-After": {
+                "description": "date in UTC when token expires",
+                "schema": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid username/password supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/user/logout": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Logs out current logged in user session.",
+        "description": "Log user out of the system.",
+        "operationId": "logoutUser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/user/{username}": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get user by user name.",
+        "description": "Get user detail based on username.",
+        "operationId": "getUserByName",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "The name that needs to be fetched. Use user1 for testing",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid username supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Update user resource.",
+        "description": "This can only be done by the logged in user.",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "name that need to be deleted",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Update an existent user in the store",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "400": {
+            "description": "bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Delete user resource.",
+        "description": "This can only be done by the logged in user.",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "The name that needs to be deleted",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted"
+          },
+          "400": {
+            "description": "Invalid username supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/failures/server-error": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Always fails with a 500",
+        "description": "Unconditionally answers **500** with the standard `Error` body — what an unhandled server-side crash looks like in this documentation.",
+        "operationId": "failServerError",
+        "responses": {
+          "500": {
+            "description": "Deliberate internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/unavailable": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Always 503, with Retry-After",
+        "description": "Unconditionally answers **503 Service Unavailable** carrying a `Retry-After` header — watch the response panel count it down.",
+        "operationId": "failUnavailable",
+        "responses": {
+          "503": {
+            "description": "Deliberately unavailable; the header says when to come back.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "example": 30
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/rate-limit": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Always throttled (429)",
+        "description": "Answers **429 Too Many Requests**: this endpoint's quota is permanently exhausted, `RateLimit-Remaining` is `0`, and `Retry-After` says when the window resets.",
+        "operationId": "failRateLimit",
+        "responses": {
+          "429": {
+            "description": "Out of quota.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "example": 30
+              },
+              "RateLimit-Remaining": {
+                "description": "Requests left in the current window: zero, here.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "0"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/protected": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Requires the demo bearer token",
+        "description": "Answers **200** only with the demo bearer token (`auth.bearerAuth` in the prefilled environment); anything else gets a **401** — the first place the prefilled credentials visibly matter.",
+        "operationId": "failProtected",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The token was accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Confirmation that the token was accepted."
+                    }
+                  },
+                  "example": {
+                    "message": "Authenticated as the demo token."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/forbidden": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Valid token, insufficient scope (403)",
+        "description": "Even a valid demo token gets a **403** here: authentication is not authorization, and this endpoint's scope is granted to nobody.",
+        "operationId": "failForbidden",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "No valid bearer token at all.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated, but this scope is granted to nobody.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/validation": {
+      "post": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Structured 422 on a bad payload",
+        "description": "Validates the body: a well-formed payload answers **200**, anything else a **422** whose body lists each rejected field with a JSON Pointer.",
+        "operationId": "failValidation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "quantity"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Must contain an @."
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Must be at least 1."
+                  }
+                },
+                "example": {
+                  "email": "jane@example.com",
+                  "quantity": 2
+                }
+              }
+            }
+          },
+          "description": "The payload to validate: a well-formed email and a positive quantity."
+        },
+        "responses": {
+          "200": {
+            "description": "The payload is valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Always `valid` when the payload passes."
+                    }
+                  },
+                  "example": {
+                    "status": "valid"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The payload is invalid; `errors[]` says why, field by field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/slow": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Answers after ~4 seconds",
+        "description": "A deliberately slow **200** (~4 s): long enough for the send meter and `Server-Timing` to become legible, short enough to wait for.",
+        "operationId": "failSlow",
+        "responses": {
+          "200": {
+            "description": "Eventually.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "The reward for waiting."
+                    }
+                  },
+                  "example": {
+                    "message": "Worth the wait."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/malformed": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Declares JSON, sends broken bytes",
+        "description": "Answers **200** with `Content-Type: application/json` and a truncated body that is not valid JSON — the response view falls back to showing the raw bytes.",
+        "operationId": "failMalformed",
+        "responses": {
+          "200": {
+            "description": "Malformed on purpose: the declared JSON never parses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/failures/unreachable": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "A host that does not resolve",
+        "description": "This operation pins its own server on a `.invalid` host — a TLD RFC 2606 guarantees will never resolve. Sending shows the \"unreachable\" network diagnosis, distinct from a CORS refusal.",
+        "operationId": "failUnreachable",
+        "servers": [
+          {
+            "url": "https://api.demo.invalid",
+            "description": "Guaranteed dead by RFC 2606."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Never arrives: the host does not resolve."
+          }
+        }
+      }
+    },
+    "/failures/cors": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "A server that never says CORS",
+        "description": "This operation pins its own server on a reachable public origin that sends no CORS headers: the browser blocks the read, and the panel diagnoses a CORS refusal — not an unreachable host.",
+        "operationId": "failCors",
+        "servers": [
+          {
+            "url": "https://example.com",
+            "description": "Reachable, but no Access-Control-Allow-Origin."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The server answers, but the browser refuses to show it to this origin."
+          }
+        }
+      }
+    },
+    "/failures/hang": {
+      "get": {
+        "tags": [
+          "errors"
+        ],
+        "summary": "Never answers — cancel it",
+        "description": "The server accepts the request and never responds. The Cancel control next to Send is how you get out.",
+        "operationId": "failHang",
+        "responses": {
+          "200": {
+            "description": "Never produced: the request stays in flight until you cancel it."
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "petStatusChanged": {
+      "post": {
+        "summary": "Pet status changed",
+        "description": "Sent to the URL you registered whenever a pet you follow changes status.\n\nAnswer `200` within 5 seconds: the payload is retried with exponential backoff for 24 hours otherwise. Answer `410` to have the subscription dropped.",
+        "operationId": "petStatusChangedWebhook",
+        "parameters": [
+          {
+            "name": "X-Petstore-Signature",
+            "in": "header",
+            "description": "HMAC-SHA256 of the raw body, keyed with the secret shown when you registered the endpoint. Reject the delivery if it does not match.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sha256=3f8a1c9e77b2d4a6e0f5c8b1d2a4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8"
+          },
+          {
+            "name": "X-Petstore-Delivery",
+            "in": "header",
+            "description": "Id of this delivery attempt. Stable across retries of the same event.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PetStatusEvent"
+              },
+              "examples": {
+                "sold": {
+                  "summary": "A pet has been sold",
+                  "value": {
+                    "eventId": "5e1c2f7a-9d0b-4a1f-8f4e-2c9b7d3a11c0",
+                    "petId": 10,
+                    "name": "doggie",
+                    "status": "sold",
+                    "previousStatus": "available",
+                    "changedAt": "2026-07-31T09:24:11Z"
+                  }
+                },
+                "backAvailable": {
+                  "summary": "A pet is available again",
+                  "value": {
+                    "eventId": "b7d4e2a1-6c3f-4e8a-9b0d-1f2a3c4d5e6f",
+                    "petId": 12,
+                    "name": "kitty",
+                    "status": "available",
+                    "previousStatus": "pending",
+                    "changedAt": "2026-07-31T11:02:47Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery acknowledged. The body is ignored."
+          },
+          "410": {
+            "description": "Endpoint gone: the subscription is dropped and no further event is sent."
+          }
+        }
+      }
+    },
+    "orderPlaced": {
+      "post": {
+        "summary": "Order placed",
+        "description": "Sent when a customer places an order on one of your pets. The payload is the order itself, in the same shape as `GET /store/order/{orderId}`.",
+        "operationId": "orderPlacedWebhook",
+        "parameters": [
+          {
+            "name": "X-Petstore-Signature",
+            "in": "header",
+            "description": "HMAC-SHA256 of the raw body, keyed with the secret shown when you registered the endpoint. Reject the delivery if it does not match.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "sha256=3f8a1c9e77b2d4a6e0f5c8b1d2a4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Order"
+              },
+              "examples": {
+                "placed": {
+                  "summary": "Order awaiting approval",
+                  "value": {
+                    "id": 10,
+                    "petId": 198772,
+                    "quantity": 7,
+                    "shipDate": "2026-08-04T10:15:00Z",
+                    "status": "placed",
+                    "complete": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery acknowledged."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "petId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 198772
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "example": 7
+          },
+          "shipDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "description": "Order Status",
+            "example": "approved",
+            "enum": [
+              "placed",
+              "approved",
+              "delivered"
+            ]
+          },
+          "complete": {
+            "type": "boolean"
+          }
+        },
+        "xml": {
+          "name": "order"
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Dogs"
+          }
+        },
+        "xml": {
+          "name": "category"
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "username": {
+            "type": "string",
+            "example": "theUser"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "James"
+          },
+          "email": {
+            "type": "string",
+            "example": "john@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "12345"
+          },
+          "phone": {
+            "type": "string",
+            "example": "12345"
+          },
+          "userStatus": {
+            "type": "integer",
+            "description": "User Status",
+            "format": "int32",
+            "example": 1
+          }
+        },
+        "xml": {
+          "name": "user"
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "xml": {
+          "name": "tag"
+        }
+      },
+      "Pet": {
+        "required": [
+          "name",
+          "photoUrls"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "example": "doggie"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "photoUrls": {
+            "type": "array",
+            "xml": {
+              "nodeType": "element"
+            },
+            "items": {
+              "type": "string",
+              "xml": {
+                "name": "photoUrl"
+              }
+            }
+          },
+          "tags": {
+            "type": "array",
+            "xml": {
+              "nodeType": "element"
+            },
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "pet status in the store",
+            "enum": [
+              "available",
+              "pending",
+              "sold"
+            ]
+          }
+        },
+        "xml": {
+          "name": "pet"
+        }
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "xml": {
+          "name": "##default"
+        }
+      },
+      "PetStatusEvent": {
+        "type": "object",
+        "required": [
+          "eventId",
+          "petId",
+          "status",
+          "changedAt"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique id of this delivery. Use it to make your handler idempotent: the same event may be delivered more than once."
+          },
+          "petId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "example": "doggie"
+          },
+          "status": {
+            "type": "string",
+            "description": "New status of the pet.",
+            "enum": [
+              "available",
+              "pending",
+              "sold"
+            ]
+          },
+          "previousStatus": {
+            "type": "string",
+            "enum": [
+              "available",
+              "pending",
+              "sold"
+            ]
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "petId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "callbackUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "status.changed",
+                "order.placed"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PetSearch": {
+        "type": "object",
+        "description": "Structured search criteria, sent as the body of a `QUERY` request.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Substring matched against the pet name",
+            "examples": [
+              "doggie"
+            ]
+          },
+          "status": {
+            "type": "array",
+            "description": "Statuses to keep; empty means all",
+            "items": {
+              "type": "string",
+              "enum": [
+                "available",
+                "pending",
+                "sold"
+              ]
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "The error body every failure of this API carries.",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The HTTP status, repeated in the body."
+          },
+          "type": {
+            "type": "string",
+            "description": "A stable machine-readable kind for this failure."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation. Wording may change between releases; the code will not."
+          }
+        },
+        "example": {
+          "code": 404,
+          "type": "error",
+          "message": "Pet not found"
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "description": "A 422 body: the request was readable but its content is invalid, field by field.",
+        "required": [
+          "code",
+          "message",
+          "errors"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The HTTP status, repeated in the body."
+          },
+          "type": {
+            "type": "string",
+            "description": "Always `validation` for this shape."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable summary of what was rejected."
+          },
+          "errors": {
+            "type": "array",
+            "description": "One entry per rejected field.",
+            "items": {
+              "type": "object",
+              "required": [
+                "pointer",
+                "message"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "The rejected field, by name."
+                },
+                "pointer": {
+                  "type": "string",
+                  "description": "JSON Pointer to the rejected value in the request body."
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Why this field was rejected."
+                }
+              }
+            }
+          }
+        },
+        "example": {
+          "code": 422,
+          "type": "validation",
+          "message": "The request body is invalid.",
+          "errors": [
+            {
+              "field": "email",
+              "pointer": "/email",
+              "message": "must be a valid email address"
+            }
+          ]
+        }
+      }
+    },
+    "securitySchemes": {
+      "petstore_auth": {
+        "type": "oauth2",
+        "flows": {
+          "implicit": {
+            "authorizationUrl": "/demo-api/oauth/authorize",
+            "scopes": {
+              "write:pets": "modify pets in your account",
+              "read:pets": "read your pets"
+            }
+          },
+          "authorizationCode": {
+            "authorizationUrl": "/demo-api/oauth/authorize",
+            "tokenUrl": "/demo-api/oauth/token",
+            "scopes": {
+              "write:pets": "modify pets in your account",
+              "read:pets": "read your pets"
+            }
+          },
+          "clientCredentials": {
+            "tokenUrl": "/demo-api/oauth/token",
+            "scopes": {
+              "read:pets": "read your pets"
+            }
+          },
+          "deviceAuthorization": {
+            "deviceAuthorizationUrl": "/demo-api/oauth/device_authorization",
+            "tokenUrl": "/demo-api/oauth/token",
+            "scopes": {
+              "read:pets": "read your pets"
+            }
+          }
+        },
+        "description": "OAuth2 against the demo’s own same-origin authorization server, served by the mock service worker — all four flows really answer, anywhere the demo is hosted. Declares its authorization server metadata URL and a device flow, both new in OpenAPI 3.2.",
+        "oauth2MetadataUrl": "/demo-api/oauth/.well-known/oauth-authorization-server"
+      },
+      "api_key": {
+        "type": "apiKey",
+        "name": "api_key",
+        "in": "header",
+        "description": "Legacy header key, kept for existing integrations. Marked `deprecated`, a security scheme field added in OpenAPI 3.2 — use `bearerAuth` instead.",
+        "deprecated": true
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT sent as `Authorization: Bearer …`. The demo mock never verifies it: paste anything, or leave it empty and the call still goes through."
+      },
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  }
+}

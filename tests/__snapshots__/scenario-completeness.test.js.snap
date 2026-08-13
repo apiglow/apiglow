@@ -1,0 +1,138 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the scenario exports keep pace with the scenario model > renders the whole construct set the same way run to run 1`] = `
+"# Onboarding
+
+Create a pet, then read it back.
+
+6 steps, run in order.
+
+## Prerequisites
+
+These variables are referenced by the steps and produced by none of them — set them before running the scenario:
+
+- \`{{auth.apiKey}}\`
+
+## Inputs
+
+Values the scenario carries for its own variables:
+
+- \`{{ownerName}}\` = \`Ada\`
+
+## Step 1 — Create a pet
+
+\`\`\`http
+POST /pets
+\`\`\`
+
+First we create the pet.
+
+- Timeout: 2500 ms
+
+Sends:
+
+- Header \`X-Key\`: \`{{auth.apiKey}}\`
+
+Body (\`application/json\`):
+
+\`\`\`json
+{"name":"Rex","owner":"{{ownerName}}"}
+\`\`\`
+
+Asserts:
+
+- Status is \`201\`
+- \`/name\` in the response body equals \`Rex\`
+
+Extracts, under the names the later steps reference as \`{{var}}\`:
+
+- \`petId\` — response body at \`/id\`
+- \`auth.session\` — response header \`X-Session\` (saved to the environment, sensitive, masked wherever it is shown)
+
+## Step 2 — Read a pet
+
+\`\`\`http
+GET /pets/{petId}
+\`\`\`
+
+- The scenario carries on even if this step fails.
+
+Sends:
+
+- Path \`petId\`: \`{{petId}}\`
+- Query \`verbose\`: \`true\`
+- Cookie \`session\`: \`{{auth.session}}\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+- \`/id\` exists in the response body
+- \`/status\` in the response body matches \`^avail\`
+
+## Step 3 — Search pets
+
+\`\`\`http
+GET /pets
+\`\`\`
+
+Sends:
+
+- Query string: \`sort=name&limit=10\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+- JSONPath \`$[?count(@.pets) > 0]\` selects at least one node in the response body
+
+Extracts, under the names the later steps reference as \`{{var}}\`:
+
+- \`firstPet\` — response body, JSONPath \`$.pets[0].id\`
+
+## Step 4 — Create a pet
+
+\`\`\`http
+POST /pets
+\`\`\`
+
+Sends:
+
+Body (\`application/xml\`):
+
+\`\`\`
+<pet><name>Rex</name></pet>
+\`\`\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+
+## Step 5 — Upload a photo
+
+\`\`\`http
+POST /pets/{petId}/photo
+\`\`\`
+
+Sends:
+
+- Form field \`caption\`: \`Rex at the park\`
+- Form field \`photo\`: the file \`rex.png\`, chosen at run time
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+
+## Step 6 — Create a pet
+
+\`\`\`http
+POST /pets
+\`\`\`
+
+Sends:
+
+- Body: the file \`pets.json\`, chosen at run time
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+"
+`;

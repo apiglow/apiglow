@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Variant of app.html: environments locked by config
+     (environmentsLocked) — two fixed colored envs, no CRUD expected. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E locked — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "light", "available": ["light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs (locked)" },
+      "environmentsLocked": true,
+      "environments": [
+        {
+          "name": "staging",
+          "baseUrl": "https://api.e2e.test/staging",
+          "color": "blue",
+          "variables": {
+            "auth.bearerAuth": { "value": "staging-token", "sensitive": true }
+          }
+        },
+        {
+          "name": "prod",
+          "baseUrl": "https://api.e2e.test/v1",
+          "color": "red",
+          "variables": {
+            "auth.bearerAuth": { "value": "prod-token", "sensitive": true }
+          }
+        }
+      ],
+      "docsPages": [],
+      "tryIt": { "proxyUrl": null },
+      "history": { "maxEntries": 500, "maxAgeDays": 30 }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

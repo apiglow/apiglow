@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- Host page for the doc↔panel mirror contract: a body deep enough to sit
+     behind "Expand", a recursive one, and parameters of several shapes. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E mirror — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api-sync.json" },
+      "branding": { "productName": "E2E mirror" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v3" }]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

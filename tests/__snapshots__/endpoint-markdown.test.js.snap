@@ -1,0 +1,179 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`endpoint page Markdown export > 3.2 constructs: free-form method, querystring, itemSchema, response summary 1`] = `
+"# Stream pets
+
+\`\`\`http
+PURGE https://api.example.com/pets/stream
+\`\`\`
+
+## Query string
+
+- \`filter\` (string) — JSONPath filter
+
+## Responses
+
+### 200 — Server-sent events
+
+Body \`text/event-stream\`:
+
+Stream item:
+
+- \`id\` (integer, required)
+
+"
+`;
+
+exports[`endpoint page Markdown export > callbacks: payload and expected responses from the integrator server 1`] = `
+"# Update a pet
+
+\`\`\`http
+PUT https://api.example.com/v1/{_locale}/pets/{petId}
+\`\`\`
+
+Updates an existing pet.
+
+Supports partial updates.
+
+## Path parameters
+
+- \`_locale\` (string, required) [values: "fr", "en", default: "fr"]
+- \`petId\` (integer, required) — Pet identifier
+
+## Query parameters
+
+- \`verbose\` (boolean)
+
+## Header parameters
+
+- \`X-Api-Origin\` (string, required)
+
+## Callbacks
+
+### onPetStatus — POST {$request.body#/callbackUrl}
+
+Payload \`application/json\`:
+
+- \`status\` (string)
+
+Expected responses from your server:
+
+- 200 — Received
+"
+`;
+
+exports[`endpoint page Markdown export > full page: header, params, body, responses 1`] = `
+"# Update a pet
+
+\`\`\`http
+PUT https://api.example.com/v1/{_locale}/pets/{petId}
+\`\`\`
+
+Updates an existing pet.
+
+Supports partial updates.
+
+## Path parameters
+
+- \`_locale\` (string, required) [values: "fr", "en", default: "fr"]
+- \`petId\` (integer, required) — Pet identifier
+
+## Query parameters
+
+- \`verbose\` (boolean)
+
+## Header parameters
+
+- \`X-Api-Origin\` (string, required)
+
+## Request body — \`application/json\` (required)
+
+Pet payload
+
+- \`name\` (string, required) [length: 1–50]
+- \`tags\` (array<string>)
+- \`owner\` (object) — Owner of the pet
+  - \`id\` (integer, required) [read-only]
+  - \`email\` (string (email))
+
+Example:
+
+\`\`\`json
+{
+  "name": "Rex",
+  "tags": [
+    "dog"
+  ]
+}
+\`\`\`
+
+## Responses
+
+### 200 — Updated pet
+
+Headers:
+
+- \`X-Rate-Limit\` (integer) — Remaining calls
+
+Body \`application/json\`:
+
+- \`id\` (integer, required)
+
+### 404 — Pet not found
+"
+`;
+
+exports[`endpoint page Markdown export > webhook: dedicated title, direction note, no base URL 1`] = `
+"# Webhook: Pet adopted
+
+> Event "petAdopted" sent by the API to your webhook endpoint via POST.
+
+Sent when a pet is adopted.
+
+## Header parameters
+
+- \`X-Webhook-Signature\` (string, required)
+
+## Request body — \`application/json\` (required)
+
+- \`petId\` (integer, required)
+
+Example:
+
+\`\`\`json
+{
+  "petId": 1
+}
+\`\`\`
+
+## Responses
+
+### 200 — Acknowledged
+"
+`;
+
+exports[`endpoint page Markdown export > without base URL or summary: title falls back to method + path 1`] = `
+"# PUT /{_locale}/pets/{petId}
+
+\`\`\`http
+PUT /{_locale}/pets/{petId}
+\`\`\`
+
+Updates an existing pet.
+
+Supports partial updates.
+
+## Path parameters
+
+- \`_locale\` (string, required) [values: "fr", "en", default: "fr"]
+- \`petId\` (integer, required) — Pet identifier
+
+## Query parameters
+
+- \`verbose\` (boolean)
+
+## Header parameters
+
+- \`X-Api-Origin\` (string, required)
+"
+`;

@@ -1,0 +1,96 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`export Arazzo 1.1 > renders a stable and structurally complete document 1`] = `
+{
+  "arazzo": "1.1.0",
+  "info": {
+    "description": "Create a pet, then read it back.",
+    "title": "Onboarding",
+    "version": "1.0.0",
+  },
+  "sourceDescriptions": [
+    {
+      "name": "openapi",
+      "type": "openapi",
+      "url": "https://api.example.com/openapi.json",
+    },
+  ],
+  "workflows": [
+    {
+      "description": "Create a pet, then read it back.",
+      "inputs": {
+        "properties": {
+          "auth_bearerAuth": {
+            "description": "auth.bearerAuth",
+            "type": "string",
+          },
+          "ownerName": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "auth_bearerAuth",
+          "ownerName",
+        ],
+        "type": "object",
+      },
+      "steps": [
+        {
+          "description": "First we create the pet.",
+          "operationId": "$sourceDescriptions.openapi.createPet",
+          "outputs": {
+            "auth_session": "$response.header.X-Session",
+            "petId": "$response.body#/id",
+          },
+          "parameters": [
+            {
+              "in": "header",
+              "name": "Authorization",
+              "value": "Bearer {$inputs.auth_bearerAuth}",
+            },
+          ],
+          "requestBody": {
+            "contentType": "application/json",
+            "payload": {
+              "name": "Rex",
+              "owner": "$inputs.ownerName",
+            },
+          },
+          "stepId": "createPet",
+          "successCriteria": [
+            {
+              "condition": "$statusCode == 201",
+            },
+            {
+              "condition": "$response.body#/name == 'Rex'",
+            },
+          ],
+        },
+        {
+          "operationPath": "{$sourceDescriptions.openapi.url}#/paths/~1pets~1{petId}/get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "petId",
+              "value": "$steps.createPet.outputs.petId",
+            },
+            {
+              "in": "query",
+              "name": "verbose",
+              "value": "true",
+            },
+          ],
+          "stepId": "get-pets-petid",
+          "successCriteria": [
+            {
+              "condition": "$statusCode >= 200 && $statusCode <= 299",
+            },
+          ],
+        },
+      ],
+      "summary": "Onboarding",
+      "workflowId": "onboarding",
+    },
+  ],
+}
+`;

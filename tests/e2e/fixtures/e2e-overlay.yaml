@@ -1,0 +1,14 @@
+# Overlay served by URL, in YAML — the form the ecosystem writes them in, and
+# the one that proves the loader parses more than JSON here.
+overlay: 1.0.0
+info:
+  title: E2E overlay
+  version: 1.0.0
+actions:
+  - target: $.paths['/things'].get
+    description: The doc says "things", the product says "widgets".
+    update:
+      summary: List widgets
+  - target: $.paths['/things/{thingId}']
+    description: Not part of the public offering.
+    remove: true

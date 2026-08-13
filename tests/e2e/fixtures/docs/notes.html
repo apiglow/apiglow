@@ -1,0 +1,10 @@
+<h1>Reference notes</h1>
+<p>This page is authored as HTML and rendered through the same sanitizer as
+everything else external.</p>
+<h2>Sanitization</h2>
+<p>A hostile payload never survives the pipeline.</p>
+<img src="x" onerror="window.__docsHtmlXss = true">
+<script>window.__docsHtmlXss = true</script>
+<h2>No markdown features</h2>
+<blockquote><p>[!WARNING] this stays a blockquote</p></blockquote>
+<pre><code class="language-json">{ "ok": true }</code></pre>

@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- Host page for the docs-pages e2e suite (docs/docs-pages.md): the same
+     minimal schema as app.html, with a docsPages config exercising every
+     entry kind — pages, one level of groups, external links, an i18n'd page
+     and a home takeover. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E docs pages — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" },
+      "environments": [
+        {
+          "name": "e2e",
+          "baseUrl": "https://api.e2e.test/v1",
+          "variables": {
+            "baseUrl": { "value": "https://api.e2e.test/v1" },
+            "tenant": { "value": "acme" },
+            "token": { "value": "e2e-secret-value", "sensitive": true }
+          }
+        },
+        {
+          "name": "other",
+          "baseUrl": "https://other.e2e.test/v1",
+          "variables": {
+            "baseUrl": { "value": "https://other.e2e.test/v1" },
+            "tenant": { "value": "globex" }
+          }
+        }
+      ],
+      "feedback": { "url": "/feedback" },
+      "docsPages": [
+        {
+          "slug": "intro",
+          "title": "Introduction",
+          "url": "/tests/e2e/fixtures/docs/intro.md",
+          "home": true
+        },
+        {
+          "group": "Guides",
+          "id": "guides",
+          "pages": [
+            { "slug": "pagination", "title": "Pagination", "url": "/tests/e2e/fixtures/docs/pagination.md" },
+            { "slug": "errors", "title": "Errors", "url": "/tests/e2e/fixtures/docs/errors.md" },
+            { "title": "Status page", "href": "https://status.e2e.test" }
+          ]
+        },
+        {
+          "group": "Closed by default",
+          "id": "closed",
+          "collapsed": true,
+          "pages": [
+            { "slug": "hidden-guide", "title": "Hidden guide", "url": "/tests/e2e/fixtures/docs/pagination.md" },
+            { "slug": "changelog", "title": "Changelog", "url": "/tests/e2e/fixtures/docs/changelog.md", "kind": "changelog" },
+            { "slug": "notes", "title": "Reference notes", "url": "/tests/e2e/fixtures/docs/notes.html" },
+            { "slug": "changes", "title": "Raw changelog", "url": "/tests/e2e/fixtures/docs/changes.txt" },
+            { "slug": "variables", "title": "Personalized", "url": "/tests/e2e/fixtures/docs/variables.md" }
+          ]
+        },
+        {
+          "slug": "guide",
+          "title": { "en": "Localized guide", "fr": "Guide localisé" },
+          "url": {
+            "en": "/tests/e2e/fixtures/docs/guide.en.md",
+            "fr": "/tests/e2e/fixtures/docs/guide.fr.md"
+          }
+        },
+        { "title": "GitHub", "href": "https://github.e2e.test/acme" },
+        { "slug": "support", "title": "Support", "content": "# Support\n\nMail us.\n", "nav": "bottom" },
+        {
+          "group": "Legal",
+          "id": "legal",
+          "nav": "bottom",
+          "pages": [
+            { "slug": "terms", "title": "Terms", "content": "# Terms\n\nBe nice.\n" },
+            { "title": "Trust center", "href": "https://trust.e2e.test" }
+          ]
+        }
+      ]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

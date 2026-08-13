@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`XML > renders a document: attributes, namespace, wrapped and bare arrays, CDATA 1`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<b:book xmlns:b="https://example.com/ns" id="7" legacyAttr="old">
+  <title>Dune &amp; Sons &lt;best&gt;</title>
+  <![CDATA[a <b>bold</b> book]]>
+  <authors>
+    <author>Frank</author>
+  </authors>
+  <tag>sci-fi</tag>
+</b:book>"
+`;

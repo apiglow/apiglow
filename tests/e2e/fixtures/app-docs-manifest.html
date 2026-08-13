@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- docsPages declared as a manifest URL (docs/docs-pages.md §2.2): relative urls inside it resolve against the manifest itself. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E docs manifest — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Docs" },
+      "docsPages": "/tests/e2e/fixtures/docs/manifest.json"
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Host page for the declared-Arazzo suite (docs/scenarios.md §3): a workflow
+     document this project did not write, declared as it stands by `url` (YAML,
+     two workflows, its own sourceDescriptions), and a second one carried
+     straight in the config by `document` — the two carriers, one format. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E Arazzo — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Arazzo" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v1" }],
+      "scenarios": [
+        {
+          "id": "pet-operations",
+          "title": "Pet operations",
+          "url": "/tests/e2e/fixtures/e2e-third-party.arazzo.yaml"
+        },
+        {
+          "id": "carried",
+          "title": "Carried in the config",
+          "pinned": true,
+          "document": {
+            "arazzo": "1.1.0",
+            "info": { "title": "Carried", "version": "1.0.0" },
+            "sourceDescriptions": [
+              { "name": "petstore", "url": "https://api.production.test/openapi.json", "type": "openapi" }
+            ],
+            "workflows": [
+              {
+                "workflowId": "read-account",
+                "summary": "Read the account",
+                "steps": [{ "stepId": "account", "operationId": "getAccount" }]
+              }
+            ]
+          }
+        }
+      ]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

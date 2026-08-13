@@ -1,0 +1,14 @@
+Petstore API — raw release notes
+================================
+
+These notes are served as a .txt file: no Markdown, no HTML, no table of
+contents. The app renders them as escaped text in a <pre> block, exactly as
+the file was written.
+
+1.0.27  Switched the pet store to the design-first approach.
+        Added QUERY /pet/search with its structured filter body.
+
+1.0.26  Fixed pagination on GET /pet/findByStatus.
+        Documented the api_key header.
+
+1.0.25  Added GET /pet/search with its RSQL filter expression.

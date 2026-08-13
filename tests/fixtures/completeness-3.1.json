@@ -1,0 +1,94 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Completeness API",
+    "version": "9.0.0",
+    "description": "Every construct a normalized operation can carry, in one document."
+  },
+  "externalDocs": { "url": "https://docs.example.test", "description": "Handbook" },
+  "servers": [{ "url": "https://api.example.test/v9", "description": "Production" }],
+  "security": [{ "apiKeyAuth": [] }],
+  "tags": [{ "name": "Things", "description": "Everything about things." }],
+  "paths": {
+    "/things/{thingId}": {
+      "post": {
+        "operationId": "createThing",
+        "summary": "Create a thing",
+        "description": "Creates a thing and schedules its indexing.",
+        "deprecated": true,
+        "tags": ["Things"],
+        "externalDocs": { "url": "https://docs.example.test/things" },
+        "security": [{ "apiKeyAuth": ["things:write"] }],
+        "servers": [{ "url": "https://ops.example.test/v9", "description": "Ops plane" }],
+        "parameters": [
+          {
+            "name": "thingId",
+            "in": "path",
+            "required": true,
+            "description": "Identifier of the thing.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["label"],
+                "properties": { "label": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "id": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "callbacks": {
+          "indexed": {
+            "{$request.body#/callbackUrl}": {
+              "post": {
+                "description": "Sent once the thing is indexed.",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "object", "properties": { "id": { "type": "string" } } }
+                    }
+                  }
+                },
+                "responses": { "204": { "description": "Acknowledged." } }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "thingChanged": {
+      "post": {
+        "summary": "Thing changed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "id": { "type": "string" } } }
+            }
+          }
+        },
+        "responses": { "204": { "description": "Acknowledged." } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-Api-Key" }
+    }
+  }
+}

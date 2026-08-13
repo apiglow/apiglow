@@ -1,0 +1,53 @@
+<!doctype html>
+<!-- Multi-spec host page (docs/multi-spec.md): same mechanics as
+     app.html, but two schemas declared via openapi.specs. Serves the
+     acceptance criteria of docs/multi-spec.md §7 — selector, prefixed
+     deep-links, storage isolation (app.html shares this origin). -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E multi-spec — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "specs": [
+          { "id": "pets", "title": "Pets API", "url": "/tests/e2e/fixtures/e2e-api.json",
+            "scenarios": [
+              { "id": "onboarding", "title": "Onboarding", "url": "/tests/e2e/fixtures/e2e-scenario.json" }
+            ] },
+          { "id": "billing", "title": "Billing API", "url": "/tests/e2e/fixtures/e2e-api-b.json",
+            "branding": { "productName": "Billing Docs", "logoUrl": "/tests/e2e/fixtures/billing.svg" },
+            "features": { "scenarios": false },
+            "theme": { "default": "dark", "available": ["dark"] },
+            "environmentsLocked": true,
+            "environments": [
+              { "name": "billing-env", "baseUrl": "https://api.e2e.test/billing" }
+            ] }
+        ],
+        "default": "pets"
+      },
+      "theme": { "default": "light", "available": ["light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Multi Docs" },
+      "environments": [
+        {
+          "name": "e2e",
+          "baseUrl": "https://api.e2e.test/v1",
+          "variables": {
+            "token": { "value": "tok-123", "sensitive": false },
+            "auth.bearerAuth": { "value": "e2e-bearer-token", "sensitive": true }
+          }
+        }
+      ],
+      "docsPages": [
+        { "title": "Getting started", "url": "/tests/e2e/fixtures/getting-started.md", "slug": "getting-started" }
+      ],
+      "history": { "maxEntries": 500, "maxAgeDays": 30 }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

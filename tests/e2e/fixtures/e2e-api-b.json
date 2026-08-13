@@ -1,0 +1,39 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Billing E2E API",
+    "version": "2.0.0",
+    "description": "Second spec of the multi-spec fixture: minimal, unrelated to the first one."
+  },
+  "servers": [{ "url": "https://api.e2e.test/billing" }],
+  "tags": [{ "name": "Invoices" }],
+  "paths": {
+    "/invoices": {
+      "get": {
+        "operationId": "listInvoices",
+        "tags": ["Invoices"],
+        "summary": "List invoices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "amount": { "type": "number" }
+                    }
+                  }
+                },
+                "example": [{ "id": "inv_1", "amount": 42.5 }]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

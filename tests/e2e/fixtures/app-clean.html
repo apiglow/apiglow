@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Variant of app.html served a schema written to pass every audit rule
+     (e2e-api-clean.json): the only way to see the report's perfect state
+     rendered, and the guarantee that it stays reachable at all. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (clean schema)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api-clean.json" },
+      "theme": { "default": "light", "available": ["light", "dark", "corporate"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

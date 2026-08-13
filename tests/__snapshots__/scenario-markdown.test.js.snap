@@ -1,0 +1,66 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toScenarioMarkdown > full document: prerequisites, inputs, one section per step 1`] = `
+"# Onboarding
+
+Create a pet, then read it back.
+
+2 steps, run in order.
+
+## Inputs
+
+Values the scenario carries for its own variables:
+
+- \`{{ownerName}}\` = \`Ada\`
+- \`{{auth.apiKey}}\` = \`••••\`
+
+## Step 1 — Create a pet
+
+\`\`\`http
+POST https://api.example.com/v1/pets
+\`\`\`
+
+First we create the pet.
+
+- Timeout: 2500 ms
+
+Sends:
+
+- Header \`X-Key\`: \`{{auth.apiKey}}\`
+
+Body (\`application/json\`):
+
+\`\`\`json
+{"name":"Rex","owner":"{{ownerName}}"}
+\`\`\`
+
+Asserts:
+
+- Status is \`201\`
+- \`/name\` in the response body equals \`Rex\`
+
+Extracts, under the names the later steps reference as \`{{var}}\`:
+
+- \`petId\` — response body at \`/id\`
+- \`auth.session\` — response header \`X-Session\` (saved to the environment, sensitive, masked wherever it is shown)
+
+## Step 2 — Read a pet
+
+\`\`\`http
+GET https://api.example.com/v1/pets/{petId}
+\`\`\`
+
+- The scenario carries on even if this step fails.
+
+Sends:
+
+- Path \`petId\`: \`{{petId}}\`
+- Query \`verbose\`: \`true\`
+- Query \`tags\`: \`["cat","dog"]\`
+
+Asserts:
+
+- Status in the \`2xx\` range (the default verdict)
+- \`/id\` exists in the response body
+"
+`;

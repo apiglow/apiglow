@@ -1,0 +1,85 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Metadata E2E API",
+    "version": "2.1.0",
+    "summary": "Everything the info block can say.",
+    "termsOfService": "https://metadata.e2e.test/terms",
+    "contact": { "name": "API team", "email": "api@metadata.e2e.test" },
+    "license": { "name": "Apache 2.0", "identifier": "Apache-2.0" }
+  },
+  "externalDocs": { "description": "Developer portal", "url": "https://metadata.e2e.test/docs" },
+  "servers": [{ "url": "https://api.e2e.test/v1" }],
+  "tags": [
+    {
+      "name": "Pets",
+      "description": "Everything about pets",
+      "externalDocs": { "description": "Pet guide", "url": "https://metadata.e2e.test/docs/pets" }
+    }
+  ],
+  "paths": {
+    "/pets": {
+      "post": {
+        "operationId": "createPet",
+        "tags": ["Pets"],
+        "summary": "Create a pet",
+        "externalDocs": {
+          "description": "Creation rules",
+          "url": "https://metadata.e2e.test/docs/create"
+        },
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "links": {
+              "GetPetById": {
+                "description": "Read the pet back.",
+                "operationId": "getPet",
+                "parameters": { "petId": "$response.body#/id" }
+              },
+              "DropPet": {
+                "description": "Pointer form, at an operation with no operationId.",
+                "operationRef": "#/paths/~1pets~1{petId}/delete"
+              },
+              "Elsewhere": {
+                "description": "Another document: nothing to navigate to.",
+                "operationRef": "https://other.e2e.test/openapi.json#/paths/~1x/get"
+              }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } }
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "parameters": [
+        { "name": "petId", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "operationId": "getPet",
+        "tags": ["Pets"],
+        "summary": "Read a pet",
+        "responses": { "200": { "description": "One pet" } }
+      },
+      "delete": {
+        "tags": ["Pets"],
+        "summary": "Delete a pet",
+        "responses": { "204": { "description": "Gone" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "externalDocs": {
+          "description": "Pet model",
+          "url": "https://metadata.e2e.test/docs/pet-model"
+        },
+        "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+      }
+    }
+  }
+}

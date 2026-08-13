@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- Host page for the Swagger 2.0 suite: a legacy document served as-is, which
+     the app converts at load. No environment: the servers come from
+     host + basePath + schemes, which is half of what this suite proves. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E Swagger 2.0 — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api-swagger2.json" },
+      "branding": { "productName": "E2E Swagger 2.0" }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

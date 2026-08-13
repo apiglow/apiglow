@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- Variant of app.html with the CI hand-off cut off by config
+     (features.ci: false): the "Automate this scenario" panel disappears from
+     every scenario page, and nothing else moves — the Arazzo export stays in
+     the menu, and what the AI surfaces publish is governed by the declaration
+     alone (docs/scenario-handoff.md §2). -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (no CI panel)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Docs" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v1" }],
+      "scenarios": [
+        { "id": "onboarding", "title": "Onboarding", "url": "/tests/e2e/fixtures/e2e-scenario.json" }
+      ],
+      "features": { "ci": false }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

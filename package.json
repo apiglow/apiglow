@@ -1,0 +1,91 @@
+{
+  "name": "apiglow",
+  "version": "0.1.0",
+  "description": "Interactive API documentation generated at runtime from an OpenAPI schema — single-script CDN install.",
+  "homepage": "https://apiglow.dev",
+  "type": "module",
+  "license": "MIT",
+  "author": "jeje",
+  "keywords": [
+    "openapi",
+    "api-documentation",
+    "swagger",
+    "api-docs",
+    "documentation",
+    "try-it",
+    "api-client",
+    "arazzo",
+    "daisyui",
+    "web-components"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apiglow/apiglow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/apiglow/apiglow/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/app.js",
+    "./app.css": "./dist/app.css"
+  },
+  "bin": {
+    "apiglow": "dist/bake.js"
+  },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 128",
+    "safari >= 16.4",
+    "ios_saf >= 16.4"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --config vite.bake.config.js",
+    "test": "vitest run",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:all": "playwright test --workers=4",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "preview:cdn": "node scripts/preview-cdn.mjs",
+    "health": "npm run health:exports --silent && npm run health:i18n --silent && npm run health:orphans --silent && npm run health:svg --silent && npm run health:size --silent && npm run health:css --silent",
+    "health:exports": "node scripts/health/dead-exports.mjs",
+    "health:i18n": "node scripts/health/i18n-keys.mjs",
+    "health:orphans": "node scripts/health/orphans.mjs",
+    "health:svg": "node scripts/health/svg-dupes.mjs",
+    "health:size": "node scripts/health/size.mjs",
+    "health:css": "node scripts/health/css-orphans.mjs",
+    "health:skills": "node scripts/health/audit-skills.mjs",
+    "health:specs": "node scripts/health/spec-versions.mjs",
+    "check:invariants": "node scripts/check-invariants.mjs",
+    "check:dist": "node scripts/check-dist.mjs",
+    "check:syntax": "es-check checkBrowser dist/app.js --module --checkFeatures"
+  },
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "15.5.1",
+    "dompurify": "3.4.13",
+    "highlight.js": "11.11.1",
+    "json-p3": "2.2.2",
+    "marked": "18.0.9"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@biomejs/biome": "2.5.7",
+    "@fontsource-variable/source-serif-4": "5.3.0",
+    "@playwright/test": "1.62.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@vitest/coverage-v8": "4.1.10",
+    "browserslist-to-esbuild": "2.1.1",
+    "daisyui": "5.7.16",
+    "es-check": "9.6.4",
+    "fake-indexeddb": "6.2.5",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  }
+}

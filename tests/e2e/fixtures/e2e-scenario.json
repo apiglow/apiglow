@@ -1,0 +1,47 @@
+{
+  "format": "apiglow-scenario",
+  "v": 1,
+  "scenario": {
+    "name": "Onboarding",
+    "description": "Create a pet, then read it back.",
+    "steps": [
+      {
+        "id": "step-create",
+        "opId": "createPet",
+        "note": "First we create the pet.",
+        "request": {
+          "body": "{\"name\":\"Rex\"}"
+        },
+        "expect": {
+          "status": 201
+        },
+        "extract": [
+          {
+            "name": "petId",
+            "source": "body",
+            "pointer": "/id"
+          },
+          {
+            "name": "auth.session",
+            "source": "body",
+            "pointer": "/name",
+            "persist": true
+          }
+        ]
+      },
+      {
+        "id": "step-read",
+        "opId": "getPet",
+        "request": {
+          "path": {
+            "petId": "{{petId}}"
+          }
+        }
+      },
+      {
+        "id": "step-gone",
+        "opId": "removedFromSchema"
+      }
+    ]
+  }
+}

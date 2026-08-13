@@ -1,0 +1,83 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`audit report on the demo petstore > matches the recorded report 1`] = `
+"OpenAPI 3.2.0 — grade A (95/100)
+error 0 · warning 4 · info 62
+
+## correctness — 100 % over 320 checks
+  (no finding)
+
+## completeness — 80 % over 236 checks
+  warning request-body-described — subscribeToPet (onPetStatus · POST {$request.body#/callbackUrl})
+  warning request-body-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring)
+  warning request-body-described — orderPlacedWebhook
+  warning request-body-described — petStatusChangedWebhook
+  info property-described — /components/schemas/ApiResponse/properties/code {"name":"code"}
+  info property-described — /components/schemas/ApiResponse/properties/message {"name":"message"}
+  info property-described — /components/schemas/ApiResponse/properties/type {"name":"type"}
+  info property-described — /components/schemas/Category/properties/id {"name":"id"}
+  info property-described — /components/schemas/Category/properties/name {"name":"name"}
+  info property-described — /components/schemas/Order/properties/complete {"name":"complete"}
+  info property-described — /components/schemas/Order/properties/id {"name":"id"}
+  info property-described — /components/schemas/Order/properties/petId {"name":"petId"}
+  info property-described — /components/schemas/Order/properties/quantity {"name":"quantity"}
+  info property-described — /components/schemas/Order/properties/shipDate {"name":"shipDate"}
+  info property-described — /components/schemas/Pet/properties/category {"name":"category"}
+  info property-described — /components/schemas/Pet/properties/id {"name":"id"}
+  info property-described — /components/schemas/Pet/properties/name {"name":"name"}
+  info property-described — /components/schemas/Pet/properties/photoUrls {"name":"photoUrls"}
+  info property-described — /components/schemas/Pet/properties/tags {"name":"tags"}
+  info property-described — /components/schemas/PetSearch/properties/limit {"name":"limit"}
+  info property-described — /components/schemas/PetSearch/properties/tags {"name":"tags"}
+  info property-described — /components/schemas/PetStatusEvent/properties/changedAt {"name":"changedAt"}
+  info property-described — /components/schemas/PetStatusEvent/properties/name {"name":"name"}
+  info property-described — /components/schemas/PetStatusEvent/properties/petId {"name":"petId"}
+  info property-described — /components/schemas/PetStatusEvent/properties/previousStatus {"name":"previousStatus"}
+  info property-described — /components/schemas/Subscription/properties/callbackUrl {"name":"callbackUrl"}
+  info property-described — /components/schemas/Subscription/properties/createdAt {"name":"createdAt"}
+  info property-described — /components/schemas/Subscription/properties/events {"name":"events"}
+  info property-described — /components/schemas/Subscription/properties/id {"name":"id"}
+  info property-described — /components/schemas/Subscription/properties/petId {"name":"petId"}
+  info property-described — /components/schemas/Tag/properties/id {"name":"id"}
+  info property-described — /components/schemas/Tag/properties/name {"name":"name"}
+  info property-described — /components/schemas/User/properties/email {"name":"email"}
+  info property-described — /components/schemas/User/properties/firstName {"name":"firstName"}
+  info property-described — /components/schemas/User/properties/id {"name":"id"}
+  info property-described — /components/schemas/User/properties/lastName {"name":"lastName"}
+  info property-described — /components/schemas/User/properties/password {"name":"password"}
+  info property-described — /components/schemas/User/properties/phone {"name":"phone"}
+  info property-described — /components/schemas/User/properties/username {"name":"username"}
+  info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"expiresAt"}
+  info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"subscriptionId"}
+  info response-example — failMalformed {"status":"200"}
+  info response-example — addPet {"status":"200"}
+  info response-example — updatePet {"status":"200"}
+  info response-example — findPetsByStatus {"status":"200"}
+  info response-example — findPetsByTags {"status":"200"}
+  info response-example — filterPets {"status":"200"}
+  info response-example — searchPets {"status":"200"}
+  info response-example — getPetById {"status":"200"}
+  info response-example — updatePetWithForm {"status":"200"}
+  info response-example — streamPetEvents {"status":"200"}
+  info response-example — subscribeToPet {"status":"201"}
+  info response-example — uploadFile {"status":"200"}
+  info response-example — getInventory {"status":"200"}
+  info response-example — placeOrder {"status":"200"}
+  info response-example — getOrderById {"status":"200"}
+  info response-example — createUser {"status":"200"}
+  info response-example — createUsersWithListInput {"status":"200"}
+  info response-example — loginUser {"status":"200"}
+  info response-example — getUserByName {"status":"200"}
+
+## deprecation — 99 % over 198 checks
+  info deprecated-inventory — /components/securitySchemes/api_key {"name":"api_key"}
+  info deprecated-inventory — findPetsByTags
+
+## consistency — 96 % over 53 checks
+  info path-style — failRateLimit {"segment":"rate-limit","style":"kebab-case","dominant":"camelCase"}
+  info path-style — failServerError {"segment":"server-error","style":"kebab-case","dominant":"camelCase"}
+
+## readiness — 99 % over 153 checks
+  info operation-examples — failMalformed
+  info security-scheme-described — /components/securitySchemes/basicAuth {"name":"basicAuth"}"
+`;

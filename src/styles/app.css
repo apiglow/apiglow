@@ -1,0 +1,914 @@
+@import "tailwindcss";
+
+/* All standard themes included (cost: CSS variables only) so that
+   theme.available is genuinely free on the end user's side without a rebuild. */
+@plugin "daisyui" {
+  themes: all;
+}
+
+/* Display serif for titles (docs/architecture.md §5.9). Variable weight, latin
+   subset only: prose and code never use it, so the missing subsets can at
+   worst affect a heading typed in another script — the serif stack below
+   picks those up. The URL is deliberately opaque to the bundler (lib mode
+   would inline it into app.css as base64): the woff2 travels next to app.css
+   like i18n/*.json, copied there by the `display-font` Vite plugin, and is
+   credited in the About dialog (OFL). */
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url("./fonts/source-serif-4-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+/* ApiGlow design tokens. The type scale and spacing rhythm exist so that
+   components stop inventing sizes call site by call site: chrome uses these
+   utilities (`text-display`, `text-label`, `mt-section`, …), never raw
+   arbitrary values. `--font-display` is reserved for titles — UI chrome and
+   body text stay on the system sans stack. */
+@theme {
+  --font-display: "Source Serif 4 Variable", "Iowan Old Style", "Palatino Linotype", Georgia,
+    "Times New Roman", serif;
+
+  /* Page/operation title */
+  --text-display: 2rem;
+  --text-display--line-height: 1.2;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.01em;
+  /* Section heading (h2 scale) */
+  --text-heading: 1.375rem;
+  --text-heading--line-height: 1.25;
+  --text-heading--font-weight: 600;
+  --text-heading--letter-spacing: -0.005em;
+  /* Sub-heading (h3 scale) */
+  --text-subheading: 1.125rem;
+  --text-subheading--line-height: 1.3;
+  --text-subheading--font-weight: 600;
+  /* Small-caps micro-label structuring dense panels (LANGUAGE, CREDENTIALS…);
+     always paired with `uppercase`. */
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
+
+  /* Vertical rhythm of the doc column: gap between sections, between blocks
+     inside a section, between rows of a block, and inline breathing room. */
+  --spacing-section: 2.5rem;
+  --spacing-block: 1.25rem;
+  --spacing-row: 0.75rem;
+  --spacing-inline: 0.5rem;
+}
+
+/* Text hierarchy without opacity: `opacity-*` dims descendants (badges, icons)
+   and multiplies against itself when nested — a mixed color does neither, and
+   keeps the theme's ink hue. These two levels replace opacity-50/60/70 on text
+   as components get restyled.
+   Both ratios are floored by WCAG AA rather than by taste: on the apiglow pair
+   — the two themes the axe sweep gates `color-contrast` on (§12) — 70 % and
+   66 % of the ink are what clears 4.5:1 on the lightest surface. The hierarchy
+   they buy is small on purpose; the contrast is not negotiable. */
+@utility text-subtle {
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+@utility text-faint {
+  color: color-mix(in oklab, var(--color-base-content) 66%, transparent);
+}
+
+/* The same idea one step further out: a secondary level *inside* a container
+   that paints its own text — an alert, a colored badge, the navy request
+   panel. `text-subtle` cannot serve there, it would swap the container's ink
+   for the theme's. Mixing `currentColor` keeps the hue and, like the two
+   above, leaves badges and icons at full strength — which is the whole reason
+   these exist instead of `opacity-*`. */
+@utility text-quiet {
+  color: color-mix(in oklab, currentColor 75%, transparent);
+}
+
+/* daisyUI dims a handful of text roles below the AA floor with its own tokens
+   (`menu-title`, `stat-title`, `label`, table heads, inactive tabs). They are
+   labels, not decoration — read at 11–12 px, they are exactly the text a
+   low-contrast recipe hurts most — so the design layer takes them over, at the
+   same level as any other secondary text. Everything else about the components
+   is left alone. */
+.menu-title,
+.stat-title,
+.label,
+.table thead,
+.table tfoot,
+.tab:not(.tab-active) {
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+}
+
+/* Separator grammar of the doc column's stacked rows (parameters, schema
+   properties, response headers): a thin rule between siblings, none after the
+   last. One definition — it is the column's core layout, and five hand-copied
+   class strings drifted invisibly. The vertical padding stays at the call site:
+   it is what distinguishes a top-level row from a nested one. */
+@utility api-row {
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-300) 60%, transparent);
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+/* The signature pair, default out of the box (theme.default). Flat surfaces
+   (depth/noise 0), 1px borders, restrained radii; semantic colors are chosen
+   dark enough (light side) / light enough (dark side) that daisyUI's `-soft`
+   derivations — the method badges, the most visible element of the app — stay
+   readable against the tinted base, which the stock themes never guaranteed. */
+@plugin "daisyui/theme" {
+  name: "apiglow";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: #ffffff;
+  --color-base-200: #f7f8fa;
+  --color-base-300: #e5e8ef;
+  --color-base-content: #1c2433;
+  --color-primary: #4f46e5;
+  --color-primary-content: #ffffff;
+  --color-secondary: #6d28d9;
+  --color-secondary-content: #ffffff;
+  --color-accent: #0f766e;
+  --color-accent-content: #ffffff;
+  --color-neutral: #1f2937;
+  --color-neutral-content: #f7f8fa;
+  --color-info: #1d4ed8;
+  --color-info-content: #ffffff;
+  --color-success: #15803d;
+  --color-success-content: #ffffff;
+  --color-warning: #b45309;
+  --color-warning-content: #ffffff;
+  --color-error: #dc2626;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.25rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "apiglow-dark";
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: #10141c;
+  --color-base-200: #161b25;
+  --color-base-300: #222937;
+  --color-base-content: #e6e9f0;
+  --color-primary: #818cf8;
+  --color-primary-content: #11142e;
+  --color-secondary: #a78bfa;
+  --color-secondary-content: #190e33;
+  --color-accent: #2dd4bf;
+  --color-accent-content: #062e2a;
+  --color-neutral: #29303f;
+  --color-neutral-content: #e6e9f0;
+  --color-info: #7db2ff;
+  --color-info-content: #082347;
+  --color-success: #4ade80;
+  --color-success-content: #05290f;
+  --color-warning: #fbbf24;
+  --color-warning-content: #422e05;
+  --color-error: #f87171;
+  --color-error-content: #45090b;
+  --radius-selector: 0.25rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Below lg, the nav and the try-it leave the 3-column flow: nav as an off-canvas
+   drawer, try-it as a bottom sheet. Written in CSS rather than with daisyUI's
+   `drawer` component, which imposes a grid enclosing ALL the content (header
+   included) and would break the full-width header above the columns.
+   The panels keep their DOM node: moving the try-it up into a <dialog>
+   would replay connectedCallback and reset the in-progress request.
+   The transition on `visibility` (a discrete property: it flips at the end when
+   hiding it, immediately when showing it) takes the closed panel out of
+   tab order and clicks without breaking the closing animation.
+   No `display` here: the `hidden` class must stay in sole control of the
+   try-it's visibility outside of an operation route. */
+@media (width < 64rem) {
+  .api-offcanvas {
+    position: fixed;
+    z-index: 40;
+    visibility: hidden;
+    background: var(--color-base-100);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transition: transform 0.25s ease, visibility 0.25s;
+  }
+  .api-offcanvas.is-open {
+    visibility: visible;
+    transform: none;
+  }
+  .api-drawer {
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 20rem;
+    max-width: 85vw;
+    border-inline-end: 1px solid var(--color-base-300);
+    transform: translateX(-100%);
+  }
+  .api-sheet {
+    inset-inline: 0;
+    bottom: 0;
+    height: 88dvh;
+    border-top: 1px solid var(--color-base-300);
+    border-start-start-radius: var(--radius-box);
+    border-start-end-radius: var(--radius-box);
+    box-shadow: 0 -0.5rem 1.5rem rgb(0 0 0 / 0.18);
+    transform: translateY(100%);
+  }
+  /* Scrim common to both panels; touch-action blocks scrolling of the content
+     behind it with touch input. */
+  .api-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgb(0 0 0 / 0.4);
+    opacity: 0;
+    visibility: hidden;
+    touch-action: none;
+    transition: opacity 0.25s ease, visibility 0.25s;
+  }
+  .api-scrim.is-open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* Nav active entry: a primary rail and a tint instead of daisyUI's filled
+   neutral block — the filled block reads as a button, the rail reads as a
+   position. Scoped to the nav: menu-active elsewhere (dropdowns) keeps the
+   stock treatment, where "selected item" IS the right semantics. The inset
+   shadow paints the rail without shifting layout the way a border would. */
+api-nav .menu .menu-active {
+  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
+  box-shadow: inset 0.1875rem 0 0 0 var(--color-primary);
+  font-weight: 500;
+}
+
+/* The rail slides in rather than blinking. Declared on every entry and not on
+   `.menu-active`: a transition needs a state to leave, and the class is
+   toggled on live nodes — a route change re-highlights, it does not re-render
+   the list. */
+api-nav .menu li > a,
+api-nav .menu li > button {
+  transition:
+    box-shadow 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Sanitized Markdown content (OpenAPI descriptions, .md pages). Tailwind's
+   preflight neutralizes default styles; the minimum is restored here,
+   without the typography plugin (closed dependency list). */
+.md-content {
+  line-height: 1.65;
+}
+/* Prose headings ride the same scale as the app's own (a docs page and an
+   operation page sit side by side in the nav): the tokens, not copies of their
+   values, so tuning the scale carries the Markdown along. h1 is one notch under
+   `--text-display` — a page title competing with an endpoint's was too loud. */
+.md-content h1 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: var(--text-display--font-weight);
+  letter-spacing: var(--text-display--letter-spacing);
+  margin: 1.25rem 0 0.5rem;
+}
+.md-content h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: var(--text-heading--font-weight);
+  letter-spacing: var(--text-heading--letter-spacing);
+  margin: 1.25rem 0 0.5rem;
+}
+.md-content h3 { font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.md-content h4 { font-weight: 600; margin: 1rem 0 0.5rem; }
+.md-content p { margin: 0.5rem 0; }
+.md-content ul { list-style: disc; margin: 0.5rem 0 0.5rem 1.5rem; }
+.md-content ol { list-style: decimal; margin: 0.5rem 0 0.5rem 1.5rem; }
+.md-content code {
+  background: var(--color-base-200);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+}
+.md-content pre {
+  background: var(--color-base-200);
+  border-radius: var(--radius-box);
+  padding: 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+.md-content pre code { background: transparent; padding: 0; }
+.md-content a { text-decoration: underline; }
+.md-content summary { cursor: pointer; font-weight: 600; }
+.md-content details { margin: 0.5rem 0; }
+/* Dimmed through a mixed color, not opacity (the token rule): opacity would
+   fade a badge or a link sitting inside the quote along with the prose. */
+.md-content blockquote {
+  border-inline-start: 3px solid var(--color-base-300);
+  padding-inline-start: 1rem;
+  margin: 0.75rem 0;
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+}
+/* Callouts (GFM alerts, docs/docs-pages.md §4.2): the stock alert reads as a
+   component dropped into prose; trading its frame for a left accent ties it to
+   the blockquote it degrades from. currentColor is the soft alert's own
+   semantic text color, so the accent follows the callout type for free. */
+.md-content .md-callout {
+  border: 0;
+  border-inline-start: 3px solid currentColor;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+/* API references in prose (docs/docs-pages.md §4.4). An enriched link stays a
+   sentence-level link — the badge rides inline with the text, it does not
+   turn the phrase into a card. A broken reference is struck through and
+   coloured: the author has to see it, the reader has to not follow it. */
+.md-content .apidoc-op-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.md-content .apidoc-op-broken {
+  text-decoration: line-through;
+  color: var(--color-error);
+  cursor: help;
+}
+.md-content .apidoc-op-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.md-content .apidoc-op-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  text-decoration: none;
+}
+.md-content a.apidoc-op-card:hover { background: var(--color-base-200); }
+.md-content .apidoc-op-card-broken {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+.md-content .apidoc-op-path { background: transparent; padding: 0; }
+.md-content .apidoc-op-summary { opacity: 0.75; font-size: 0.9em; }
+
+/* Variable chips (docs/docs-pages.md §12). A RESOLVED value is plain text and
+   gets nothing — the snippet has to read as the snippet. Only the two states
+   that need saying carry a chip: a hidden value and a name nothing resolves.
+   Baseline-aligned and sized in `em` so a chip sitting inside a fence follows
+   the code's own metrics instead of the page's. */
+.md-content .md-var {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  padding: 0 0.35em;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  vertical-align: baseline;
+  /* Stated, not inherited: inside a fence the chip lands in a highlighted
+     token and would otherwise wear its syntax colour — chosen against the
+     code's background, not against the chip's. */
+  color: var(--color-base-content);
+}
+.md-content .md-var-masked {
+  background: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+}
+/* Dimmed by `text-faint`, not by opacity: the utility is floored by AA and the
+   chip already carries the ink the dots would otherwise wash out. */
+.md-content .md-var-dots {
+  letter-spacing: 0.1em;
+}
+/* A warning, not an error: the page is fine, the reader's environment is
+   incomplete — and the button says the fix is one click away. */
+.md-content .md-var-missing {
+  background: color-mix(in oklab, var(--color-warning) 18%, transparent);
+  color: var(--color-base-content);
+  border: 1px dashed color-mix(in oklab, var(--color-warning) 60%, transparent);
+}
+.md-content button.md-var-missing { cursor: pointer; }
+.md-content button.md-var-missing:hover {
+  background: color-mix(in oklab, var(--color-warning) 30%, transparent);
+}
+
+/* Inside a tab group the container owns the spacing (its own margin and gap):
+   the panels' own vertical margin would add a gap above a snippet that is the
+   only thing visible. */
+.md-content .code-tabs pre { margin: 0; }
+/* Horizontal rules only: the full grid framed every cell and read as a
+   spreadsheet; the header carries the small-caps micro-label of the app's own
+   dense panels, so a prose table and a parameter table speak one language. */
+.md-content table { margin: 0.75rem 0; border-collapse: collapse; }
+.md-content th, .md-content td {
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-300) 60%, transparent);
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+}
+.md-content thead th {
+  font-size: var(--text-label);
+  font-weight: var(--text-label--font-weight);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  border-bottom-color: var(--color-base-300);
+}
+
+/* Header of a standalone fenced block (docs/docs-pages.md §4.3): the language
+   token and a copy button. The frame owns the radius so the header and the
+   <pre> meet on a hairline instead of two rounded corners. */
+.md-content .md-code {
+  margin: 0.75rem 0;
+  border: 1px solid color-mix(in oklab, var(--color-base-300) 60%, transparent);
+  border-radius: var(--radius-box);
+  overflow: hidden;
+}
+.md-content .md-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  padding: 0.125rem 0.375rem 0.125rem 1rem;
+  background: var(--color-base-200);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-300) 60%, transparent);
+}
+.md-content .md-code-lang {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-label);
+  font-weight: var(--text-label--font-weight);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  /* 60 % read as the micro-label it is and measured 4.11:1 at 11 px — under
+     the floor rule 15 gates on. Dimmed as far as AA allows, not as far as it
+     looked good. */
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+}
+.md-content .md-code pre { margin: 0; border: 0; border-radius: 0; }
+
+/* Changelog pages (docs/docs-pages.md §4.5): `kind: 'changelog'` on the nav
+   entry, and each h2 is a release on a timeline — dot in the left gutter, one
+   continuous line joining them. The date travels in the heading text; a
+   convention plus CSS, so the page stays a plain changelog anywhere else. */
+.md-content.md-changelog {
+  position: relative;
+  padding-inline-start: 2rem;
+}
+.md-content.md-changelog::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.75rem;
+  inset-inline-start: calc(0.34375rem - 0.5px);
+  width: 1px;
+  background: var(--color-base-300);
+}
+.md-content.md-changelog h2 {
+  position: relative;
+  margin-top: var(--spacing-section);
+}
+/* Dot centered on the gutter line, on the heading's first text line. */
+.md-content.md-changelog h2::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -2rem;
+  top: 0.3em;
+  width: 0.6875rem;
+  height: 0.6875rem;
+  border-radius: calc(infinity * 1px);
+  background: var(--color-base-100);
+  border: 2px solid var(--color-primary);
+}
+
+/* ToC entry of the section being read (docs/docs-pages.md §5): position, not
+   selection — color and weight, no filled block. */
+md-page a.md-toc-active {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Query match inside a palette result: the theme's own tint instead of the
+   browser's highlighter yellow, and no color flip — the mark must survive
+   sitting inside the active (filled) row. */
+search-palette mark {
+  background: color-mix(in oklab, var(--color-primary) 18%, transparent);
+  color: inherit;
+  border-radius: 0.125rem;
+}
+
+/* Scenario step rail: numbered markers in a left gutter, one line joining
+   them. The marker takes
+   the step's verdict color once a run has one, and the active step — the one
+   a capture landed on, or the run's current position — is the anchored card.
+   Keyed on data attributes so every class stays static (rule 2). */
+.api-step-rail {
+  position: relative;
+  padding-inline-start: 2.5rem;
+}
+.api-step-rail::before {
+  content: "";
+  position: absolute;
+  inset-block: 1rem;
+  inset-inline-start: calc(0.875rem - 0.5px);
+  width: 1px;
+  background: var(--color-base-300);
+}
+.api-step-marker {
+  position: absolute;
+  inset-inline-start: -2.5rem;
+  top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: calc(infinity * 1px);
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-100);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.api-step-rail > li[data-step-status="ok"] > .api-step-marker {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+.api-step-rail > li[data-step-status="failed"] > .api-step-marker {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+.api-step-rail > li[data-step-status="blocked"] > .api-step-marker {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+.api-step-rail > li[data-step-active] {
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--color-primary) 4%, transparent);
+}
+.api-step-rail > li[data-step-active] > .api-step-marker {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+/* `collapse` on a `<details>`: daisyUI animates the grid track (0fr → 1fr) and
+   Chrome interposes `::details-content`, whose height animates too.
+   The pseudo-element's discrete values (visibility, content-visibility,
+   overflow) only flip mid-transition, to keep the content
+   painted while the frame moves — hence two artifacts:
+
+   - on unfolding, the content overflows the still-small frame as long as the clip
+     isn't applied (it is, after a delay);
+   - on folding, Chrome lets the content layer trail beyond the frame that's
+     shrinking — painted but out of flow (it no longer responds to hit-testing), so
+     clipped by nothing, not even an `overflow: clip` on the `details`: a
+     ghost of the content displays over the next section.
+
+   A permanent clip and a transition reduced to geometry fix both: unfolding
+   reveals the content at the frame's pace, and folding becomes
+   instant — the content no longer being rendered as soon as you click, its `auto`
+   height is 0. A clean fold beats a ghost fold. */
+details.collapse::details-content {
+  overflow: clip;
+  transition:
+    height 0.2s,
+    padding 0.1s ease-out 20ms;
+}
+
+/* Action revealed on hover of its row (URL copy button): hover
+   doesn't exist with touch, where the button must therefore stay permanently visible —
+   hence fading it out conditioned on a fine pointer rather than a flat opacity-0. */
+.api-hover-reveal {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.api-hover-reveal:hover,
+.api-hover-reveal:focus-visible {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .api-hover-reveal {
+    opacity: 0;
+  }
+  .group:hover .api-hover-reveal {
+    opacity: 0.6;
+  }
+  .api-hover-reveal:hover,
+  .api-hover-reveal:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Request field actually filled in (parameters, body properties): a
+   placeholder is just an example, an entered value truly goes out on the
+   network — in a fairly full body form, the two used to read
+   the same. The marking yields to `input-error` (missing variable), which
+   speaks to a more urgent problem, and relies on the systematic placeholder
+   set by `leafField`: without a placeholder, `:placeholder-shown` never
+   matches and an empty field would pass for filled. */
+.api-leaf:not(:placeholder-shown):not(.input-error) {
+  border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+  background-color: color-mix(in oklab, var(--color-primary) 7%, var(--color-base-100));
+  font-weight: 500;
+}
+
+/* Heading anchors (¶): discreet, visible on hover of the heading. */
+.md-anchor {
+  margin-inline-start: 0.4rem;
+  opacity: 0;
+  text-decoration: none;
+  font-size: 0.8em;
+  transition: opacity 0.15s;
+}
+.md-content h1:hover .md-anchor,
+.md-content h2:hover .md-anchor,
+.md-content h3:hover .md-anchor,
+.md-content h4:hover .md-anchor {
+  opacity: 0.6;
+}
+
+/* Try-it code panels (cURL preview, response): fixed navy background,
+   deliberately independent of the active theme — hence a dedicated
+   hljs token palette (fixed too), instead of the semantic colors. */
+.api-code-panel {
+  background: #151b2c;
+  color: #e6e9f0;
+  border-radius: var(--radius-box);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.api-code-panel .hljs { color: #e6e9f0; background: transparent; }
+.api-code-panel .hljs-comment, .api-code-panel .hljs-quote { color: #8b949e; font-style: italic; }
+.api-code-panel .hljs-keyword, .api-code-panel .hljs-selector-tag,
+.api-code-panel .hljs-section, .api-code-panel .hljs-name { color: #ff7b72; }
+.api-code-panel .hljs-string, .api-code-panel .hljs-regexp, .api-code-panel .hljs-addition { color: #a5d6ff; }
+.api-code-panel .hljs-number, .api-code-panel .hljs-literal,
+.api-code-panel .hljs-symbol, .api-code-panel .hljs-bullet { color: #79c0ff; }
+.api-code-panel .hljs-attr, .api-code-panel .hljs-attribute,
+.api-code-panel .hljs-variable, .api-code-panel .hljs-template-variable { color: #7ee787; }
+.api-code-panel .hljs-title, .api-code-panel .hljs-built_in,
+.api-code-panel .hljs-type, .api-code-panel .hljs-class { color: #d2a8ff; }
+.api-code-panel .hljs-meta, .api-code-panel .hljs-deletion { color: #ffa657; }
+/* Inlaid body editor: the text is transparent (the highlighted code is
+   behind it), only the caret and selection stay visible. */
+.api-code-panel textarea { caret-color: #e6e9f0; }
+.api-code-panel textarea::selection { background: rgba(125, 140, 180, 0.4); color: transparent; }
+.api-code-panel textarea.input-error { outline: 1px solid #f87171; outline-offset: -1px; }
+
+/* Try-it send widget: "laser" bar + electric dot + micro-stats.
+   Palette taken from the active theme (primary on the way out, accent on the way
+   back, error on network failure) — a fixed neon would be illegible on the light
+   themes the end user can activate via theme.available.
+   At rest the widget is fully transparent but keeps its place: making it
+   absent from the DOM would make the send row jump on every request. */
+.api-send-meter {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.api-send-meter.is-live {
+  opacity: 1;
+  transition-duration: 0.15s;
+}
+
+.api-send-rail {
+  position: relative;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-base-content) 11%, transparent);
+  color: var(--color-primary);
+  transition: color 0.25s ease, box-shadow 0.25s ease;
+}
+.api-send-meter.is-live .api-send-rail {
+  box-shadow: 0 0 0.75rem -0.125rem color-mix(in oklab, currentColor 45%, transparent);
+}
+.api-send-rail.is-returning {
+  color: var(--color-accent);
+}
+.api-send-rail.is-error {
+  color: var(--color-error);
+}
+
+/* clip-path rather than width: the progression triggers no layout and the
+   gradient doesn't distort. Values are set inline by the JS. */
+.api-send-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transition-property: clip-path;
+  transition-timing-function: linear;
+}
+.api-send-beam-out {
+  clip-path: inset(0 100% 0 0);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-primary) 45%, transparent),
+    var(--color-primary)
+  );
+}
+/* The return trip is opaque, and its tail fades toward the outbound color: laid
+   over an already-full primary bar, a gradient toward transparent (symmetric to
+   the outbound trip) would let the primary show through and read as the same bar. */
+.api-send-beam-in {
+  clip-path: inset(0 0 0 100%);
+  background: linear-gradient(
+    270deg,
+    color-mix(in oklab, var(--color-accent) 65%, var(--color-primary)),
+    var(--color-accent)
+  );
+}
+.api-send-rail.is-error .api-send-beam-out {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--color-error) 45%, transparent), var(--color-error));
+}
+.api-send-rail.is-error .api-send-beam-in {
+  opacity: 0;
+}
+
+.api-send-spark {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.25rem 0 0 -0.25rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0.5rem 0.0625rem currentColor;
+  transition-property: left, width, height, margin, opacity;
+  transition-timing-function: linear;
+}
+
+/* Server wait: the bar stops before the end (never a false
+   completion) and the dot becomes a ring spinning at its tip. */
+.api-send-rail.is-waiting .api-send-spark {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: -0.375rem 0 0 -0.375rem;
+  background: transparent;
+  border: 2px solid color-mix(in oklab, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  box-shadow: 0 0 0.625rem 0 color-mix(in oklab, currentColor 70%, transparent);
+  animation: api-send-spin 0.55s linear infinite;
+}
+.api-send-rail.is-waiting .api-send-beam-out {
+  animation: api-send-breathe 1.6s ease-in-out infinite;
+}
+.api-send-rail.is-done .api-send-spark {
+  opacity: 0;
+}
+.api-send-rail.is-error .api-send-spark {
+  animation: api-send-burst 0.45s ease-out forwards;
+}
+
+@keyframes api-send-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes api-send-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes api-send-burst {
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* Arrival of a response: the status pill pulses once in its own
+   color. `currentColor` picks it up as-is (STATUS_PILL already sets it as
+   `text-*`), which avoids a glow per status-code family — hence a
+   dynamically built class. Played only once: the class is only set on the
+   rendering of a fresh response, and each render creates a new pill.
+   The pill is a flex child: its box is blockified, `transform` and
+   `box-shadow` apply to it (they would have no effect on an inline span). */
+.api-status-flash {
+  animation: api-status-glow 1s ease-out, api-status-pop 0.45s ease-out;
+}
+
+/* Two glow layers: a tight, dense halo that gives the sparkle, a
+   large, diffuse bloom that gives the reach — a single shadow would force a choice.
+   The pill brightens at the same time (denser background + `brightness`), and
+   that's what carries the effect: `.api-code-panel` is overflow-hidden and
+   the header only has 6 px of margin, so the glow gets clipped at the top, whereas
+   the pill's own sparkle never is. The contrast rests on the
+   peak — `brightness` pushes the text along with the background.
+   `background-color` is deliberately absent from the 100% mark: the implicit keyframe
+   picks up the theme's value (`bg-*-400/15`) and fades back to it. */
+@keyframes api-status-glow {
+  0% {
+    box-shadow:
+      0 0 0.3rem 0 color-mix(in oklab, currentColor 90%, transparent),
+      0 0 0.8rem 0.1rem color-mix(in oklab, currentColor 60%, transparent);
+    background-color: color-mix(in oklab, currentColor 30%, transparent);
+    filter: brightness(1.3);
+  }
+  30% {
+    box-shadow:
+      0 0 0.55rem 0.1rem currentColor,
+      0 0 1.7rem 0.35rem color-mix(in oklab, currentColor 70%, transparent);
+    background-color: color-mix(in oklab, currentColor 24%, transparent);
+    filter: brightness(1.25);
+  }
+  100% {
+    box-shadow:
+      0 0 0.8rem 0.2rem transparent,
+      0 0 2.4rem 0.6rem transparent;
+    filter: brightness(1);
+  }
+}
+
+@keyframes api-status-pop {
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Reduced motion: the glow stays — it's what notifies —, the pop goes away. */
+@media (prefers-reduced-motion: reduce) {
+  .api-status-flash {
+    animation: api-status-glow 1s ease-out;
+  }
+}
+
+/* No blanket opacity: the labels carry `text-subtle` and the total stays full
+   ink. A container opacity would have multiplied against theirs and dropped
+   the whole row under the AA floor — the exact failure mode `text-subtle`
+   exists to avoid. */
+.api-send-stats {
+  font-size: 0.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-send-meter,
+  .api-send-beam,
+  .api-send-spark {
+    transition: none;
+  }
+  .api-send-rail .api-send-spark,
+  .api-send-rail .api-send-beam-out {
+    animation: none;
+  }
+}
+
+/* Tab bars — response codes, the try-it's pretty/raw/headers, a docs page's
+   code-tab group: the underline travels with the color instead of jumping.
+   Same reason as the nav rail for putting it on `.tab` rather than on
+   `.tab-active`. */
+.tabs .tab {
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* The reduced-motion contract, for everything the design layer moves and for
+   the one thing the library moves without asking: daisyUI's modal box slides
+   and scales in (`translate`/`scale`, .3s) and guards none of it, and the
+   search palette is the modal a reader opens on every Cmd-K. The fade stays —
+   it says "this arrived" without moving anything. */
+@media (prefers-reduced-motion: reduce) {
+  api-nav .menu li > a,
+  api-nav .menu li > button,
+  .tabs .tab {
+    transition: none;
+  }
+  .modal-box {
+    transition-property: opacity;
+    translate: 0;
+    scale: 1;
+  }
+}
+
+/* highlight.js tokens mapped onto DaisyUI's semantic colors: the
+   coloring automatically follows the active theme, without an hljs stylesheet. */
+.hljs { color: var(--color-base-content); }
+.hljs-comment, .hljs-quote { color: var(--color-base-content); opacity: 0.55; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-section, .hljs-name { color: var(--color-primary); }
+.hljs-string, .hljs-regexp, .hljs-addition { color: var(--color-success); }
+.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet { color: var(--color-secondary); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: var(--color-accent); }
+.hljs-title, .hljs-built_in, .hljs-type, .hljs-class { color: var(--color-info); }
+.hljs-meta, .hljs-deletion { color: var(--color-warning); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }

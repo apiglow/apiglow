@@ -1,0 +1,13 @@
+{
+  "pages": [
+    { "slug": "intro", "title": "Introduction", "url": "intro.md" },
+    {
+      "group": "Guides",
+      "id": "guides",
+      "pages": [
+        { "slug": "pagination", "title": "Pagination", "url": "pagination.md" },
+        { "title": "Status page", "href": "https://status.e2e.test" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Metadata API",
+    "version": "2.1.0",
+    "summary": "Everything the info block can say.",
+    "description": "Fixture for the document-metadata session: full `info`, `externalDocs` at every level, and response links of each resolution kind.",
+    "termsOfService": "https://metadata.example.com/terms",
+    "contact": { "name": "API team", "url": "https://metadata.example.com/support", "email": "api@metadata.example.com" },
+    "license": { "name": "Apache 2.0", "identifier": "Apache-2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0.html" }
+  },
+  "externalDocs": { "description": "Developer portal", "url": "https://metadata.example.com/docs" },
+  "servers": [{ "url": "https://metadata.example.com/v2" }],
+  "tags": [
+    {
+      "name": "pets",
+      "description": "Everything about pets",
+      "externalDocs": { "description": "Pet guide", "url": "https://metadata.example.com/docs/pets" }
+    },
+    { "name": "hidden-docs", "externalDocs": { "url": "javascript:alert(1)" } }
+  ],
+  "paths": {
+    "/pets": {
+      "post": {
+        "operationId": "createPet",
+        "tags": ["pets"],
+        "summary": "Create a pet",
+        "externalDocs": { "description": "Creation rules", "url": "https://metadata.example.com/docs/create" },
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "links": {
+              "GetPetById": {
+                "description": "Read the pet back.",
+                "operationId": "getPet",
+                "parameters": { "petId": "$response.body#/id", "verbose": true },
+                "requestBody": "$response.body",
+                "server": { "url": "https://mirror.metadata.example.com/v2" }
+              },
+              "DeleteByRef": { "operationRef": "#/paths/~1pets~1{petId}/delete" },
+              "EncodedRef": { "operationRef": "#/paths/~1pets~1%7BpetId%7D/get" },
+              "ExternalRef": { "operationRef": "https://other.example.com/openapi.json#/paths/~1x/get" },
+              "Missing": { "operationId": "noSuchOperation" },
+              "MissingRef": { "operationRef": "#/paths/~1nope/get" },
+              "Untargeted": { "description": "Neither operationId nor operationRef." }
+            }
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": { "operationId": "getPet", "tags": ["pets"], "responses": { "200": { "description": "One pet" } } },
+      "delete": { "tags": ["pets"], "responses": { "204": { "description": "Gone" } } }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "externalDocs": { "description": "Pet model", "url": "https://metadata.example.com/docs/pet-model" },
+        "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+      }
+    }
+  }
+}

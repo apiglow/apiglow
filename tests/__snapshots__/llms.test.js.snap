@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`llms.txt export > lays out the index: summary, guides, groups, webhooks, reference 1`] = `
+"# Petstore
+
+> A sample API.
+
+Version 2.0.0 — OpenAPI 3.1.0.
+
+Base URL: https://api.example.com/v1
+
+Authentication: bearerAuth: http/bearer, apiKeyAuth: apiKey.
+
+## Guides
+
+- [Getting started](https://docs.example.com/api/index.html#/page/getting-started)
+
+## Concepts
+
+- [Pagination](https://docs.example.com/api/index.html#/page/pagination)
+
+## Workflows
+
+- [Create a pet](https://docs.example.com/api/index.html#/scenario/create-pet): 2 steps, 2 inputs
+- [Find a pet](https://docs.example.com/api/index.html#/scenario/find-a-pet): 1 step, 1 input — the [Arazzo recipe](https://docs.example.com/workflows/search.arazzo.yaml) runs it unchanged in CI.
+
+## pets
+
+- [GET /pets](https://docs.example.com/api/index.html#/op/listPets): List pets
+- [POST /pets](https://docs.example.com/api/index.html#/op/createPet): Create a pet
+
+## search
+
+- [GET /search](https://docs.example.com/api/index.html#/op/legacySearch): (deprecated) Search everything
+
+## Other operations
+
+- [GET /ping](https://docs.example.com/api/index.html#/op/ping): Liveness probe.
+
+## Webhooks
+
+- [POST petAdopted](https://docs.example.com/api/index.html#/op/webhook-post-petadopted): Pet adopted
+
+## Reference
+
+- [Full documentation (llms-full.txt)](https://docs.example.com/api/llms-full.txt): every operation with its parameters, schemas and examples
+- [OpenAPI specification](https://api.example.com/openapi.json): the machine-readable contract
+
+## Optional
+
+- [Status page](https://status.example.com)
+- [GitHub](https://github.com/acme/api)
+- [External documentation](https://example.com/guides): The integration guide
+- [Terms of service](https://example.com/terms)
+- [MIT](https://opensource.org/licenses/MIT)
+"
+`;

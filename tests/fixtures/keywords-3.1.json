@@ -1,0 +1,77 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": { "title": "Keywords API", "version": "1.0.0" },
+  "paths": {
+    "/payments": {
+      "post": {
+        "operationId": "createPayment",
+        "summary": "Create a payment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/Payment" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Receipt",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Receipt" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Payment": {
+        "type": "object",
+        "$defs": {
+          "Currency": { "type": "string", "enum": ["EUR", "USD"] }
+        },
+        "required": ["method"],
+        "properties": {
+          "method": { "type": "string", "enum": ["card", "transfer"] },
+          "currency": { "$ref": "#/components/schemas/Payment/$defs/Currency" },
+          "refundCurrency": { "$ref": "#/components/schemas/Payment/$defs/Currency" },
+          "labels": {
+            "type": "object",
+            "patternProperties": {
+              "^x-": { "type": "string" },
+              "^n-": { "type": "integer" }
+            },
+            "propertyNames": { "pattern": "^[a-z-]+$" },
+            "unevaluatedProperties": false
+          },
+          "attachment": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "contentMediaType": "image/png"
+          },
+          "tags": {
+            "contains": { "type": "string", "enum": ["priority"] },
+            "minContains": 1,
+            "maxContains": 2,
+            "unevaluatedItems": false
+          }
+        },
+        "if": { "properties": { "method": { "const": "card" } } },
+        "then": { "required": ["cardNumber"], "properties": { "cardNumber": { "type": "string" } } },
+        "else": { "required": ["iban"], "properties": { "iban": { "type": "string" } } },
+        "dependentRequired": { "cardNumber": ["cvv"] },
+        "dependentSchemas": {
+          "iban": { "type": "object", "properties": { "bic": { "type": "string" } } }
+        },
+        "not": { "required": ["legacyToken"] }
+      },
+      "Receipt": {
+        "type": "object",
+        "properties": { "id": { "type": "string" } },
+        "if": { "$ref": "#/components/schemas/Receipt" },
+        "then": { "required": ["id"] }
+      }
+    }
+  }
+}

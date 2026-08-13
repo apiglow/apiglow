@@ -1,0 +1,12 @@
+# The starting patch an installation hands a browser that has none
+# (docs/user-overlay.md decision 11), served by URL and in YAML: the editor only
+# emits JSON, but what the host declares rides the same reader as `overlays[]`.
+overlay: 1.1
+info:
+  title: Seeded fixes
+  version: 1.0.0
+actions:
+  - target: $.paths['/things'].get
+    description: What the integrator knows and the schema does not say.
+    update:
+      summary: List things (patched by the docs)

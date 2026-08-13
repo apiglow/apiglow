@@ -1,0 +1,83 @@
+<!doctype html>
+<!-- Variant of app.html for the custom themes (docs/custom-themes.md): the two
+     channels side by side — three config-JSON definitions (extending, standalone,
+     in-place override of a built-in) and one host-CSS theme declared below.
+     `theme.default` stays a stock theme so the axe sweep judges daisyUI's own
+     contrast, not the fixture's invented colors. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E themes — ApiGlow</title>
+    <style>
+      /* Escape hatch (§6): a plain [data-theme] block in the host page, with
+         zero app involvement — only the name has to reach theme.available. It
+         beats the built CSS despite being parsed first, the built-in themes
+         living inside @layer base. */
+      [data-theme='hostbrand'] {
+        color-scheme: dark;
+        --color-base-100: #101820;
+        --color-base-200: #18222c;
+        --color-base-300: #22303c;
+        --color-base-content: #f5f7fa;
+        --color-primary: #14b8a6;
+        --color-primary-content: #04201c;
+      }
+      /* Same channel, but overriding a built-in name. Lower specificity than
+         daisyUI's own :is(…) rule and parsed earlier, yet it wins: the built-in
+         themes are layered and this block is not. */
+      [data-theme='dark'] {
+        --color-accent: #ff2d92;
+      }
+    </style>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": {
+        "default": "dark",
+        "available": ["dark", "light", "acme", "neon", "hostbrand"],
+        "custom": [
+          {
+            "name": "acme",
+            "extends": "dark",
+            "tokens": { "--color-primary": "#6d28d9", "--radius-box": "0.25rem" }
+          },
+          {
+            "name": "neon",
+            "colorScheme": "dark",
+            "tokens": {
+              "--color-base-100": "#0b1020",
+              "--color-base-200": "#141a2e",
+              "--color-base-300": "#1e2740",
+              "--color-base-content": "#e8ecff",
+              "--color-primary": "#22d3ee",
+              "--color-primary-content": "#04202a",
+              "--color-secondary": "#f472b6",
+              "--color-secondary-content": "#2a0a1a",
+              "--color-accent": "#a3e635",
+              "--color-accent-content": "#16210a",
+              "--color-neutral": "#1e2740",
+              "--color-neutral-content": "#e8ecff",
+              "--radius-box": "1.5rem",
+              "--border": "2px"
+            }
+          },
+          {
+            "name": "light",
+            "tokens": { "--color-primary": "#b91c1c" }
+          }
+        ]
+      },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Themes" },
+      "environments": [],
+      "docsPages": [],
+      "tryIt": { "proxyUrl": null },
+      "history": { "maxEntries": 500, "maxAgeDays": 30 }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

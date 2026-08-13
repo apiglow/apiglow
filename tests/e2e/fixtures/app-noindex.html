@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Variant of app.html: an installation that is publicly reachable but asks
+     not to be indexed (docs/seo.md §2) — the only fixture carrying
+     `seo: { index: false }`. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E noindex — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "light", "available": ["light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs (noindex)" },
+      "seo": { "index": false }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

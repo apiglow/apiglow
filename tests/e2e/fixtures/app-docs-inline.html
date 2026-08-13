@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Host page for the inline docs-pages suite (docs/docs-pages.md §2.6): an
+     installation that can serve NO file next to index.html — a doc behind a
+     login, an app serving a single route. Every page's body is carried by this
+     file, either by a <script> of a non-executable type or by the config
+     itself. Nothing here fetches a docs file, which the suite asserts. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E inline docs pages — ApiGlow</title>
+  </head>
+  <body>
+    <!-- Indented like the markup around it, on purpose: the loader removes the
+         common indentation, without which every line would be a code block. -->
+    <script type="text/markdown" id="doc-guide">
+      # Carried guide
+
+      This page never left the host document.
+
+      > [!NOTE]
+      > Callouts, code tabs and API references all work on a carried body.
+
+      ## Sending a request
+
+      Start with [create a pet](apidoc:createPet).
+
+      ```bash cURL
+      curl https://api.e2e.test/v1/pets
+      ```
+      ```js Node.js
+      await fetch('https://api.e2e.test/v1/pets')
+      ```
+
+      ## Nesting
+
+      - one
+        - kept relative to its parent
+    </script>
+
+    <!-- `type` says what it holds, so the config needs no `format`. -->
+    <script type="text/html" id="doc-notes">
+      <h1>Carried notes</h1>
+      <p>Authored as HTML, sanitized like anything else external.</p>
+      <h2>Sanitization</h2>
+      <img src="x" onerror="window.__inlineHtmlXss = true">
+    </script>
+
+    <script type="text/plain" id="doc-raw">
+      RELEASE 2.0.0
+      <b>Not</b> HTML, and not markdown either.
+    </script>
+
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Inline Docs" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v1" }],
+      "docsPages": [
+        { "slug": "guide", "title": "Carried guide", "contentId": "doc-guide", "home": true },
+        {
+          "group": "Carried elsewhere",
+          "id": "carried",
+          "pages": [
+            { "slug": "notes", "title": "Carried notes", "contentId": "doc-notes" },
+            { "slug": "raw", "title": "Carried raw text", "contentId": "doc-raw" },
+            {
+              "slug": "from-config",
+              "title": "Written in the config",
+              "content": "# Written in the config\n\nA generator that emits the config emits the prose with it.\n\n## No file involved\n\nNot one request left the page for this.\n"
+            },
+            {
+              "slug": "config-html",
+              "title": "HTML in the config",
+              "content": "<h1>HTML in the config</h1><p>Declared with <code>format</code>, which no extension could have said.</p>",
+              "format": "html"
+            },
+            { "slug": "missing", "title": "Missing element", "contentId": "nope" }
+          ]
+        }
+      ]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

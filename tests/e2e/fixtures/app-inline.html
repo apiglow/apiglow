@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- Self-sufficient host page: the schema is carried by the config itself
+     (`openapi.spec`) instead of a URL — no schema fetch, hence no
+     CORS to negotiate. The home's download button then serves this
+     same source. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E inline — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "spec": {
+          "openapi": "3.1.0",
+          "info": { "title": "Inline API", "version": "9.9", "description": "Schema carried by the page." },
+          "servers": [{ "url": "https://api.e2e.test/v1" }],
+          "security": [{ "inlineKey": [] }],
+          "components": {
+            "securitySchemes": {
+              "inlineKey": { "type": "apiKey", "in": "header", "name": "X-Inline-Key", "description": "Key provided by support." }
+            },
+            "schemas": {
+              "Thing": { "type": "object", "properties": { "id": { "type": "integer" } } }
+            }
+          },
+          "paths": {
+            "/things": {
+              "get": {
+                "operationId": "listThings",
+                "summary": "List things",
+                "tags": ["Things"],
+                "responses": {
+                  "200": {
+                    "description": "ok",
+                    "content": {
+                      "application/json": {
+                        "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Thing" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "theme": { "default": "light", "available": ["light", "dark"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "Inline Docs" }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

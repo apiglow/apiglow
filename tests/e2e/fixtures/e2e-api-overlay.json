@@ -1,0 +1,27 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Overlay API", "version": "1.0.0" },
+  "servers": [{ "url": "https://api.e2e.test/v1" }],
+  "tags": [{ "name": "Things" }],
+  "paths": {
+    "/things": {
+      "get": {
+        "operationId": "listThings",
+        "summary": "List things",
+        "tags": ["Things"],
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/things/{thingId}": {
+      "delete": {
+        "operationId": "deleteThing",
+        "summary": "Delete a thing",
+        "tags": ["Things"],
+        "parameters": [
+          { "name": "thingId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "gone" } }
+      }
+    }
+  }
+}

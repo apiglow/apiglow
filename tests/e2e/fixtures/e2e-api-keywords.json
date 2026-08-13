@@ -1,0 +1,178 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "JSON Schema keywords E2E API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.e2e.test/v3"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Payments"
+    }
+  ],
+  "paths": {
+    "/payments": {
+      "post": {
+        "operationId": "createPayment",
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create a payment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Payment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "span": {
+                      "type": "array",
+                      "description": "Fixed [start, end] instants",
+                      "prefixItems": [
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Payment": {
+        "type": "object",
+        "$defs": {
+          "Currency": {
+            "type": "string",
+            "enum": [
+              "EUR",
+              "USD"
+            ]
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "card",
+              "transfer"
+            ],
+            "description": "How the payment is made"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Payment/$defs/Currency"
+          },
+          "acceptedCurrencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payment/$defs/Currency"
+            }
+          },
+          "labels": {
+            "type": "object",
+            "patternProperties": {
+              "^x-": {
+                "type": "string"
+              }
+            },
+            "propertyNames": {
+              "pattern": "^[a-z-]+$"
+            },
+            "unevaluatedProperties": false
+          },
+          "attachment": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "contentMediaType": "image/png"
+          },
+          "tags": {
+            "contains": {
+              "type": "string",
+              "enum": [
+                "priority"
+              ]
+            },
+            "minContains": 1,
+            "maxContains": 2
+          }
+        },
+        "if": {
+          "properties": {
+            "method": {
+              "const": "card"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "cardNumber"
+          ],
+          "properties": {
+            "cardNumber": {
+              "type": "string"
+            }
+          }
+        },
+        "else": {
+          "required": [
+            "iban"
+          ],
+          "properties": {
+            "iban": {
+              "type": "string"
+            }
+          }
+        },
+        "dependentRequired": {
+          "cardNumber": [
+            "cvv"
+          ]
+        },
+        "dependentSchemas": {
+          "iban": {
+            "type": "object",
+            "properties": {
+              "bic": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "not": {
+          "required": [
+            "legacyToken"
+          ]
+        }
+      }
+    }
+  }
+}

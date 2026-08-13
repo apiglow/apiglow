@@ -1,0 +1,77 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CI hand-off > writes a job for every runner on every platform > arazzo-runner/github 1`] = `
+"# .github/workflows/create-a-payment.yml
+name: Create a payment
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+jobs:
+  create-a-payment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install arazzo-runner
+      - name: Run the workflow
+        run: |
+          arazzo-runner execute-workflow arazzo/create-a-payment.arazzo.json \\
+            --workflow-id create-payment \\
+            --inputs "{\\"auth.token\\": \\"$AUTH_TOKEN\\"}"
+        env:
+          AUTH_TOKEN: \${{ secrets.AUTH_TOKEN }}
+"
+`;
+
+exports[`CI hand-off > writes a job for every runner on every platform > arazzo-runner/gitlab 1`] = `
+"# .gitlab-ci.yml
+# Define these as masked CI/CD variables (Settings → CI/CD → Variables):
+#   AUTH_TOKEN
+# Run it on a schedule from CI/CD → Schedules.
+create-a-payment:
+  image: python:3.12
+  script:
+    - pip install arazzo-runner
+    - arazzo-runner execute-workflow arazzo/create-a-payment.arazzo.json --workflow-id create-payment --inputs "{\\"auth.token\\": \\"$AUTH_TOKEN\\"}"
+"
+`;
+
+exports[`CI hand-off > writes a job for every runner on every platform > redocly-respect/github 1`] = `
+"# .github/workflows/create-a-payment.yml
+name: Create a payment
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+jobs:
+  create-a-payment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run the workflow
+        run: |
+          npx @redocly/cli@latest respect arazzo/create-a-payment.arazzo.json \\
+            --workflow create-payment \\
+            --input auth.token="$AUTH_TOKEN"
+        env:
+          AUTH_TOKEN: \${{ secrets.AUTH_TOKEN }}
+"
+`;
+
+exports[`CI hand-off > writes a job for every runner on every platform > redocly-respect/gitlab 1`] = `
+"# .gitlab-ci.yml
+# Define these as masked CI/CD variables (Settings → CI/CD → Variables):
+#   AUTH_TOKEN
+# Run it on a schedule from CI/CD → Schedules.
+create-a-payment:
+  image: node:22
+  script:
+    - npx @redocly/cli@latest respect arazzo/create-a-payment.arazzo.json --workflow create-payment --input auth.token="$AUTH_TOKEN"
+"
+`;

@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Host page for the overlay suite: one overlay fetched by URL (YAML), one
+     carried inline by the config, and a third action targeting nothing — the
+     failure the settings panel has to name, since an overlay edits the schema
+     before anything renders. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E overlay — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "url": "/tests/e2e/fixtures/e2e-api-overlay.json",
+        "overlays": [
+          "/tests/e2e/fixtures/e2e-overlay.yaml",
+          {
+            "overlay": "1.0.0",
+            "info": { "title": "Inline overlay", "version": "1.0.0" },
+            "actions": [
+              { "target": "$.info", "update": { "description": "Described by an overlay." } },
+              { "target": "$.paths['/orders'].get", "update": { "summary": "Never applied" } }
+            ]
+          }
+        ]
+      },
+      "branding": { "productName": "E2E overlay" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v1" }]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

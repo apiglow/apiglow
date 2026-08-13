@@ -1,0 +1,63 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Request bodies E2E API", "version": "1.0.0" },
+  "servers": [{ "url": "https://api.e2e.test/v3" }],
+  "tags": [{ "name": "Pets" }],
+  "paths": {
+    "/pets/{petId}/avatar": {
+      "post": {
+        "operationId": "uploadAvatar",
+        "tags": ["Pets"],
+        "summary": "Upload an avatar",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "caption": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Uploaded" } }
+      }
+    },
+    "/pets-form": {
+      "post": {
+        "operationId": "createPetForm",
+        "tags": ["Pets"],
+        "summary": "Create a pet from a form",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "status": { "type": "string", "enum": ["available", "pending", "sold"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    }
+  }
+}

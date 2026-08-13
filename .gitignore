@@ -1,0 +1,17 @@
+node_modules/
+# daisyUI skill installed via `npx skills add saadeghi/daisyui` (see CLAUDE.md);
+# project-authored skills ARE committed; only installed third-party skills are not
+.claude/skills/daisyui/
+dist/
+*.tgz
+test-results/
+# what bake.spec.js writes with the packaged CLI, served by preview-cdn.mjs
+tests/e2e/baked/
+playwright-report/
+.idea/
+.DS_Store
+coverage/
+*.log
+.env
+.env.*
+docs/upgrade/

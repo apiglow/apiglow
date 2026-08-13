@@ -1,0 +1,109 @@
+<!doctype html>
+<!-- Minimal page simulating the CDN install (docs/architecture.md §3, criterion 8): an
+     inline config + A SINGLE <script type="module"> pointing at the bundle
+     the way it would be published on an npm CDN. Served by `npm run preview:cdn`,
+     which does npm pack + extraction + serving the tarball under /npm/… -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The public demo: what a visitor shares and what search engines see.
+         The install mechanics below are still exactly a customer's page —
+         one config, one script. -->
+    <title>ApiGlow demo — interactive API docs with a real client inside</title>
+    <meta
+      name="description"
+      content="Live ApiGlow demo: browse the petstore API, send real requests from the page, run scenarios — everything in your browser, no backend."
+    />
+    <meta property="og:title" content="ApiGlow demo — interactive API docs" />
+    <meta
+      property="og:description"
+      content="Browse the demo API, send real requests, run scenarios — all in the browser."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/demo/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <!-- Not part of the install: the demo petstore API (/demo-api/…) is
+         answered in the browser by a service worker, which spares the demo a
+         backend and any CORS story. A real installation has none of this. -->
+    <script src="/demo/register-mock-sw.js"></script>
+    <!-- "daisybrand" in theme.custom is the showcase host-defined theme
+         (docs/custom-themes.md): the built-in dark rebranded, no rebuild. -->
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "specs": [
+          {
+            "id": "petstore",
+            "title": "Petstore (demo)",
+            "url": "/demo/schemas/petstore.json",
+            "branding": { "productName": "Petstore", "logoUrl": "/demo/logos/petstore.svg" },
+            "oauth": { "petstore_auth": { "clientId": "demo-client" } },
+            "environments": [
+              {
+                "name": "demo (mocked API)",
+                "color": "green",
+                "variables": {
+                  "auth.petstore_auth": { "value": "demo-oauth-token", "sensitive": true },
+                  "auth.bearerAuth": { "value": "demo-bearer-token", "sensitive": true },
+                  "auth.api_key": { "value": "demo-api-key", "sensitive": true },
+                  "auth.basicAuth.username": { "value": "user1", "sensitive": false },
+                  "auth.basicAuth.password": { "value": "hunter2", "sensitive": true }
+                }
+              }
+            ],
+            "docsPages": "/docs-pages/manifest.json",
+            "scenarios": [
+              { "id": "order-a-pet", "title": "Order a pet", "url": "/demo/scenarios/petstore-order.json", "pinned": true }
+            ]
+          },
+          {
+            "id": "github",
+            "title": "GitHub REST API (frozen)",
+            "url": "/demo/schemas/github.json",
+            "branding": { "productName": "GitHub REST API" },
+            "environments": [
+              { "name": "api.github.com", "baseUrl": "https://api.github.com" }
+            ]
+          }
+        ],
+        "default": "petstore"
+      },
+      "theme": {
+        "default": "system",
+        "available": [
+          "apiglow", "apiglow-dark", "daisybrand",
+          "light", "dark", "abyss", "acid", "aqua", "autumn", "black", "bumblebee", "business",
+          "caramellatte", "cmyk", "coffee", "corporate", "cupcake", "cyberpunk", "dim", "dracula",
+          "emerald", "fantasy", "forest", "garden", "halloween", "lemonade", "lofi", "luxury",
+          "night", "nord", "pastel", "retro", "silk", "sunset", "synthwave", "valentine", "winter",
+          "wireframe"
+        ],
+        "custom": [
+          {
+            "name": "daisybrand",
+            "extends": "dark",
+            "tokens": {
+              "--color-primary": "#7c3aed",
+              "--color-primary-content": "#f5f3ff",
+              "--color-secondary": "#f472b6",
+              "--color-secondary-content": "#2a0a1a",
+              "--color-accent": "#22d3ee",
+              "--color-accent-content": "#042f2e",
+              "--radius-box": "0.5rem",
+              "--radius-field": "0.5rem"
+            }
+          }
+        ]
+      },
+      "language": { "default": "browser", "available": ["en", "fr"] },
+      "branding": { "productName": "ApiGlow demo" },
+      "tryIt": { "proxyUrl": null, "requestCredentials": "same-origin" },
+      "history": { "maxEntries": 500, "maxAgeDays": 30 },
+      "features": { "onboarding": true }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

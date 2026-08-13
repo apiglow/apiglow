@@ -1,0 +1,111 @@
+{
+  "openapi": "3.2.0",
+  "info": { "title": "Request fidelity E2E API", "version": "1.0.0" },
+  "servers": [{ "url": "https://api.e2e.test/v3" }],
+  "tags": [{ "name": "Requests" }],
+  "paths": {
+    "/search": {
+      "get": {
+        "operationId": "searchBooks",
+        "tags": ["Requests"],
+        "summary": "Search books",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "A path expression, sent as typed.",
+            "allowReserved": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "description": "Present with no value.",
+            "allowEmptyValue": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "session",
+            "in": "cookie",
+            "description": "Session cookie.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/xml": { "schema": { "$ref": "#/components/schemas/Book" } },
+              "application/json": { "schema": { "$ref": "#/components/schemas/Book" } }
+            }
+          }
+        }
+      }
+    },
+    "/books": {
+      "post": {
+        "operationId": "createBook",
+        "tags": ["Requests"],
+        "summary": "Create a book",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/xml": { "schema": { "$ref": "#/components/schemas/Book" } },
+            "application/json": { "schema": { "$ref": "#/components/schemas/Book" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/xml": { "schema": { "$ref": "#/components/schemas/Book" } }
+            }
+          }
+        }
+      }
+    },
+    "/uploads": {
+      "post": {
+        "operationId": "uploadBook",
+        "tags": ["Requests"],
+        "summary": "Upload a book",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "path": { "type": "string" }
+                }
+              },
+              "encoding": {
+                "tags": { "style": "form", "explode": true },
+                "path": { "allowReserved": true }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Book": {
+        "type": "object",
+        "xml": { "name": "book" },
+        "properties": {
+          "id": { "type": "integer", "xml": { "nodeType": "attribute" }, "default": 7 },
+          "title": { "type": "string", "default": "Dune" },
+          "authors": {
+            "type": "array",
+            "xml": { "nodeType": "element" },
+            "items": { "type": "string", "xml": { "name": "author" }, "default": "Frank" }
+          }
+        }
+      }
+    }
+  }
+}

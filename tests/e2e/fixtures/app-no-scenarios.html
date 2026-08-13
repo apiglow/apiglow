@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Variant of app.html with the scenarios feature cut off by config
+     (features.scenarios: false): the `scenarios` declarations are kept
+     as-is, to verify they are indeed ignored, not merely
+     absent. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (no scenarios)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "light", "available": ["light", "dark", "corporate"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" },
+      "environments": [
+        {
+          "name": "e2e",
+          "baseUrl": "https://api.e2e.test/v1",
+          "variables": {
+            "token": { "value": "tok-123", "sensitive": false },
+            "secret": { "value": "sh-456-secret", "sensitive": true },
+            "auth.bearerAuth": { "value": "e2e-bearer-token", "sensitive": true }
+          }
+        }
+      ],
+      "docsPages": [
+        { "title": "Getting started", "url": "/tests/e2e/fixtures/getting-started.md", "slug": "getting-started", "position": 1 }
+      ],
+      "scenarios": [
+        { "id": "onboarding", "title": "Onboarding", "url": "/tests/e2e/fixtures/e2e-scenario.json", "pinned": true }
+      ],
+      "tryIt": { "proxyUrl": "https://proxy.e2e.test/?url={{target}}" },
+      "oauth": { "oauth2Auth": { "clientId": "e2e-client-id" } },
+      "features": { "scenarios": false },
+      "history": { "maxEntries": 500, "maxAgeDays": 30 }
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    // No CSS: the Biome CSS parser chokes on the Tailwind 4 at-rules in
+    // src/styles/app.css. Fixtures and schemas are data, not authored code.
+    "includes": [
+      "**/*.js",
+      "**/*.mjs",
+      "**/*.json",
+      "!**/*.snap",
+      "!tests/fixtures",
+      "!tests/e2e/fixtures",
+      "!demo/schemas",
+      "!package-lock.json"
+    ]
+  },
+  // lineWidth 100, not the default 80: the codebase was written to ~100 and
+  // 80 would rewrap a third of it for no readability gain.
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": { "preset": "recommended" }
+  },
+  // Import order is meaningful in places (side-effect imports of custom
+  // elements before their first use); sorting them is churn plus risk.
+  "assist": {
+    "actions": {
+      "source": { "organizeImports": "off" }
+    }
+  }
+}

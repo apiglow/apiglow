@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Host page declaring a starting patch for the reader's own overlay slot
+     (docs/user-overlay.md decision 11), by URL and in YAML. No `overlays[]`
+     here: what this fixture is about is the document the reader can then edit,
+     download or remove — the one that lands in their storage, not the one
+     applied over their head. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E seeded overlay — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": {
+        "url": "/tests/e2e/fixtures/e2e-api-overlay.json",
+        "userOverlay": "/tests/e2e/fixtures/e2e-user-overlay-seed.yaml"
+      },
+      "branding": { "productName": "E2E seeded overlay" },
+      "environments": [{ "name": "e2e", "baseUrl": "https://api.e2e.test/v1" }]
+    }
+    </script>
+    <script src="/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+  </body>
+</html>

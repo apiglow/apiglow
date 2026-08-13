@@ -1,0 +1,38 @@
+{
+  "format": "apiglow-scenario",
+  "v": 1,
+  "scenario": {
+    "name": "Order a pet",
+    "description": "Create a pet, place an order for it, then read it back — three chained calls using the ids returned by the API.",
+    "steps": [
+      {
+        "id": "add-pet",
+        "opId": "addPet",
+        "note": "Create the pet. Its `id` feeds the next step.",
+        "request": {
+          "body": "{\n  \"name\": \"Rex\",\n  \"photoUrls\": [\"https://example.com/rex.png\"],\n  \"status\": \"available\"\n}"
+        },
+        "extract": [{ "name": "petId", "source": "body", "pointer": "/id" }]
+      },
+      {
+        "id": "place-order",
+        "opId": "placeOrder",
+        "note": "The order references `{{petId}}`, extracted in step 1.",
+        "request": {
+          "body": "{\n  \"petId\": {{petId}},\n  \"quantity\": 1,\n  \"status\": \"placed\",\n  \"complete\": false\n}"
+        },
+        "extract": [{ "name": "orderId", "source": "body", "pointer": "/id" }]
+      },
+      {
+        "id": "read-order",
+        "opId": "getOrderById",
+        "note": "Read the order back: it must exist and reference the right pet.",
+        "request": { "path": { "orderId": "{{orderId}}" } },
+        "expect": {
+          "status": 200,
+          "assertions": [{ "pointer": "/petId", "op": "exists" }]
+        }
+      }
+    ]
+  }
+}

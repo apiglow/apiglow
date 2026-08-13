@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MCP registration hand-off > writes the CLI form of every bridge config > api-to-mcp 1`] = `"claude mcp add pet-store -- npx -y @tyk-technologies/api-to-mcp@latest --spec https://api.example.com/openapi.json --targetUrl https://api.example.com/v1 --headers '{"X-API-Key":"YOUR_API_KEY"}'"`;
+
+exports[`MCP registration hand-off > writes the CLI form of every bridge config > openapi-mcp-server 1`] = `"claude mcp add pet-store --env OPENAPI_SPEC_PATH=https://api.example.com/openapi.json --env API_BASE_URL=https://api.example.com/v1 --env API_HEADERS=X-API-Key:YOUR_API_KEY -- npx -y @ivotoby/openapi-mcp-server"`;
+
+exports[`MCP server config export > wires each bridge to the schema URL > api-to-mcp 1`] = `
+{
+  "mcpServers": {
+    "pet-store": {
+      "args": [
+        "-y",
+        "@tyk-technologies/api-to-mcp@latest",
+        "--spec",
+        "https://api.example.com/openapi.json",
+        "--targetUrl",
+        "https://api.example.com/v1",
+        "--headers",
+        "{"Authorization":"Bearer YOUR_TOKEN"}",
+      ],
+      "command": "npx",
+    },
+  },
+}
+`;
+
+exports[`MCP server config export > wires each bridge to the schema URL > openapi-mcp-server 1`] = `
+{
+  "mcpServers": {
+    "pet-store": {
+      "args": [
+        "-y",
+        "@ivotoby/openapi-mcp-server",
+      ],
+      "command": "npx",
+      "env": {
+        "API_BASE_URL": "https://api.example.com/v1",
+        "API_HEADERS": "Authorization:Bearer YOUR_TOKEN",
+        "OPENAPI_SPEC_PATH": "https://api.example.com/openapi.json",
+      },
+    },
+  },
+}
+`;

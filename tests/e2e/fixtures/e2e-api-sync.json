@@ -1,0 +1,323 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Doc/panel mirror E2E API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.e2e.test/v3"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Mirror"
+    }
+  ],
+  "paths": {
+    "/deep": {
+      "post": {
+        "operationId": "createDeep",
+        "tags": [
+          "Mirror"
+        ],
+        "summary": "Deep body",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "city": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "level1": {
+                    "type": "object",
+                    "properties": {
+                      "level2": {
+                        "type": "object",
+                        "properties": {
+                          "level3": {
+                            "type": "object",
+                            "properties": {
+                              "level4": {
+                                "type": "object",
+                                "properties": {
+                                  "buried": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/nodes": {
+      "post": {
+        "operationId": "createNode",
+        "tags": [
+          "Mirror"
+        ],
+        "summary": "Recursive body",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Node"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/shapes": {
+      "post": {
+        "operationId": "createShapes",
+        "tags": [
+          "Mirror"
+        ],
+        "summary": "Map and tuple body",
+        "parameters": [
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "map": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "pair": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "422": {
+            "description": "Unprocessable"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "searchShapes",
+        "tags": [
+          "Mirror"
+        ],
+        "summary": "Query string body",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "querystring",
+            "description": "Whole query string, as typed",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches"
+          }
+        }
+      }
+    },
+    "/pets": {
+      "post": {
+        "operationId": "createPet",
+        "tags": [
+          "Mirror"
+        ],
+        "summary": "Two media types, one polymorphic",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.note+json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Pet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Node": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "child": {
+            "$ref": "#/components/schemas/Node"
+          }
+        }
+      },
+      "Pet": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Cat"
+          },
+          {
+            "$ref": "#/components/schemas/Dog"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "petType",
+          "mapping": {
+            "cat": "#/components/schemas/Cat",
+            "dog": "#/components/schemas/Dog"
+          }
+        }
+      },
+      "Cat": {
+        "type": "object",
+        "required": [
+          "petType"
+        ],
+        "properties": {
+          "petType": {
+            "type": "string"
+          },
+          "livesLeft": {
+            "type": "integer"
+          }
+        }
+      },
+      "Dog": {
+        "type": "object",
+        "required": [
+          "petType"
+        ],
+        "properties": {
+          "petType": {
+            "type": "string"
+          },
+          "packSize": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ]
+}

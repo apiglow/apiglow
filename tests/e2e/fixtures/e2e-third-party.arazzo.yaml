@@ -1,0 +1,53 @@
+# A workflow document as its own author writes it — YAML, its own
+# `sourceDescriptions` pointing at a production schema this documentation never
+# loads, and two workflows in one file. Nothing here was produced by the app,
+# which is the point: it is declared as it stands.
+arazzo: 1.1.0
+info:
+  title: Pet operations
+  version: 2.3.0
+sourceDescriptions:
+  - name: petstore
+    url: https://api.production.test/openapi.json
+    type: openapi
+  - name: billing
+    url: https://billing.production.test/openapi.json
+    type: openapi
+workflows:
+  - workflowId: create-then-read
+    summary: Create a pet, then read it back
+    description: The flow the CI runs on every deploy.
+    inputs:
+      type: object
+      properties:
+        petName:
+          type: string
+          default: Rex
+    steps:
+      - stepId: create
+        description: Create the pet.
+        operationId: $sourceDescriptions.petstore.createPet
+        requestBody:
+          contentType: application/json
+          payload:
+            name: $inputs.petName
+        successCriteria:
+          - condition: $statusCode == 201
+        outputs:
+          petId: $response.body#/id
+      - stepId: read
+        operationId: $sourceDescriptions.petstore.getPet
+        parameters:
+          - name: petId
+            in: path
+            value: $steps.create.outputs.petId
+      # A construct no browser can run: an AsyncAPI message step. The workflow
+      # is rendered anyway, and this step is named on the page.
+      - stepId: await-event
+        action: receive
+        channelPath: /pets/events
+  - workflowId: list-pets
+    summary: List the pets
+    steps:
+      - stepId: list
+        operationId: $sourceDescriptions.petstore.listPets

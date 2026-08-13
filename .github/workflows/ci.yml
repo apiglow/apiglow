@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push on a branch makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Biome (format + lint)
+        run: npx biome ci
+      - name: Cross-cutting invariants
+        run: npm run check:invariants
+      - name: Unit tests with coverage
+        # Informational: no threshold gate, the summary is read in the log.
+        run: npm run test:coverage
+      - name: Build
+        run: npm run build
+      - name: Distribution invariants
+        run: npm run check:dist
+      # Syntax tripwire: `build.target` derives from `browserslist`, so a
+      # config regression would ship too-new syntax silently — no test sees it,
+      # since CI's own browsers are all above the baseline.
+      - name: Baseline syntax (es-check)
+        run: npm run check:syntax
+
+  e2e:
+    name: End-to-end (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      # One engine's failure must not hide the other two: the point of the
+      # matrix is knowing which engines a change breaks, not just that it does.
+      fail-fast: false
+      matrix:
+        # Keyed on the browser binary, not on the Playwright project, because
+        # the mobile projects reuse a binary their desktop sibling installs —
+        # three jobs, five projects. docs/cross-browser.md §3.3.
+        include:
+          - browser: chromium
+            projects: --project=chromium --project=mobile-chrome
+          - browser: firefox
+            projects: --project=firefox
+          - browser: webkit
+            projects: --project=webkit --project=mobile-safari
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      # The Playwright webServer runs build + npm pack itself: the suite always
+      # validates the tarball that would be published, never the dev sources.
+      - name: Run Playwright
+        run: npx playwright test ${{ matrix.projects }}
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7

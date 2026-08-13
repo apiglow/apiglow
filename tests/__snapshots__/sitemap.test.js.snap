@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sitemap.xml > lists every baked page of the install 1`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://docs.example.com/api/overview.html</loc></url>
+  <url><loc>https://docs.example.com/api/page/getting-started.html</loc></url>
+  <url><loc>https://docs.example.com/api/page/pagination.html</loc></url>
+  <url><loc>https://docs.example.com/api/scenario/create-pet.html</loc></url>
+  <url><loc>https://docs.example.com/api/op/listPets.html</loc></url>
+  <url><loc>https://docs.example.com/api/op/createPet.html</loc></url>
+  <url><loc>https://docs.example.com/api/op/webhook-post-petadopted.html</loc></url>
+</urlset>
+"
+`;
