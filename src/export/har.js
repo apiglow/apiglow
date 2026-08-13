@@ -25,6 +25,7 @@ export function toHar(entry, { redact = true } = {}) {
       ([name]) => name.toLowerCase() === 'content-type',
     )?.[1] ?? ''
   const postData = harPostData(source.request)
+  const httpVersion = harHttpVersion(entry.transfer)
   return {
     log: {
       version: '1.2',
@@ -36,7 +37,7 @@ export function toHar(entry, { redact = true } = {}) {
           request: {
             method: entry.method.toUpperCase(),
             url: source.request.url,
-            httpVersion: 'HTTP/1.1',
+            httpVersion,
             headers: toNameValue(source.request.headers),
             queryString: queryString(source.request.url),
             cookies: [],
@@ -48,7 +49,7 @@ export function toHar(entry, { redact = true } = {}) {
             ? {
                 status: source.response.status,
                 statusText: source.response.statusText ?? '',
-                httpVersion: 'HTTP/1.1',
+                httpVersion,
                 headers: toNameValue(source.response.headers),
                 cookies: [],
                 content: {
@@ -61,7 +62,7 @@ export function toHar(entry, { redact = true } = {}) {
                 bodySize: entry.transfer?.encodedBodySize ?? source.response.body?.length ?? 0,
                 ...transferSizeField(entry.transfer),
               }
-            : emptyResponse(),
+            : emptyResponse(httpVersion),
           cache: {},
           timings: harTimings(entry),
         },
@@ -92,6 +93,18 @@ function contentSize(transfer, body) {
   const decoded = transfer?.decodedBodySize
   if (!decoded) return { size: body?.length ?? 0 }
   return { size: decoded, compression: decoded - (transfer.encodedBodySize ?? 0) }
+}
+
+// The ALPN id the connection negotiated, verbatim (`http/1.1`, `h2`, `h3`…),
+// on both legs — one connection, one protocol. Rewriting it into a "HTTP/x.y"
+// label would be inventing a spelling the wire never used, and only `h2` has an
+// unambiguous one anyway.
+// Unknown protocol — no timing entry, cross-origin without
+// `Timing-Allow-Origin`, or an entry archived before the snapshot existed — is
+// the empty string: HAR requires the field, and claiming a version nobody
+// observed would be the one thing worse than saying nothing.
+function harHttpVersion(transfer) {
+  return transfer?.protocol ?? ''
 }
 
 // Not in HAR 1.2: `_transferSize` is Chrome's own field, and every tool that
@@ -142,11 +155,11 @@ function requestBodySize(request) {
 }
 
 // HAR requires a response object even for a network failure.
-function emptyResponse() {
+function emptyResponse(httpVersion) {
   return {
     status: 0,
     statusText: '',
-    httpVersion: 'HTTP/1.1',
+    httpVersion,
     headers: [],
     cookies: [],
     content: { size: 0, mimeType: '', text: '' },

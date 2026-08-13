@@ -258,6 +258,26 @@ describe('HAR 1.2 export', () => {
     expect(response._transferSize).toBe(1500)
   })
 
+  it('carries the negotiated protocol onto both legs, as the ALPN id it is', () => {
+    const [{ request, response }] = toHar({
+      ...getEntry,
+      transfer: { protocol: 'h2', transferSize: 1500, encodedBodySize: 1200 },
+    }).log.entries
+    expect(request.httpVersion).toBe('h2')
+    expect(response.httpVersion).toBe('h2')
+  })
+
+  // Nothing observed the exchange: the field stays (HAR requires it) and stays
+  // empty, rather than asserting a version out of habit.
+  it('leaves the protocol empty when none was observed', () => {
+    const [known] = toHar({ ...getEntry, transfer: { protocol: '' } }).log.entries
+    expect(known.request.httpVersion).toBe('')
+    expect(known.response.httpVersion).toBe('')
+    const [failed] = toHar(failedEntry).log.entries
+    expect(failed.request.httpVersion).toBe('')
+    expect(failed.response.httpVersion).toBe('')
+  })
+
   // Cross-origin without Timing-Allow-Origin there is no snapshot at all, and
   // an entry predating the feature has no field: both keep today's export.
   it('leaves an entry without a snapshot exactly as it was', () => {

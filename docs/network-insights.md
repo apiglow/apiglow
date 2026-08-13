@@ -312,12 +312,18 @@ snapshot has no decoded size), `response.content.compression` =
 `decodedBodySize -
 encodedBodySize`, `_transferSize` = `transferSize` (the underscore field
 is the de-facto Chrome extension; emitted only when the snapshot saw
-encoded bytes, so a protocol-only snapshot adds nothing to the HAR).
-Those four mappings, and only those:
-`httpVersion` still says `HTTP/1.1` by default even though the snapshot
-may know better — a deliberate non-change. Entries without a snapshot
-keep the
-pre-snapshot values (snapshot tests cover both).
+encoded bytes, so a protocol-only snapshot adds nothing to the HAR),
+`httpVersion` = `protocol` on the request *and* the response — one
+connection negotiates one protocol, so both legs carry it.
+
+The protocol goes out as the ALPN id the snapshot holds (`http/1.1`,
+`h2`, `h3`…), not as a rewritten `HTTP/x.y` label: only `h2` has an
+unambiguous spelling, and the wire never used the others. A snapshot
+without a protocol — cross-origin without `Timing-Allow-Origin`, a
+failed send, an entry archived before the field existed — yields the
+empty string, the field being required by HAR; nothing observed the
+exchange, so the export claims nothing. Entries without a snapshot at
+all keep the pre-snapshot sizes (snapshot tests cover both).
 
 ## 6. Architecture
 
