@@ -2,15 +2,8 @@
 
 Everything here is reproducible mechanically; re-shoot whenever the shown
 surfaces change materially. None of this directory ships in the npm tarball
-or the CDN bundle.
-
-## Wordmarks
-
-`apiglow-wordmark-{light,dark}.svg` — generated from the website identity's
-variable font (Bricolage Grotesque, wght 700) converted to SVG paths, "Glow"
-filled with the brand gradient (light: `#6d28d9→#be185d→#0e7490`, dark:
-`#a78bfa→#f472b6→#22d3ee`, 55 % midpoint, `userSpaceOnUse`). No font loads
-at render time.
+or the CDN bundle. The logo and wordmarks the README opens with are not
+captures: they live in `brand/`.
 
 ## Screenshots
 

@@ -1,19 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Glow-dot favicon: the brand radial gradient as a soft halo around a
-       violet core. Core lightens in dark mode for visibility on dark tab bars. -->
-  <style>
-    #core { fill: #6d28d9; }
-    @media (prefers-color-scheme: dark) {
-      #core { fill: #a78bfa; }
-    }
-  </style>
-  <defs>
-    <radialGradient id="halo">
-      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.9"/>
-      <stop offset="55%" stop-color="#7c3aed" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <circle cx="32" cy="32" r="30" fill="url(#halo)"/>
-  <circle id="core" cx="32" cy="32" r="11"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- The brand mark, tab-sized: the star is stroked in its own gradient so the
+       points thicken and round off instead of vanishing at 16 px. -->
+  <linearGradient id="glow-favicon" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb7185"/><stop offset="28%" stop-color="#fbbf24"/><stop offset="52%" stop-color="#a3e635"/><stop offset="76%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+  <circle cx="64" cy="64" r="46" fill="#f472b6" opacity="0.08"/>
+  <circle cx="64" cy="64" r="38" fill="#f472b6" opacity="0.10"/>
+  <path d="M64.0 27.0 L75.8 47.8 L99.2 52.6 L83.0 70.2 L85.7 93.9 L64.0 84.0 L42.3 93.9 L45.0 70.2 L28.8 52.6 L52.2 47.8 Z" fill="url(#glow-favicon)" stroke="url(#glow-favicon)" stroke-width="12" stroke-linejoin="round" transform="rotate(-10 64 64)"/>
 </svg>

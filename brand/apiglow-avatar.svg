@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><rect width="128" height="128" fill="#1c1917"/>
+  <linearGradient id="glow-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb7185"/><stop offset="28%" stop-color="#fbbf24"/><stop offset="52%" stop-color="#a3e635"/><stop offset="76%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+  <circle cx="64" cy="66" r="46" fill="#f472b6" opacity="0.08"/>
+  <circle cx="64" cy="66" r="38" fill="#f472b6" opacity="0.10"/>
+  <path d="M64.0 33.0 L74.6 51.4 L95.4 55.8 L81.1 71.6 L83.4 92.7 L64.0 84.0 L44.6 92.7 L46.9 71.6 L32.6 55.8 L53.4 51.4 Z" fill="url(#glow-avatar)" stroke="url(#glow-avatar)" stroke-width="12" stroke-linejoin="round" transform="rotate(-10 64 66)"/>
+  <ellipse cx="53" cy="49" rx="12" ry="6.5" fill="#ffffff" opacity="0.32" transform="rotate(-28 53 49)"/>
+  <path d="M103 35 C103.9 39.2 104.8 40.1 109 41 C104.8 41.9 103.9 42.8 103 47 C102.1 42.8 101.2 41.9 97 41 C101.2 40.1 102.1 39.2 103 35 Z" fill="#fbbf24" opacity="0.95"/>
+</svg>

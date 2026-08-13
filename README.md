@@ -1,8 +1,13 @@
 <div align="center">
 
 <a href="https://apiglow.dev/demo/"><picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/apiglow-wordmark-dark.svg">
-<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/apiglow-wordmark-light.svg" alt="ApiGlow" width="260">
+<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/apiglow/apiglow/main/brand/apiglow-mark-dark.svg">
+<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/brand/apiglow-mark-light.svg" alt="" width="96">
+</picture></a>
+
+<a href="https://apiglow.dev/demo/"><picture>
+<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/apiglow/apiglow/main/brand/apiglow-wordmark-dark.svg">
+<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/brand/apiglow-wordmark-light.svg" alt="ApiGlow" width="260">
 </picture></a>
 
 ### API docs with a real API client inside — one script tag, no backend.
