@@ -8,11 +8,10 @@ updates it last. `Latest known` is only ever written from a source fetched
 during a run — `—` means never checked online yet — and each row's pin was
 judged against the version that column records.
 
-Every specifier is exact. `npm outdated` is **not** empty at these pins:
-five rows are behind and one transitive advisory is open — all of them
-planned, none unrecorded.
+Every specifier is exact, `npm outdated` is empty at these pins, and
+`npm audit` reports no advisory.
 
-**Active plan**: `docs/upgrade/stack.20260814-1740.md`
+**Active plan**: none
 
 ## App scope — runtime deps shipped in the bundle (architecture.md §14.2: open for spec/format work)
 
@@ -32,9 +31,9 @@ as to the app rows, because both are bundled credits.
 
 | Dependency | Pinned | Latest known | Source of truth | Ritual specifics |
 |---|---|---|---|---|
-| @apidevtools/json-schema-ref-parser | 15.5.1 | **16.0.0** | npm + github.com/APIDevTools/json-schema-ref-parser/releases | `undici` stays external in `vite.config.js` (Node-only path) |
+| @apidevtools/json-schema-ref-parser | 16.0.0 | 16.0.0 | npm + github.com/APIDevTools/json-schema-ref-parser/releases | `undici` stays external in `vite.config.js` (Node-only path) and absent from `dist/app.js` — the built bundle keeps a single unresolved `await import("undici")` on that path, which is the check. Declares `node >=22.19.0`, so it sets a floor under the `.nvmrc` row |
 | dompurify | 3.4.13 | 3.4.13 | npm + github.com/cure53/DOMPurify/releases | sanitizer behavior is a product feature — read release notes for sanitization changes, re-run the XSS e2e. That e2e is **not a spec file**: the coverage is `tests/e2e/bootstrap.spec.js:54` |
-| highlight.js | 11.11.1 | **11.12.0** | npm + github.com/highlightjs/highlight.js (CHANGES.md) | rendering snapshots may legitimately move — deliberate review. Only the eleven grammars imported one by one in `src/components/markdown.js:2-13` are in scope; upstream themes are not — the hljs palette is hand-written at `src/styles/app.css:689+` |
+| highlight.js | 11.12.0 | 11.12.0 | npm + github.com/highlightjs/highlight.js (CHANGES.md) | rendering snapshots may legitimately move — deliberate review. Only the eleven grammars imported one by one in `src/components/markdown.js:2-13` are in scope; upstream themes are not — the hljs palette is hand-written at `src/styles/app.css:689+` |
 | json-p3 | 2.2.2 | 2.2.2 | npm + github.com/jg-rp/json-p3 | bundled credit like its four neighbours, but the one **not** asserted by `tests/e2e/about.spec.js` — only `tests/credits.test.js` guards it |
 | marked | 18.0.9 | 18.0.9 | npm + github.com/markedjs/marked/releases | ditto; DOMPurify downstream absorbs output changes but review anyway |
 
@@ -44,11 +43,11 @@ as to the app rows, because both are bundled credits.
 |---|---|---|---|---|
 | vite | 8.2.1 | 8.2.1 | npm + vite.dev/releases | verify single-file `dist/app.js`, `import.meta.url` asset resolution (rule 4), `undici` external; full e2e on the packed tarball. **Carries the repo's only transitive dependencies** (`postcss`, and `nanoid` under it), so `npm audit` findings surface here — they are usually fixable in `package-lock.json` alone, within the existing range, and a vite bump is the wrong first reflex |
 | tailwindcss + @tailwindcss/vite | 4.3.3 | 4.3.3 | npm + github.com/tailwindlabs/tailwindcss/releases | diff the built CSS (purge behavior); full e2e; **also a bundled credit** — `src/credits.js` version moves with it |
-| daisyui | 5.7.16 | **5.7.17** | npm + daisyui.com/docs/changelog | **the suites are the acceptance — see "The daisyUI ritual is test-first" below**; re-sync the pinned skill (`skills-lock.json` hash); rule 3 — **35** `[data-theme=…]` blocks in the built CSS, the number to re-check; **also a bundled credit** — `src/credits.js` version moves with it |
-| @biomejs/biome | 2.5.7 | **2.5.8** | npm + biomejs.dev/blog | `npx biome ci`; newly-recommended rules fixed in the bump session. The `$schema` pin inside `biome.jsonc` moves with the version. CSS and HTML are **outside** `files.includes`, and the preset is `recommended` (no nursery) — so CSS-formatter and nursery-rule entries in a release cannot reach this repo |
+| daisyui | 5.7.17 | 5.7.17 | npm + daisyui.com/docs/changelog | **the suites are the acceptance — see "The daisyUI ritual is test-first" below**; re-sync the pinned skill (`skills-lock.json` hash); rule 3 — the theme count is not re-derived by hand, `scripts/check-dist.mjs` holds it as `EXPECTED_THEMES` (**37**) and `npm run check:dist` is the check; **also a bundled credit** — `src/credits.js` version moves with it |
+| @biomejs/biome | 2.5.8 | 2.5.8 | npm + biomejs.dev/blog | `npx biome ci`; newly-recommended rules fixed in the bump session. The `$schema` pin inside `biome.jsonc` moves with the version. CSS and HTML are **outside** `files.includes`, and the preset is `recommended` (no nursery) — so CSS-formatter and nursery-rule entries in a release cannot reach this repo |
 | vitest + @vitest/coverage-v8 | 4.1.10 | 4.1.10 | npm + github.com/vitest-dev/vitest/releases | suites green |
 | @playwright/test | 1.62.1 (exact) | 1.62.1 | npm + playwright.dev/docs/release-notes | e2e green; browser image bump may shift screenshots |
-| @axe-core/playwright | 4.12.1 (exact) | **4.13.0** | npm + github.com/dequelabs/axe-core-npm/releases | new a11y findings triaged into the session, not silenced. The wrapper's version tracks the axe-core it bundles, so read **axe-core's** CHANGELOG for rule changes, not the wrapper's release notes |
+| @axe-core/playwright | 4.13.0 (exact) | 4.13.0 | npm + github.com/dequelabs/axe-core-npm/releases | new a11y findings triaged into the session, not silenced. The wrapper's version tracks the axe-core it bundles, so read **axe-core's** CHANGELOG for rule changes, not the wrapper's release notes |
 | fake-indexeddb | 6.2.5 (exact) | 6.2.5 | npm | store unit tests green |
 | @fontsource-variable/source-serif-4 | 5.3.0 (exact) | 5.3.0 | npm + github.com/fontsource/font-files | not code, but its **output ships**: `dist/fonts/` is copied from it. A bump is a font-file diff — check `check:dist` weight and that the copy plugin still finds the same filenames |
 | browserslist-to-esbuild | 2.1.1 (exact) | 2.1.1 | npm + github.com/marcofugaro/browserslist-to-esbuild | derives the build target from `browserslist` (`vite.config.js:86`); a bump can silently move the target, so re-resolve it and compare against the platform table below |
