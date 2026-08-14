@@ -42,7 +42,7 @@ specs; `biome check` 388 files, 0 diagnostics.
 | Test code health | manual sweep | e2e `helpers.js` adopted by **42/45** specs (`inline-spec`, `perf` and `bake` abstain by design — `bake` drives the baked static fixtures, not the app); unit: one shared storage double, `fake-indexeddb/auto` hoisted into `vitest.config.js` `setupFiles` (0 per-file imports) | low |
 | CSS | `npm run health:css` | **0 orphans** of 55 class selectors in `src/styles/app.css`; the 26 `hljs-*` are emitted by highlight.js at runtime and allowlisted in the detector | none — hold it |
 | Wasted work | manual sweep | **0 instances.** The previously recorded one — the per-header `authNames` rebuild inside try-it `#refresh()` — is gone from the code (no `authNames` in `src/`; the one `security.schemes.find()` left is a memoized getter at `api-try-it-panel.js:448`). Clean: `api-nav.js:70` `set route` calls `#highlight()`, never `#renderList()`; **0** `JSON.parse(JSON.stringify())` in `src/`; the `structuredClone` sites are load-path and each is required (ref-parser mutates its input) | none — hold it |
-| Altitude / special-casing | manual sweep | **Reopened, as the row predicted** ("reopens at a fifth site"): hand-rolled `alert alert-*` construction now at ~20 sites outside `view-bits.js:73` `alertBox` — the helper bakes in `text-xs py-2`, a span-wrapped message and `role="alert"`, so every site needing another size, `alert-soft`, extra layout classes or non-span children dodges it (site list in the active plan, session 5, needs-go). Still cleared: `openModal` (0 raw `showModal()`), `announce`, `request-history-list.js` `responseBody` (a different affordance, correctly separate) | medium — planned |
+| Altitude / special-casing | manual sweep | **20 hand-rolled `alert alert-*` sites** outside `view-bits.js:93` `alertBox` — the reopen condition the row predicted, fired and then read in full: **accepted** (user-validated, see Accepted thresholds). The sites diverge on five independent axes — tag (`div` ×18, `p` `api-nav.js:498`, `ul` `env-setup-builder.js:107`), role (`alert` ×6, `note` ×7, `status` ×2, none ×5), size (none ×6, `text-xs`, `text-sm`), extra classes (`alert-soft`, `items-start`, `mt-4`, `mt-3`, `mx-2 my-1`, `border-0`, `flex-col items-start gap-1`) and children (span-wrapped text ×10, bare text node ×3, element trees ×7) — so no generalization absorbs more than the 10 span-wrapped sites. Still cleared: `openModal` (0 raw `showModal()`), `announce`, `request-history-list.js` `responseBody` (a different affordance, correctly separate) | none — accepted |
 
 ## Positive baselines (don't regress)
 
@@ -111,6 +111,24 @@ run that the rationale still holds.
   behind an import. They stay in the `health:size` output as information,
   not as a target. Both grew with their own concern since the judgment;
   reopens if either gains a second one.
+
+- **The 20 hand-rolled `alert alert-*` sites vs `view-bits.js:93`
+  `alertBox`** (accepted, user-validated): `alertBox` bakes four things at
+  once — `text-xs py-2`, a span-wrapped plain-text message and
+  `role="alert"` — which makes it the try-it panel's in-panel alert (3
+  importers, its own positive baseline above), not a repo-wide alert
+  factory. The 20 other sites are ordinary explicit-static-class daisyUI
+  construction, which is what rule 2 asks for, and they diverge on the five
+  axes the row above lists. Both candidate generalizations fail the bar: an
+  option bag (`{ classes, role, spanClass }`) reaches only the 10
+  span-wrapped sites for a measured **net −18 lines of 40 903**, splits the
+  class string rule 2 wants literal and greppable, and leaves the other 10
+  hand-rolled anyway; a lower-level `alertEl(classes, ...children)` reaches
+  all 20 but removes no lines and sets no role — a rename, which the churn
+  ban forbids without a metric that moves. Reopens if a site appears
+  duplicating `alertBox`'s exact shape (xs + `py-2` + span-wrapped text +
+  `role="alert"`): that one is a private copy of a live helper, not a
+  different alert.
 
 - **`api-try-it-panel.js` (1707 l), `api-endpoint-doc.js` (1211 l) and
   `settings-panel.js` (845 l) over the 800-line mark** (accepted,
