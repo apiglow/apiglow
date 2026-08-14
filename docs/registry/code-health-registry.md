@@ -18,30 +18,31 @@ The wasted-work and altitude rows exist to close a coverage gap against
 counterpart here, so those defects are findable by the audit, not only
 while reviewing a diff. Their bar is deliberately narrow (see the skill's
 **The bar**): wasted work counts only on a hot, startup, or budget-covered
-path, and altitude findings enter plans as `structural`. Both rows read
-below bar but not empty — the instances are recorded in their rows so the
-next run compares against something real.
+path, and altitude findings enter plans as `structural`. Wasted work
+currently reads empty (its one recorded instance left the code); altitude
+read below bar until its recorded reopen condition fired — the proof the
+rows earn their keep by holding instances the next run compares against.
 
-Perimeter at these baselines: `src/` **172** `.js` files /
-**29 322** lines; unit tests 67 files / **1002** tests green; e2e 34
-specs; `biome check` 302 files, 0 diagnostics.
+Perimeter at these baselines: `src/` **214** `.js` files /
+**40 903** lines; unit tests 94 files / **1642** tests green; e2e 45
+specs; `biome check` 388 files, 0 diagnostics.
 
-**Active plan**: none
+**Active plan**: `docs/upgrade/code.20260814-1631.md`
 
 | Dimension | Detector | Baseline | Severity |
 |---|---|---|---|
-| Dead exports | `npm run health:exports` | **0 dead**, **0 module-private**, **31 test-only** (accepted), of 437 exports | none — hold it |
-| Dead i18n keys | `npm run health:i18n` | **0** of 804 keys; `en`/`fr` both 804, 0 missing, 0 extra | none — hold it |
-| Orphan files | `npm run health:orphans` | **0** — 172/172 of `src/` reachable from `src/app.js` | none — hold it |
-| Unused deps / scripts | manual | **0** — all 10 devDeps and 16 npm scripts referenced | none — hold it |
-| Duplication | `npm run health:svg` | **0** duplicate SVG bodies — 46 distinct icons in **1** file (`components/icons.js`). The 3 remaining near-pairs (`COPY_SVG`/`COPY_SVG_SM`, the 3 `CHECK_*`, `CHEVRON`/`CARET`) are the same path at different sizes/weights: a design choice, not debt. Modal-dismiss preambles, `downloadText`, e2e `goto`/`openSettings` and `fakeLocalStorage` all factored. **Open** (a spec-code inventory consequence, `docs/openapi-coverage.md` §6): the RFC 6901 escape (`~1` before `~0`, order-sensitive) is hand-rolled in **8** files — `scenarios/pointer.js`, `audit/pointer.js`, `audit/rules/discriminator-mapping.js`, `import/arazzo.js` (`unescapeToken`), `scenarios/inspect.js`, plus the decode side in `openapi/model.js` (×2), `openapi/swagger2.js` and `openapi/deref.js` — where `scenarios/pointer.js` already exports `pointerFrom`/`resolvePointer`. Not a dependency question (the inventory keeps the in-house pointer): a collapse onto the existing module | low |
-| Size / complexity | `npm run health:size` | files > 800 lines, **5** of 172: `api-try-it-panel.js` **1478**, `app.js` **1404**, `api-endpoint-doc.js` **1158**, `model.js` **1085**, `api-scenario-view.js` **951**. The worst nesting is gone — `appLayout()` at **1112** lines, **19** nested declarations. `src/` total **29 322** lines | medium |
-| Idiom drift | `npm run health:svg` (sizing arm) + manual sweep | **0 bypassed shared helpers** — the in-panel alert/label helpers all live in `try-it/view-bits.js`, call sites naming the colour as a static literal. **0** `h-4 w-4` sites (all `size-*`). **Text de-emphasis** (architecture.md §14.16 — a secondary level is a colour, never an opacity; the rule is what keeps the AA floor computable, and that floor is a documented waiver, so a reintroduced dimmer breaks contrast with no gate noticing): **0** text-bearing `opacity-*` sites — `grep -rn "opacity-\|text-[a-z-]*/[0-9]" src/ --include='*.js'` returns 4 `opacity-*`, all decoration (`icons.js:54,143,155` SVG glyphs, `api-nav.js:220` an icon-only ghost button), which the rule does not cover. **3** sites spell a token's own ratio inline instead of using it: `shell/views.js:369` and `api-nav.js:216` carry `text-base-content/70`, which *is* `text-subtle`, and `api-endpoint-doc.js:551` `text-base-content/30` sits below the floor on a hover-revealed glyph button. *Not* debt: the `text-white/50…/80` scale in the fixed navy panel and the webhook simulator — that is §14.16's third level, and `text-quiet` mixes `currentColor` at one 75 % ratio, so it cannot express a graded scale. *Not* debt: 34 `console.error` (uniform `[api-doc]` prefix), 20 non-literal `t()` calls (legitimate dynamic keys) | low |
+| Dead exports | `npm run health:exports` | **0 dead**, **13 module-private** (measured this run; session 1 of the active plan drops the keywords), **37 test-only** (accepted), of 629 exports | low — planned |
+| Dead i18n keys | `npm run health:i18n` | **0** of 1100 keys; `en`/`fr` both 1100, 0 missing, 0 extra | none — hold it |
+| Orphan files | `npm run health:orphans` | **0** — 214/214 of `src/` reachable from `src/app.js` + `scripts/bake.mjs` | none — hold it |
+| Unused deps / scripts | manual | **0** — all 13 devDeps and 26 npm scripts referenced (re-verified this run: `es-check` → `check:syntax`, `browserslist-to-esbuild` + `@fontsource-variable/source-serif-4` → `vite.config.js`, `@vitest/coverage-v8` → `test:coverage`) | none — hold it |
+| Duplication | `npm run health:svg` | **0** duplicate SVG bodies — 55 distinct icons in **1** file (`components/icons.js`). The 3 remaining near-pairs (`COPY_SVG`/`COPY_SVG_SM`, the 3 `CHECK_*`, `CHEVRON`/`CARET`) are the same path at different sizes/weights: a design choice, not debt. Modal-dismiss preambles, `downloadText`, e2e `goto`/`openSettings` and `fakeLocalStorage` all factored. The RFC 6901 escape hand-rolled beyond `scenarios/pointer.js` (re-verified this run at 9 sites in 8 files) is session 2 of the active plan — the collapse onto the existing module the row always called for | low — planned |
+| Size / complexity | `npm run health:size` | files > 800 lines, **6** of 214: `app.js` **2066** (`appLayout()` ~1700 lines, app.js:186→~1890 — split planned, session 6 of the active plan, needs-go), `api-try-it-panel.js` **1707**, `model.js` **1220**, `api-endpoint-doc.js` **1211**, `api-scenario-view.js` **1096**, `settings-panel.js` **845** (all but app.js accepted, see Accepted thresholds). `src/` total **40 903** lines. Detector caveat: the longest-function pass mis-parses object-literal getters (`get source()` at app.js:323, 3 lines, reported as 656) — session 4 fixes it | medium — planned |
+| Idiom drift | `npm run health:svg` (sizing arm) + manual sweep | **0 bypassed shared helpers** — the in-panel alert/label helpers all live in `try-it/view-bits.js`, call sites naming the colour as a static literal. **0** `h-4 w-4` sites (all `size-*`). **Text de-emphasis** (architecture.md §14.16 — a secondary level is a colour, never an opacity; the rule is what keeps the AA floor computable, and that floor is a documented waiver, so a reintroduced dimmer breaks contrast with no gate noticing): **0** text-bearing `opacity-*` sites — `grep -rn "opacity-\|text-[a-z-]*/[0-9]" src/ --include='*.js'` returns 4 `opacity-*`, all decoration (`icons.js:54,143,155` SVG glyphs, `api-nav.js:220` an icon-only ghost button), which the rule does not cover. **2** sites spell a token's own ratio inline instead of using it: `shell/views.js:369` and `api-nav.js:216` carry `text-base-content/70`, which *is* `text-subtle` — session 3 of the active plan. `api-endpoint-doc.js:551` `text-base-content/30` (below the floor on a hover-revealed glyph button) is a design/a11y decision, routed to the user via the plan's Routed findings, not a cleanup. *Not* debt: the `text-white/50…/80` scale in the fixed navy panel and the webhook simulator — that is §14.16's third level, and `text-quiet` mixes `currentColor` at one 75 % ratio, so it cannot express a graded scale. *Not* debt: 34 `console.error` (uniform `[api-doc]` prefix), 20 non-literal `t()` calls (legitimate dynamic keys) | low |
 | Defensive / dead branches | manual sweep | **clean**: 0 TODO/FIXME/HACK/XXX in `src/` and `tests/`, 0 back-compat shims; only the two `DB_VERSION = 2` dev-profile constants (accepted below) | very low |
-| Test code health | manual sweep | e2e `helpers.js` adopted by **30/32** specs (`inline-spec` and `perf` abstain by design), **39** local helpers left, all spec-specific; unit: one shared storage double, `fake-indexeddb/auto` hoisted into `vitest.config.js` `setupFiles` (0 per-file imports) | low |
+| Test code health | manual sweep | e2e `helpers.js` adopted by **42/45** specs (`inline-spec`, `perf` and `bake` abstain by design — `bake` drives the baked static fixtures, not the app); unit: one shared storage double, `fake-indexeddb/auto` hoisted into `vitest.config.js` `setupFiles` (0 per-file imports) | low |
 | CSS | `npm run health:css` | **0 orphans** of 55 class selectors in `src/styles/app.css`; the 26 `hljs-*` are emitted by highlight.js at runtime and allowlisted in the detector | none — hold it |
-| Wasted work | manual sweep | **1 instance, 0 above bar.** Swept the hot paths no perf budget watches (budget-covered ones route to `app-health`): try-it `#refresh()` — 21 call sites, runs per keystroke — recomputes a loop-invariant inside a per-header `filter` at `api-try-it-panel.js:1354-1358` (`security.schemes.find()` + the `authNames` array rebuilt for every header). Real, but ≤20 headers × ≤5 schemes is not felt: recorded, not planned. Clean: `api-nav.js:70` `set route` calls `#highlight()`, never `#renderList()`; **0** `JSON.parse(JSON.stringify())` in `src/`; the 7 `structuredClone` sites are load-path and each is required (ref-parser mutates its input) | low |
-| Altitude / special-casing | manual sweep | **1 instance, 0 above bar.** Four page-level alerts hand-roll the `el('div','alert alert-X',…)` + `role="alert"` incantation around `view-bits.js:73` (`shell/views.js:26,241`, `md-page.js:55`, `api-scenario-view.js:150`) — the shared helper bakes in `text-xs py-2`, so it cannot serve them without changing how they render, and two add a layout wrapper. Too narrow a parameterization, but 4 sites with genuinely different output is not yet debt. Reopens at a fifth site, or if the alert sizing is ever unified. Cleared: `openModal` (7 uniform sites, 0 raw `showModal()`), `announce` (17 uniform sites), `request-history-list.js:560` `responseBody` (a different affordance — collapse/expand, `prettyJson` re-indent — correctly kept separate from `view-bits.js:89`). The webhook simulator's alert needs are served by the shared helper, which already takes the colour — see the Idiom drift row | low |
+| Wasted work | manual sweep | **0 instances.** The previously recorded one — the per-header `authNames` rebuild inside try-it `#refresh()` — is gone from the code (no `authNames` in `src/`; the one `security.schemes.find()` left is a memoized getter at `api-try-it-panel.js:448`). Clean: `api-nav.js:70` `set route` calls `#highlight()`, never `#renderList()`; **0** `JSON.parse(JSON.stringify())` in `src/`; the `structuredClone` sites are load-path and each is required (ref-parser mutates its input) | none — hold it |
+| Altitude / special-casing | manual sweep | **Reopened, as the row predicted** ("reopens at a fifth site"): hand-rolled `alert alert-*` construction now at ~20 sites outside `view-bits.js:73` `alertBox` — the helper bakes in `text-xs py-2`, a span-wrapped message and `role="alert"`, so every site needing another size, `alert-soft`, extra layout classes or non-span children dodges it (site list in the active plan, session 5, needs-go). Still cleared: `openModal` (0 raw `showModal()`), `announce`, `request-history-list.js` `responseBody` (a different affordance, correctly separate) | medium — planned |
 
 ## Positive baselines (don't regress)
 
@@ -90,11 +91,13 @@ acceptance should include a grep for the helper's name across `src/`.
 Debt the user has explicitly accepted, with rationale; re-checked each
 run that the rationale still holds.
 
-- **31 test-only exports** (accepted; of 437 total exports): exports whose
-  only consumers are unit tests are the sanctioned way to test the pure
-  core without a build-time test-api layer. Tracked so the count stays
-  deliberate — a jump means production code stopped using something, not
-  that testing got better.
+- **37 test-only exports** (accepted, user-validated at 37 — was 31; of
+  629 total exports): exports whose only consumers are unit tests are the
+  sanctioned way to test the pure core without a build-time test-api
+  layer. The six newcomers track the recent feature waves (user-overlay
+  ×2, docs/pages, site-layout, maintenance inventory, docs/operations) —
+  the same pattern, not production code losing its last consumer. Tracked
+  so the count stays deliberate.
 - **Two `DB_VERSION = 2` dev-profile constants** (`storage/history.js:12`,
   `storage/schema-snapshot.js:12`): resetting them to 1 raises
   `VersionError` on any browser profile that already holds a v2 database —
@@ -102,11 +105,22 @@ run that the rationale still holds.
   constant. The rename plan keeps the `apidoc` DB prefix (architecture.md
   §14.11), so no rename will clear it either. Reopens if either store's
   schema actually changes — the version bumps then anyway.
-- **`model.js` (1085 l) and `api-scenario-view.js` (951 l) over the
+- **`model.js` (1220 l) and `api-scenario-view.js` (1096 l) over the
   800-line mark** (accepted): both were read and judged **coherent** —
   one concern each, no extractable seam that would not just move lines
   behind an import. They stay in the `health:size` output as information,
-  not as a target. Reopens if either grows a second concern.
+  not as a target. Both grew with their own concern since the judgment;
+  reopens if either gains a second one.
+
+- **`api-try-it-panel.js` (1707 l), `api-endpoint-doc.js` (1211 l) and
+  `settings-panel.js` (845 l) over the 800-line mark** (accepted,
+  user-validated this run — the same run that planned the `app.js` split
+  and chose not to split these): the panel is the canonical structural
+  case and stays one component on purpose (rule 20 makes it the single
+  source of truth the doc mirrors); the doc and settings panels grew with
+  the features they render (user-overlay editor at
+  `settings-panel.js` `#userOverlaySection`). Reopens if any of the three
+  crosses 2000 lines, or gains a concern that is not its own rendering.
 
 <!-- Template:
 - **{dimension} — {debt}**: {why living with it beats fixing it; what
