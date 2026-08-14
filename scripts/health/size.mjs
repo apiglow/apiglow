@@ -16,22 +16,33 @@ const CONTROL = /^(?:if|for|while|switch|catch|do|return|else|await|typeof)$/
 function declarations(lines) {
   const out = []
   for (const [i, line] of lines.entries()) {
-    if (!line.trimEnd().endsWith('{')) continue
+    const head = line.trimEnd()
+    // A signature too long for one line ends on the parameter's `(`, and the
+    // brace only arrives on the `) {` line Biome puts back at the declaration's
+    // own indent. Missing that form hides exactly the functions this detector
+    // exists to find — the longest ones are the ones with the most parameters.
+    const wrapped = head.endsWith('(')
+    if (!head.endsWith('{') && !wrapped) continue
     const m = OPENER.exec(line)
     const name = m?.[2] ?? m?.[3] ?? m?.[4]
     if (!name || CONTROL.test(name)) continue
-    // The bare `name(…) {` branch also matches `setTimeout(() => {`, a call
-    // taking a callback. A declaration closes its parameter list first.
-    if (m[4] && !line.trimEnd().endsWith(') {')) continue
     const indent = m[1]
+    let body = i
+    if (wrapped) {
+      // `foo(` also opens a call spanning several lines. Only a declaration
+      // reaches `) {`; a call's first same-indent `)` closes on `)` or `),`.
+      const paren = lines.findIndex((l, j) => j > i && l.startsWith(`${indent})`))
+      if (paren < 0 || lines[paren].trimEnd() !== `${indent}) {`) continue
+      body = paren
+      // The bare `name(…) {` branch also matches `setTimeout(() => {`, a call
+      // taking a callback. A declaration closes its parameter list first.
+    } else if (m[4] && !head.endsWith(') {')) continue
+    // The body ends on the first line closing at the declaration's indent —
+    // `}` alone, but also `},` for an object member and `})` for an argument.
     const closer = `${indent}}`
     let end = lines.length - 1
-    for (let j = i + 1; j < lines.length; j++) {
-      if (
-        lines[j] === closer ||
-        lines[j].startsWith(`${closer})`) ||
-        lines[j].startsWith(`${closer};`)
-      ) {
+    for (let j = body + 1; j < lines.length; j++) {
+      if (lines[j].startsWith(closer)) {
         end = j
         break
       }
