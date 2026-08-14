@@ -17,7 +17,7 @@ Detector: `npm run health:skills`
 `npm run health` — that aggregate is code-health's contract, and a run of
 it must not measure a dimension another skill owns.
 
-**Active plan**: none
+**Active plan**: `docs/upgrade/skills.20260814-1608.md`
 
 | Dimension | Detector | Baseline | Severity |
 |---|---|---|---|
@@ -111,6 +111,25 @@ rationale; re-checked each run that the rationale still holds.
   be triaged the same way — "who watches this decision?" is the
   question worth re-asking each time, even when the answer is usually
   "the rule it created".
+- **§14.19 (a workflow is published, never re-authored) watched through
+  its implementing rows**: the specs-registry Arazzo row names the whole
+  hand-off surface — export (`src/export/arazzo.js`), import
+  (`src/import/arazzo.js`) and the CI hand-off (`src/export/ci.js`,
+  `CI_RUNNERS`) — and app-health's scenarios and export rows guard the
+  behavior. The out-bound boundary (reader scenarios never reach a
+  generated file) is structural: the bake cannot open IndexedDB.
+  Validation: delegated by the user to the run's judgment. Reopens if
+  the Arazzo row stops naming import, export or the CI hand-off.
+- **§14.20 (staged boot pipeline) watched through the perf-budgets row
+  and invariant 9**: app-health's performance-budgets row (rule 14)
+  holds the boot budget, measured in-page, over the pipeline's hot
+  code; un-staging the loader fails it on a heavy document. The one
+  structural exception the entry creates — `src/boot-prefetch.js` reads
+  the host config — is named by `scripts/check-invariants.mjs`
+  (`HOST_CONFIG_READERS`), so invariant 9 (rule 10) already knows it.
+  Validation: delegated by the user to the run's judgment. Reopens if
+  the boot budget or invariant 9 disappears, or if a staged surface
+  gains no budget covering it.
 - **Markdown documentation pages — not a target**: `docs-pages/` is demo
   markdown shown in dev and on the two demo pages; no host contract
   rests on it today, so the family owes it no critical-path row of its
