@@ -28,6 +28,8 @@ jobs:
         run: npx biome ci
       - name: Cross-cutting invariants
         run: npm run check:invariants
+      - name: Frozen public surface
+        run: npm run check:surface
       - name: Unit tests with coverage
         # Informational: no threshold gate, the summary is read in the log.
         run: npm run test:coverage

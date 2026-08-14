@@ -26,9 +26,9 @@ work. Design rationale: `docs/architecture.md` §14. Contributor guide: `CONTRIB
   `package.json` disagree on the version
 - `npm run lint` / `npm run lint:fix` — Biome (format + lint); CI runs
   `biome ci` and it must be green
-- `npm run check:invariants`, `check:dist`, `check:syntax` — the gates CI
-  enforces on top of the suites; green unit tests alone do not mean a change
-  is committable. What each one covers: `CONTRIBUTING.md`
+- `npm run check:invariants`, `check:dist`, `check:surface`, `check:syntax` —
+  the gates CI enforces on top of the suites; green unit tests alone do not
+  mean a change is committable. What each one covers: `CONTRIBUTING.md`
 
 Both demo pages get their API from `demo/mock-sw.js`, a service worker
 answering `/demo-api/v3` in the browser (see CONTRIBUTING). The e2e suite
@@ -123,6 +123,43 @@ Rationale for each lives in `CONTRIBUTING.md` and `docs/architecture.md` §14.
     silent, so before touching any editable surface read the mechanics in
     `docs/architecture.md` §5.5.4, and extend the guard
     (`tests/e2e/doc-panel-sync.spec.js`) with every new one.
+
+## Good enough — convergence rules
+
+Code is not optimized, it is **compliant**. A module that passes the gates
+(Biome, tests, `check:*`, the perf budgets) is FROZEN, even if "it could be
+nicer".
+
+- **The budgets are the judge, and they already exist**: bundle caps in
+  `check-dist.mjs` (ratcheted by invariant 18), perf budgets in
+  `tests/e2e/perf.spec.js`, file-length flags in `npm run health`. Below
+  budget = done. We do not shave "a bit more".
+- **Frozen surfaces do the anti-loop work**: tags, events, storage names,
+  i18n keys are versioned contracts snapshotted in `public-surface.json`
+  (`npm run check:surface`). What a third refactor pass finds to "improve"
+  is mostly names — those are product decisions, never refactors. Runtime
+  dependencies are exactly the five pinned (invariant 20): adding one is a
+  human checkpoint, never an agent decision.
+- **Every refactor edit cites a metric that moves** (bytes, a budget, a
+  duplication) **or a bug it fixes**. Otherwise: forbidden. Explicit churn
+  bans: taste renames; method reordering; swapping equivalent syntax
+  (`map` ↔ `for…of`); extracting an abstraction used once; comments that
+  paraphrase; reformatting what Biome already accepts; replacing a daisyUI
+  class with hand-written CSS.
+- **Convergence**: pass 1 inventories everything BEFORE writing, then
+  applies it all at once — no drip-feeding. Pass 2 touches only what pass 1
+  explicitly deferred; no new findings. Pass 3 only if pass 2 broke
+  something. Pass 4 does not exist — if the urge remains it is a rewrite,
+  i.e. a human ticket, not a simplify run. Each pass ends with an explicit
+  verdict: `STABLE` or `REMAINING: <items + target metric>`. A pass whose
+  diff is < 5 % of the previous pass's → `STABLE` by default.
+- **Accepted debt**: anything costing more to fix than the measured gain is
+  annotated `// @acceptable-debt <reason>` and excluded from later audits.
+  It is a decision, not a TODO; removing the annotation needs the same
+  justification as adding it.
+- **Frozen decisions**: architecture and syntax questions are settled once —
+  in `CONVENTIONS.md`, CLAUDE.md, or `docs/architecture.md` §14 — and never
+  re-litigated. If no rule exists: choose, write it down, it becomes law.
 
 ## Process
 

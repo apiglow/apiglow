@@ -489,6 +489,31 @@ for (const file of srcFiles) {
   }
 }
 
+// --- invariant 20 — the runtime dependency set is exactly the five pinned ----
+//
+// §14.2 makes adding a runtime dep a human decision; this makes the decision
+// a two-file commit. Recording the names, not a count, so a swap (drop one,
+// add another) cannot slide through as "still five". Dev dependencies stay
+// unconstrained — they ship nothing.
+{
+  const PINNED_RUNTIME_DEPS = [
+    '@apidevtools/json-schema-ref-parser',
+    'dompurify',
+    'highlight.js',
+    'json-p3',
+    'marked',
+  ]
+  const actual = Object.keys(JSON.parse(read('package.json')).dependencies ?? {}).sort()
+  if (actual.join(' ') !== PINNED_RUNTIME_DEPS.join(' ')) {
+    fail(
+      20,
+      'package.json',
+      0,
+      `runtime dependencies are [${actual.join(', ')}] — the pinned set is [${PINNED_RUNTIME_DEPS.join(', ')}]; changing it is a human checkpoint (§14.2), recorded here`,
+    )
+  }
+}
+
 // --- report ------------------------------------------------------------------
 
 if (violations.length) {

@@ -99,6 +99,8 @@ checks by hand.
 | 17 | CI runs every guard family this registry cites: `npm test`, the e2e suite, and each `scripts/` check a ratchet installs appear in `.github/workflows/` | static (parse workflows) | `scripts/check-invariants.mjs` |
 | 18 | Performance budgets only ever tighten, and none disappears (rule 14) | static (constants vs recorded ceilings) | `scripts/check-invariants.mjs` |
 | 19 | The two demo pages carry the same config, outside the documented deltas (docsPages carrier, bundle URL) | static (parse both inline configs) | `scripts/check-invariants.mjs` (`scripts/health/demo-parity.mjs`) + `tests/demo-parity.test.js` (red test) |
+| 20 | The runtime dependency set is exactly the five pinned names (§14.2) — changing it is a human checkpoint, recorded as a two-file commit | static (package.json vs recorded list) | `scripts/check-invariants.mjs` |
+| 21 | Frozen public surfaces (tags, events, `apidoc…` names, IndexedDB stores, i18n keys) match the committed snapshot — a rename is a breaking change, never a refactor | static (pattern sweep vs `public-surface.json`) | `scripts/check-public-surface.mjs` |
 
 Invariant 18 guards the guards' own numbers: rule 14 calls the budgets a
 contract, and the cheapest way to break one is to edit the constant next to

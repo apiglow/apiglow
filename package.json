@@ -65,6 +65,7 @@
     "health:specs": "node scripts/health/spec-versions.mjs",
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:dist": "node scripts/check-dist.mjs",
+    "check:surface": "node scripts/check-public-surface.mjs",
     "check:syntax": "es-check checkBrowser dist/app.js --module --checkFeatures"
   },
   "dependencies": {

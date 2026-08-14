@@ -24,6 +24,7 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run preview:cdn` | build + `npm pack` + jsDelivr simulation on :4173 |
 | `npm run check:invariants` | The cross-cutting rules a test suite cannot see (rules 1, 2, 5, 6, 9, 10, 12, 13, 14, 20) |
 | `npm run check:dist` | Post-build gate on `dist/`: one JS file, no `document.currentScript`, every daisyUI theme, size budgets (rules 3, 4, 8, 14) |
+| `npm run check:surface` | Frozen public surfaces (tags, events, `apidoc…` names, i18n keys) against `public-surface.json`; `-- --update` accepts a deliberate change (CONVENTIONS.md) |
 | `npm run check:syntax` | `es-check` against the declared `browserslist` baseline — the built bundle parses on every supported browser |
 | `npm run lint` | Biome — format check + lint |
 | `npm run lint:fix` | Biome — apply the safe fixes |
@@ -180,8 +181,9 @@ code out of feature PRs.
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every PR and
 every push to `main`, in two parallel jobs:
 
-- **quality** — `biome ci`, `npm run check:invariants`, unit tests with
-  coverage, `npm run build`, then `npm run check:dist` on its output
+- **quality** — `biome ci`, `npm run check:invariants`,
+  `npm run check:surface`, unit tests with coverage, `npm run build`, then
+  `npm run check:dist` on its output
 - **e2e** — three parallel jobs, one per browser binary (Chromium, Firefox,
   WebKit), each running its desktop project and the mobile project that
   shares its binary. `fail-fast: false`, so one engine's failure still
