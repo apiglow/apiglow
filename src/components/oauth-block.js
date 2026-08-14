@@ -7,6 +7,7 @@ import {
 import { drivableFlows, requiredScopes } from '../openapi/oauth.js'
 import { flowLabel } from './auth-labels.js'
 import { el, text } from './dom.js'
+import { envForWrite } from './env-write.js'
 import { KEY_SVG } from './icons.js'
 
 const ERROR_KEY = {
@@ -32,7 +33,9 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
   const flows = drivableFlows(scheme)
   if (!flows.length) return null
 
-  const env = envStore.selected()
+  // Claimed at write time, not here: clicking with an invalid client id must
+  // not leave behind an environment nobody asked for.
+  let env = envStore.selected()
   const variables = envStore.variablesOf(env)
   const varValue = (suffix) => variables[`auth.${scheme.name}.${suffix}`]?.value ?? ''
 
@@ -57,7 +60,7 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
   const wrap = el('div', 'flex flex-col gap-2 border-t border-base-300 pt-2 mt-1')
 
   const persistIfChanged = (suffix, value, sensitive) => {
-    if (env && value !== varValue(suffix)) {
+    if (value !== varValue(suffix)) {
       envStore.setVariable(env.id, `auth.${scheme.name}.${suffix}`, value, { sensitive })
     }
   }
@@ -145,7 +148,9 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
       text(t('oauth.getToken')),
     )
     button.type = 'button'
-    if (!env) button.disabled = true
+    // Same rule as the credential fields above: nothing selected is not a dead
+    // end, the token provisions the environment it goes into.
+    if (!envStore.writable) button.disabled = true
     button.addEventListener('click', async () => {
       error.classList.add('hidden')
       if (!state.clientId.trim()) return showError(t('oauth.missingClientId'))
@@ -166,6 +171,7 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
           // Batch persistence on success only: each setVariable emits
           // a change that rebuilds the panel (and thus this block) — doing it
           // before costs a lost entry on failure.
+          env ??= envForWrite(envStore)
           persistIfChanged('clientId', state.clientId.trim(), false)
           persistIfChanged('clientSecret', state.clientSecret, true)
           envStore.setVariable(env.id, `auth.${scheme.name}`, token, { sensitive: true })
@@ -185,6 +191,7 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
       } catch {
         return showError(t('oauth.error.exchange', { message: state.flow.authorizationUrl }))
       }
+      env ??= envForWrite(envStore)
       persistIfChanged('clientId', state.clientId.trim(), false)
       await beginAuthorizationLogin({
         flow: state.flow,
@@ -197,7 +204,10 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
 
     const footer = el('div', 'flex flex-col gap-1')
     footer.append(button)
-    if (!env) footer.append(el('span', 'text-xs text-subtle', text(t('oauth.noEnv'))))
+    // The only dead end left: the config owns the environments and declared
+    // none, so there is nothing to select and nothing may be created.
+    if (!envStore.writable)
+      footer.append(el('span', 'text-xs text-subtle', text(t('oauth.envLocked'))))
     else if (state.flow.key === 'authorizationCode') {
       footer.append(el('span', 'text-[11px] text-subtle', text(t('oauth.redirectNote'))))
     }

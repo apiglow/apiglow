@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { envForWrite } from '../src/components/env-write.js'
 import { EnvStore, normalizeConfigEnvironment } from '../src/env/store.js'
 
 // The EnvStore class (localStorage, EventTarget) is covered by browser
@@ -133,5 +134,43 @@ describe('EnvStore locked', () => {
     expect(store.list().map((e) => e.color)).toEqual(['blue', 'red'])
     const persisted = JSON.parse(backing.get('apidoc:environments'))
     expect(persisted.map((e) => e.name)).toEqual(['staging', 'prod'])
+  })
+
+  // Where a credential typed in the try-it cartouche, or a token obtained from
+  // an OAuth flow, lands when the host declared no environment at all.
+  describe('envForWrite', () => {
+    it('provisions one when nothing is selected, and selects what it made', () => {
+      const store = new EnvStore([])
+      expect(store.selected()).toBe(null)
+      expect(store.writable).toBe(true)
+
+      const env = envForWrite(store)
+      expect(env.name).toBe('Environment 1')
+      expect(store.selected()).toBe(env)
+      // The second write reuses it rather than stacking a new one.
+      expect(envForWrite(store)).toBe(env)
+      expect(store.list()).toHaveLength(1)
+    })
+
+    it('numbers the next one after the environments already there', () => {
+      const store = new EnvStore(configEnvs)
+      store.select(null)
+      expect(envForWrite(store).name).toBe('Environment 3')
+    })
+
+    // Locked mode is the one dead end: the config owns the set, so a write
+    // with nothing declared has nowhere to go and the UI disables its controls.
+    it('creates nothing when the host owns the environments', () => {
+      const store = new EnvStore([], { locked: true })
+      expect(store.writable).toBe(false)
+      expect(envForWrite(store)).toBe(null)
+      expect(store.list()).toEqual([])
+    })
+
+    it('is writable in locked mode as soon as the config declares one', () => {
+      const store = new EnvStore(configEnvs, { locked: true })
+      expect(store.writable).toBe(true)
+      expect(envForWrite(store)).toBe(store.list()[0])
+    })
   })
 })

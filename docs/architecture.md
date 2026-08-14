@@ -603,10 +603,13 @@ load, a revision we do not know. An overlay never breaks a load.
   mechanics per type; every conventional variable of the scheme is editable
   in place (written to the selected environment on blur) — the environments
   dialog is never a mandatory stop to send a request. A host declaring no
-  environment is no exception: the first value entered creates one
+  environment is no exception: the first runtime value written creates one
   (`env.defaultName`) and selects it, and the cartouche says so before the
-  write. Only `environmentsLocked` leaves the fields disabled — there the
-  host owns the list. Injection:
+  write. One rule, one place — `envForWrite` (`src/components/env-write.js`)
+  over the store's `writable`, shared by the credential fields and the "Get a
+  token" button, so an enabled control and a possible write never drift apart.
+  Only `environmentsLocked` closes it: the config owns the set, and declaring
+  none there leaves both surfaces disabled and saying why. Injection:
   - `http bearer` → `Authorization: Bearer {{auth.X}}`;
   - `apiKey` → header/query/cookie named by the schema;
   - `http basic` → `Authorization: Basic base64(user:pass)` from

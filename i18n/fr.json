@@ -329,6 +329,7 @@
   "oauth.gettingToken": "Demande du token…",
   "oauth.redirectNote": "Vous serez redirigé vers le serveur d'autorisation, puis ramené sur cette page.",
   "oauth.noEnv": "Sélectionnez ou créez d'abord un environnement : le token y est stocké comme variable.",
+  "oauth.envLocked": "La configuration de ce site définit les environnements et n'en déclare aucun : le token n'a nulle part où être stocké.",
   "oauth.missingClientId": "Le client ID est requis.",
   "oauth.missingClientSecret": "Le secret client est requis.",
   "oauth.tokenSaved": "Token d'accès enregistré dans l'environnement « {env} ».",

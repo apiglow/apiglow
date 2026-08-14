@@ -329,6 +329,7 @@
   "oauth.gettingToken": "Requesting token…",
   "oauth.redirectNote": "You will be redirected to the authorization server, then brought back to this page.",
   "oauth.noEnv": "Select or create an environment first: the token is stored as one of its variables.",
+  "oauth.envLocked": "This site's configuration defines the environments and declares none: the token has nowhere to be stored.",
   "oauth.missingClientId": "Client ID is required.",
   "oauth.missingClientSecret": "Client secret is required.",
   "oauth.tokenSaved": "Access token saved in environment “{env}”.",

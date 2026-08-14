@@ -153,6 +153,38 @@ test('client credentials: direct POST with secret, token stored without redirect
   await expect(tryIt(page)).toContainText('Authorization: Bearer e2e-access-token')
 })
 
+// A host declaring no environment: the token needs somewhere to live just as
+// much as a credential typed by hand, so the button provisions it rather than
+// staying disabled behind a note pointing at the environments popin.
+test('with no environment declared, getting a token creates the one it lands in', async ({
+  page,
+}) => {
+  const tokenCalls = mockTokenEndpoint(page)
+  await page.goto('/tests/e2e/fixtures/app-no-env.html#/op/createOrder')
+  await openTryItIfMobile(page)
+
+  const card = credCard(page)
+  const button = card.getByRole('button', { name: 'Get a token' })
+  await expect(button).toBeEnabled()
+  // No host clientId on this fixture: the flow needs one typed in.
+  await card.getByLabel('OAuth flow').selectOption('clientCredentials')
+  await card.getByLabel('Client ID').fill('no-env-client')
+  await card.getByLabel('Client secret').fill('shh-secret')
+  await button.click()
+
+  await expect(page.locator('.toast .alert-success')).toContainText(
+    'saved in environment “Environment 1”',
+  )
+  await openTryItIfMobile(page)
+  expect(tokenCalls).toHaveLength(1)
+  expect(tokenCalls[0]).toMatchObject({
+    grant_type: 'client_credentials',
+    client_id: 'no-env-client',
+    client_secret: 'shh-secret',
+  })
+  await expect(tryIt(page)).toContainText('Authorization: Bearer e2e-access-token')
+})
+
 test('denied authorization surfaces an error toast, no token written', async ({ page }) => {
   mockAuthorizeEndpoint(page, { error: 'access_denied' })
   const tokenCalls = mockTokenEndpoint(page)

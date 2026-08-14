@@ -29,6 +29,7 @@ import { platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js
 import { hoverCopyButton } from './copy-button.js'
 import { credentialsForm } from './credentials-form.js'
 import { el, icon, text } from './dom.js'
+import { envForWrite } from './env-write.js'
 import { oauthBlock } from './oauth-block.js'
 import { exportBar } from './export-bar.js'
 import { highlightSource } from './markdown.js'
@@ -879,14 +880,10 @@ class ApiTryItPanel extends HTMLElement {
     // nowhere to write: the first credential entered creates one, and
     // `create` selects it. Locked mode has no such escape — the host owns the
     // list — and the field is disabled there.
-    let env = this.#envStore.selected()
-    const created = !env && this.#envStore.writable
+    const created = !this.#envStore.selected()
     this.#writingCredential = true
     try {
-      if (created)
-        env = this.#envStore.create({
-          name: t('env.defaultName', { n: this.#envStore.list().length + 1 }),
-        })
+      const env = envForWrite(this.#envStore)
       this.#envStore.setVariable(env.id, name, value, options)
     } finally {
       this.#writingCredential = false

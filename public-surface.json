@@ -592,6 +592,7 @@
     "notFound.title",
     "oauth.clientId",
     "oauth.clientSecret",
+    "oauth.envLocked",
     "oauth.error.denied",
     "oauth.error.exchange",
     "oauth.error.network",
