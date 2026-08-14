@@ -14,7 +14,7 @@ watch is not scriptable and stays a fetch during the run. Like
 `health:skills`, deliberately not part of the `npm run health` aggregate
 (that aggregate is code-health's contract).
 
-**Active plan**: `docs/upgrade/specs.20260814-1720.md`
+**Active plan**: none
 
 | Format | Role | Implemented | Latest known | Source of truth |
 |---|---|---|---|---|
@@ -26,7 +26,7 @@ watch is not scriptable and stays a fetch during the run. Like
 | HAR | export (`src/export/har.js`) + import (`src/import/har.js`) | 1.2 | 1.2 (frozen) | https://w3c.github.io/web-performance/specs/HAR/Overview.html (see the note below on the source of truth) |
 | Postman Collection | export (`src/export/postman.js`) + import (`src/import/postman.js`) | v2.1.0 (`SCHEMA_URL`) | v2.1.0 | github.com/postmanlabs/schemas + schema.getpostman.com |
 | cURL | export (`src/export/curl.js`) + import (`src/import/curl.js`) | informal (no versioned spec) | n/a | https://curl.se/docs/manpage.html — check emitted flags stay valid, nothing else |
-| llms.txt | export (`src/export/llms.js` index + `src/export/llms-full.js`) | index + full | v2 (structure unchanged from v1; diff at llmstxt.org/changes.html) | https://llmstxt.org |
+| llms.txt | export (`src/export/llms.js` index + `src/export/llms-full.js`) + discovery links in the baked head (`src/export/snapshot-html.js`) | index + full + v2 discovery (`rel="alternate"` to the `.md` mirror, `rel="describedby"` to the covering map) | v2 (structure unchanged from v1; diff at llmstxt.org/changes.html) | https://llmstxt.org |
 | MCP | export of client config for a third-party OpenAPI→MCP bridge (`src/export/mcp.js`) | `mcpServers` envelope + `MCP_BRIDGES` table | bridge contracts unchanged | https://modelcontextprotocol.io/specification (date-versioned) |
 | JSON | serialization the schema document may arrive in — URL and inline alike (`src/openapi/loader.js`) | RFC 8259 / ECMA-404 (`JSON.parse`, and ref-parser's own JSON parser on the URL path) | RFC 8259 (still STD 90, not obsoleted) | https://www.rfc-editor.org/rfc/rfc8259 + https://ecma-international.org/publications-and-standards/standards/ecma-404/ |
 | YAML | serialization the schema document may arrive in — URL and inline alike (`src/openapi/loader.js`) | 1.2 core schema (js-yaml, reached through ref-parser; 1.1-era tags accepted by its fallback schema) | 1.2.2 (nothing newer listed) | https://yaml.org/spec/ — watch the spec project for a revision past 1.2.2 |
@@ -81,8 +81,11 @@ has to be re-established by reading, not by diffing a version string:
 - **llms.txt** carries only a coarse v-label (the site now titles itself
   "The /llms.txt file, v2", with a `changes.html` diff page), no revision
   scheme. A run checks the structural claim — H1 + blockquote, then
-  H2-delimited link lists, unchanged in v2 — and re-reads the changes
-  page.
+  H2-delimited link lists, unchanged in v2 — plus the two discovery
+  relations v2 formalized, and re-reads the changes page. The HTTP `Link`
+  header the specification allows beside the `<link>` element is not a
+  static tree's to set, so the element is the whole of what a bake can
+  emit (`docs/seo.md` §4).
 - **MCP**: see the note below — the watched contracts are the bridges', and
   neither is versioned.
 
