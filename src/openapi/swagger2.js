@@ -18,6 +18,8 @@
 // `conversion-approximation` audit rule turns those markers into findings, so
 // an approximation is visible to the reader instead of silent.
 
+import { unescapePointerToken } from '../scenarios/pointer.js'
+
 const TARGET_VERSION = '3.0.4'
 
 // The one legal value of the `swagger` field. Anything else claiming 2.x is a
@@ -181,7 +183,7 @@ function splitParameters(list, ctx) {
 function localParameter(ctx, ref) {
   const match = /^#\/parameters\/(.+)$/.exec(ref)
   if (!match) return null
-  const name = match[1].replace(/~1/g, '/').replace(/~0/g, '~')
+  const name = unescapePointerToken(match[1])
   const param = ctx.root.parameters?.[name]
   return isObject(param) ? param : null
 }

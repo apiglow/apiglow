@@ -1,5 +1,6 @@
 import { bodyKind, isFieldsKind, mediaEssence } from '../openapi/body-kind.js'
 import { normalizeScenario } from '../scenarios/model.js'
+import { unescapePointerToken } from '../scenarios/pointer.js'
 
 // Arazzo 1.1 import (docs/openapi-coverage.md §4.7) — the return trip of
 // `src/export/arazzo.js`, onto the scenarios model.
@@ -294,7 +295,7 @@ function unescapeToken(token) {
     // A pointer written with a stray `%`: read it literally rather than
     // rejecting the whole step.
   }
-  return decoded.replace(/~1/g, '/').replace(/~0/g, '~')
+  return unescapePointerToken(decoded)
 }
 
 // *"A list of parameters that are applicable for all steps described under

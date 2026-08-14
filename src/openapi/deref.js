@@ -16,6 +16,8 @@
 // and circular schemas come out as circular JS references (what rule 7's
 // cycle detection downstream relies on).
 
+import { unescapePointerToken } from '../scenarios/pointer.js'
+
 // The one signal the loader catches to fall back. Carries no detail on
 // purpose: the fallback recomputes from scratch and produces the canonical
 // result or the canonical error.
@@ -42,7 +44,7 @@ function segments(ref) {
           bail()
         }
       }
-      return token.replace(/~1/g, '/').replace(/~0/g, '~')
+      return unescapePointerToken(token)
     })
 }
 

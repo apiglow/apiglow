@@ -10,6 +10,8 @@
 // mapping values are still strings, matched against the component name each
 // candidate object was registered under.
 
+import { escapePointerToken, unescapePointerToken } from '../../scenarios/pointer.js'
+
 export const discriminatorMapping = {
   id: 'discriminator-mapping',
   category: 'correctness',
@@ -41,7 +43,7 @@ export const discriminatorMapping = {
         check(known.has(targetName(target)), {
           op,
           location,
-          dataPath: `${dataPath}/discriminator/mapping/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`,
+          dataPath: `${dataPath}/discriminator/mapping/${escapePointerToken(key)}`,
           params: { key, target: String(target) },
         })
       }
@@ -53,5 +55,5 @@ export const discriminatorMapping = {
 // `#/components/schemas/Pet` name the same thing.
 function targetName(target) {
   if (typeof target !== 'string' || !target) return null
-  return target.split('/').pop().replaceAll('~1', '/').replaceAll('~0', '~')
+  return unescapePointerToken(target.split('/').pop())
 }

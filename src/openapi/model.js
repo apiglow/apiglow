@@ -7,6 +7,7 @@
 // Expected input: document already dereferenced by json-schema-ref-parser —
 // no more `$ref`, but potentially circular JS references.
 
+import { unescapePointerToken } from '../scenarios/pointer.js'
 import { compileHideRules, HIDE_EXTENSION } from './hide.js'
 
 // `query` is a Path Item field only since 3.2; leaving it in the
@@ -719,7 +720,7 @@ export function pointerTarget(raw, ref) {
     } catch {
       // A stray `%` is not an escape: the segment is its own literal.
     }
-    node = node[key.replaceAll('~1', '/').replaceAll('~0', '~')]
+    node = node[unescapePointerToken(key)]
   }
   return node
 }
@@ -1149,10 +1150,9 @@ function normalizeXml(raw) {
 
 // Short name of a mapping target: `Pet`, `#/components/schemas/Pet`, or a URI
 // we cannot follow — always its last pointer segment, unescaped (RFC 6901).
-// `~1` first: the escape for `/`, which is what the split just consumed.
 function mappingTargetName(target) {
   if (typeof target !== 'string' || !target) return null
-  return target.split('/').pop().replaceAll('~1', '/').replaceAll('~0', '~')
+  return unescapePointerToken(target.split('/').pop())
 }
 
 // The variant a discriminated composite stands for when nothing has been

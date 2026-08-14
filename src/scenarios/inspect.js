@@ -1,5 +1,5 @@
 import { statusMatches } from './evaluate.js'
-import { pointerFrom } from './pointer.js'
+import { pointerFrom, unescapePointerToken } from './pointer.js'
 
 // Reading a response to turn it into extractions/assertions
 // (docs/scenarios.md §5.4) — pure, tested functions.
@@ -231,11 +231,11 @@ export function preferredResponse(responses, expectedStatus) {
 // (`/access_token` → `accessToken`). The name remains editable — it's a
 // suggestion, not a rule.
 export function variableNameFor(pointer, fallback = 'value') {
-  const last = String(pointer ?? '')
-    .split('/')
-    .pop()
-    .replace(/~1/g, '/')
-    .replace(/~0/g, '~')
+  const last = unescapePointerToken(
+    String(pointer ?? '')
+      .split('/')
+      .pop(),
+  )
   const camel = last
     .replace(/[^\w.-]+/g, ' ')
     .trim()
