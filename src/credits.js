@@ -63,7 +63,7 @@ export const BUNDLED_CREDITS = [
     id: 'highlight',
     pkg: 'highlight.js',
     name: 'highlight.js',
-    version: '11.11.1',
+    version: '11.12.0',
     license: 'BSD-3-Clause',
     url: 'https://highlightjs.org',
   },

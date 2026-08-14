@@ -38,7 +38,7 @@ test('About states the license, what it reads, and what it bundles', async ({ pa
     ['JSON Schema $Ref Parser', '15.5.1'],
     ['Marked', '18.0.9'],
     ['DOMPurify', '3.4.13'],
-    ['highlight.js', '11.11.1'],
+    ['highlight.js', '11.12.0'],
   ]) {
     const item = dialog(page).locator('li', { hasText: name }).first()
     await expect(item).toContainText(version)
