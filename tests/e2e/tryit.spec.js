@@ -7,6 +7,7 @@ import {
   clickNavOp,
   clipboardText,
   credentialsCard,
+  editInDoc,
   expectResponded,
   gotoApp,
   isMobileLayout,
@@ -296,9 +297,11 @@ test('array parameter: the central doc edits the same rows as the panel', async 
   const docRow = page.locator('section#params-query .api-param-row', {
     has: page.locator('code:text-is("tags")'),
   })
-  await docRow.locator('input').first().fill('husky')
-  await clickInDoc(page, docRow.getByRole('button', { name: '+ Add item' }))
-  await docRow.locator('input').nth(1).fill('shiba')
+  await editInDoc(page, async () => {
+    await docRow.locator('input').first().fill('husky')
+    await docRow.getByRole('button', { name: '+ Add item' }).click()
+    await docRow.locator('input').nth(1).fill('shiba')
+  })
 
   const panelInputs = panelParam(page, 'tags').locator('input')
   await expect(panelInputs).toHaveCount(2)
@@ -326,7 +329,7 @@ test('an object query parameter edits per property and spreads as deepObject', a
   const docRow = page.locator('section#params-query .api-param-row', {
     has: page.locator('code:text-is("owner")'),
   })
-  await docRow.getByLabel(/owner.*since/).fill('2024-03-01')
+  await editInDoc(page, () => docRow.getByLabel(/owner.*since/).fill('2024-03-01'))
   await expect(panelParam(page, 'owner').getByLabel('owner since')).toHaveValue('2024-03-01')
 })
 
@@ -398,9 +401,11 @@ test('a free-form map and a tuple are editable as forms, not only as raw JSON', 
 
   // Map: the keys are data too, so they are typed alongside their value.
   const metadata = row('metadata')
-  await clickInDoc(page, metadata.getByRole('button', { name: '+ Add key' }))
-  await metadata.getByLabel('metadata key').fill('breed')
-  await metadata.getByLabel('Try-it value for metadata').fill('husky')
+  await editInDoc(page, async () => {
+    await metadata.getByRole('button', { name: '+ Add key' }).click()
+    await metadata.getByLabel('metadata key').fill('breed')
+    await metadata.getByLabel('Try-it value for metadata').fill('husky')
+  })
   await expect(body).toHaveValue(/"metadata": \{\s*"breed": "husky"/)
 
   // Tuple: fixed positions, no add/remove — the length is part of the type.
@@ -408,8 +413,10 @@ test('a free-form map and a tuple are editable as forms, not only as raw JSON', 
   await expect(coords.getByRole('button', { name: '+ Add item' })).toHaveCount(0)
   const slots = coords.locator('input')
   await expect(slots).toHaveCount(2)
-  await slots.first().fill('48.85')
-  await slots.nth(1).fill('2.35')
+  await editInDoc(page, async () => {
+    await slots.first().fill('48.85')
+    await slots.nth(1).fill('2.35')
+  })
 
   await send(page)
   await expect.poll(() => calls.length).toBe(1)
@@ -437,7 +444,7 @@ test('a bare {{variable}} in the body keeps the doc fields in sync', async ({ pa
   // The other direction too: editing a neighbouring field rewrites the body
   // without quoting the token — that would send a string where the API
   // expects a number.
-  await docField('name').fill('Bella')
+  await editInDoc(page, () => docField('name').fill('Bella'))
   await expect(body).toHaveValue(/"name": "Bella"/)
   await expect(body).toHaveValue(/"age": \{\{petAge\}\}/)
 })

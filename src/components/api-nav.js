@@ -387,7 +387,11 @@ class ApiNav extends HTMLElement {
         // spreads across the entire remaining width.
         el(
           'span',
-          'justify-self-start self-center shrink-0 rounded-full bg-base-content/5 px-1.5 py-0.5 text-[10px] font-mono leading-none tabular-nums text-base-content/50',
+          // `text-subtle` and not a raw `/50` mix: at 10 px on the pill's own
+          // tinted background the latter reads 3.07:1, and axe never says so —
+          // a one-digit count is "too short to determine if it is actual text
+          // content", so `color-contrast` answers `incomplete` and moves on.
+          'justify-self-start self-center shrink-0 rounded-full bg-base-content/5 px-1.5 py-0.5 text-[10px] font-mono leading-none tabular-nums text-subtle',
           text(String(held.size)),
         ),
       )
@@ -719,10 +723,42 @@ class ApiNav extends HTMLElement {
       ? this.querySelector(`[data-op-id="${CSS.escape(this.#activeId)}"]`)
       : this.querySelector(`[data-page-slug="${CSS.escape(this.#activePage)}"]`)
     if (link) {
-      link.scrollIntoView({ block: 'nearest' })
+      revealInScroller(link)
       this.#scrolledKey = key
     }
   }
+}
+
+// `scrollIntoView({ block: 'nearest' })` by hand, because the real one has a
+// side effect Chromium alone applies: it moves the sequential focus navigation
+// starting point onto what it scrolled. The nav auto-scrolls on every selection
+// that did not come from a click in it — a deep link above all — and the reader
+// who then presses Tab for the first time lands in the middle of the endpoint
+// list, past the skip link and past the whole header, with no action of theirs
+// to explain it (WCAG 2.4.3). Scrolling the scrollport instead moves nothing
+// but the scroll.
+// `scroll-padding` is read rather than ignored: the nav's own search bar is
+// sticky at the top of that scrollport, and an entry aligned flush with it is
+// an entry hidden behind it (WCAG 2.4.11).
+function revealInScroller(node) {
+  let scroller = node.parentElement
+  while (scroller) {
+    const overflow = getComputedStyle(scroller).overflowY
+    if (
+      (overflow === 'auto' || overflow === 'scroll') &&
+      scroller.scrollHeight > scroller.clientHeight
+    )
+      break
+    scroller = scroller.parentElement
+  }
+  if (!scroller) return
+  const style = getComputedStyle(scroller)
+  const box = node.getBoundingClientRect()
+  const view = scroller.getBoundingClientRect()
+  const top = view.top + (parseFloat(style.scrollPaddingTop) || 0)
+  const bottom = view.bottom - (parseFloat(style.scrollPaddingBottom) || 0)
+  if (box.top < top) scroller.scrollTop -= top - box.top
+  else if (box.bottom > bottom) scroller.scrollTop += box.bottom - bottom
 }
 
 // Two scenario sources, two icons: provided by the docs (book) or created

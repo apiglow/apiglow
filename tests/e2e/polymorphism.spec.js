@@ -2,7 +2,7 @@
 // AND what the try-it sends — a body whose discriminator property contradicts
 // its shape is exactly what the construct exists to prevent.
 import { expect, test } from '@playwright/test'
-import { gotoOp, mockApi, send } from './helpers.js'
+import { editInDoc, gotoOp, mockApi, send } from './helpers.js'
 
 const PAGE = '/tests/e2e/fixtures/app-polymorphism.html'
 
@@ -39,9 +39,13 @@ test('picking a variant rewrites the body and sends its key', async ({ page }) =
   // The pre-filled body starts on the variant the selector starts on.
   await expect(page.locator('api-try-it-panel textarea')).toHaveValue(/"petType": "cat"/)
 
-  await page.locator('main select[aria-label*="petType"]').selectOption({ label: 'dog — object' })
+  await editInDoc(page, () =>
+    page.locator('main select[aria-label*="petType"]').selectOption({ label: 'dog — object' }),
+  )
   await expect(page.locator('main [aria-label="Try-it value for petType"]')).toHaveValue('dog')
-  await page.locator('main [aria-label="Try-it value for packSize"]').fill('4')
+  await editInDoc(page, () =>
+    page.locator('main [aria-label="Try-it value for packSize"]').fill('4'),
+  )
 
   await send(page)
   await expect.poll(() => calls.length).toBe(1)

@@ -26,6 +26,7 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run check:dist` | Post-build gate on `dist/`: one JS file, no `document.currentScript`, every daisyUI theme, size budgets (rules 3, 4, 8, 14) |
 | `npm run check:surface` | Frozen public surfaces (tags, events, `apidoc…` names, i18n keys) against `public-surface.json`; `-- --update` accepts a deliberate change (CONVENTIONS.md) |
 | `npm run check:syntax` | `es-check` against the declared `browserslist` baseline — the built bundle parses on every supported browser |
+| `npm run report:contrast` | **Informative, gates nothing**: contrast of the design layer's ink recipes on every shipped daisyUI theme, measured in a browser against `dist/app.css` (`--all` lists every pair). Needs a build |
 | `npm run lint` | Biome — format check + lint |
 | `npm run lint:fix` | Biome — apply the safe fixes |
 | `npm run format` | Biome — reformat in place |
@@ -272,9 +273,11 @@ npx playwright show-report        # after downloading playwright-report-webkit
 Writing a spec that passes everywhere is mostly one habit: reach the UI
 through `tests/e2e/helpers.js` rather than around it. The helpers open the
 drawer or the bottom sheet when the viewport is below `lg`, and do nothing
-above it — `clickNavOp`, `send`, `openHistory`, `openSettings` and
-`clickInDoc` already carry it, which is why a desktop-written spec usually
-passes on a phone unchanged. A spec that navigates with a raw `page.goto`
+above it — `clickNavOp`, `send`, `openHistory`, `openSettings`, `clickInDoc`
+and `editInDoc` already carry it, which is why a desktop-written spec usually
+passes on a phone unchanged. Writing to the central doc always goes through the
+last two: an open panel makes the page behind it `inert`, so a `fill()` aimed
+straight at a doc field lands nowhere below `lg`. A spec that navigates with a raw `page.goto`
 opts out of all of it and has to say `openTryItIfMobile` itself.
 
 Two engine facts worth knowing before blaming your test: a browser error
@@ -357,6 +360,8 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Footer, About dialog, license and third-party notices | `credits.test.js` | `about.spec.js` |
 | Parse/render performance budgets | — | `perf.spec.js` |
 | Accessibility: axe sweep, focus return, tablist keys, live regions | — | `a11y.spec.js` |
+| Keyboard sweep: every visible control reachable by Tab, a visible ring at every stop, skip link to `<main>`, scrolling blocks as declared tab stops, an open mobile panel the walk cannot leave | — | `keyboard.spec.js` |
+| Reflow at 320 px and the reader's text-spacing stylesheet: no sideways scrolling, no text clipped below half, no box newly cut short vertically | — | `reflow.spec.js` |
 | Browser support baseline: degradation when an above-floor API is absent | — | `baseline.spec.js` |
 | Demo API mock (service worker), demo page wiring | — | `demo.spec.js` |
 | Demo failure showcase (`errors` tag: 429 chip, structured 422, 500) | `audit-petstore.test.js` (snapshot) | `demo.spec.js` |

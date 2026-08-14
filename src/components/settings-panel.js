@@ -104,7 +104,10 @@ class SettingsPanel extends HTMLElement {
   }
 
   connectedCallback() {
-    const { backdrop, dismiss } = modalDismiss({ backdropLabel: t('settings.close') })
+    const { backdrop, dismiss } = modalDismiss({
+      backdropLabel: t('settings.close'),
+      closeLabel: t('settings.close'),
+    })
     this.#body = el('div')
     this.#dialog = el(
       'dialog',

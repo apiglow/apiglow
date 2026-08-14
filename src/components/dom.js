@@ -99,8 +99,11 @@ export function textInput(value, onCommit, className, { event = 'change' } = {})
   return input
 }
 
+// daisyUI's stock size, not `checkbox-xs`: the `-xs` box paints at 16 px, and
+// the rows it sits in pack tighter than the 24 px of clearance WCAG 2.5.8
+// accepts in place of a 24 px target (§12).
 export function checkbox(checked, onToggle) {
-  const box = el('input', 'checkbox checkbox-xs')
+  const box = el('input', 'checkbox')
   box.type = 'checkbox'
   box.checked = checked === true
   box.addEventListener('change', () => onToggle(box.checked))

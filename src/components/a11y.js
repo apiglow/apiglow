@@ -82,18 +82,38 @@ export function openModal(dialog, { focus = null } = {}) {
 // `method="dialog"` forms — the browser closes the dialog itself, so there is
 // no listener to forget and none to leak when the component re-renders.
 //
-// `closeLabel` is optional because four of the six modals name the ✕ by its
-// glyph alone today. That is an accessibility gap of its own, tracked as
-// such; making it mandatory here would fix it by side effect, in a helper
-// whose job is to stop the markup drifting, not to change what it says.
-export function modalDismiss({ backdropLabel, closeLabel = null }) {
+// Both labels are required, and their absence throws rather than degrades: a
+// missing one leaves a button named by its glyph or by the string "undefined",
+// which axe accepts as an accessible name and no test can tell from a real
+// one. Throwing at the first render is what the e2e suite can see.
+export function modalDismiss({ backdropLabel, closeLabel }) {
+  if (!backdropLabel || !closeLabel) throw new Error('modalDismiss: both labels are required')
   const backdrop = el('form', 'modal-backdrop', el('button', '', text(backdropLabel)))
   backdrop.method = 'dialog'
   const button = el('button', 'btn btn-sm btn-circle btn-ghost absolute right-2 top-2', text('✕'))
-  if (closeLabel) button.setAttribute('aria-label', closeLabel)
+  button.setAttribute('aria-label', closeLabel)
   const dismiss = el('form', '', button)
   dismiss.method = 'dialog'
   return { backdrop, dismiss }
+}
+
+// --- scrollable blocks --------------------------------------------------
+
+// A box that scrolls but holds nothing focusable — a code block, a header
+// dump, a wide table. Chromium and Firefox make such a box a tab stop of their
+// own so the arrow keys can scroll it; WebKit does not, and everything past
+// the visible edge is then reachable by pointer only. So the tab stop is
+// declared here rather than inherited, and it carries a name: an anonymous
+// `group` is announced as one.
+//
+// The class is what paints the ring — nothing in daisyUI outlines a <pre> —
+// and `tests/e2e/keyboard.spec.js` asserts every stop has one.
+export function scrollBlock(node, label) {
+  node.classList.add('api-scrollport')
+  node.tabIndex = 0
+  node.setAttribute('role', 'group')
+  node.setAttribute('aria-label', label)
+  return node
 }
 
 // --- tablists -----------------------------------------------------------

@@ -276,6 +276,30 @@ api-nav .menu li > button {
     color 0.15s ease;
 }
 
+/* daisyUI answers `:focus-visible` on a menu entry with a 10 % tint of
+   base-content and an explicit `outline-style: none`. On a nav that lists a
+   whole API, that tint is the entire keyboard position indicator — and it is
+   the same treatment `:hover` gets, so the keyboard has no signal of its own.
+   The ring is restored for every menu the app renders, dropdowns included:
+   what makes the difference readable is the outline, not the fill.
+   The selector carries one class more than daisyUI's own, which is what makes
+   it win without an `!important`. */
+.menu li:not(.menu-title) :is(a, button, summary):focus-visible {
+  outline: 2px solid var(--color-base-content);
+  outline-offset: -2px;
+}
+
+/* Declared tab stops on scrolling blocks that hold nothing focusable
+   (`scrollBlock` in a11y.js, architecture.md §12). `currentColor` because
+   these sit on two unrelated grounds — the theme's own surfaces and the
+   try-it's fixed navy panel — and each one already states the ink that reads
+   on it. Inset, because the block is often flush inside a frame that clips
+   (`.md-code` is `overflow: hidden`). */
+.api-scrollport:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
 /* Sanitized Markdown content (OpenAPI descriptions, .md pages). Tailwind's
    preflight neutralizes default styles; the minimum is restored here,
    without the typography plugin (closed dependency list). */
@@ -910,7 +934,14 @@ details.collapse::details-content {
 /* highlight.js tokens mapped onto DaisyUI's semantic colors: the
    coloring automatically follows the active theme, without an hljs stylesheet. */
 .hljs { color: var(--color-base-content); }
-.hljs-comment, .hljs-quote { color: var(--color-base-content); opacity: 0.55; font-style: italic; }
+/* The one dimmed token, dimmed by a color and not by `opacity`: at 55 % the
+   comment read 3.55:1 on `apiglow` (`npm run report:contrast`), and the
+   opacity also reached inside `.api-code-panel`, whose comment color is fixed
+   and not ours to dim. 66 % is the `text-faint` level, floored on the pair. */
+.hljs-comment, .hljs-quote {
+  color: color-mix(in oklab, var(--color-base-content) 66%, transparent);
+  font-style: italic;
+}
 .hljs-keyword, .hljs-selector-tag, .hljs-section, .hljs-name { color: var(--color-primary); }
 .hljs-string, .hljs-regexp, .hljs-addition { color: var(--color-success); }
 .hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet { color: var(--color-secondary); }

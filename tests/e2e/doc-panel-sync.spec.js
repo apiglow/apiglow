@@ -4,7 +4,7 @@
 // the ones whose drift is silent, because the page keeps looking plausible
 // while the two columns edit different things.
 import { expect, test } from '@playwright/test'
-import { clickInDoc, gotoOp, panelField, tryIt } from './helpers.js'
+import { clickInDoc, editInDoc, gotoOp, panelField, tryIt } from './helpers.js'
 
 const PAGE = '/tests/e2e/fixtures/app-sync.html'
 
@@ -46,7 +46,7 @@ test('a recursive subtree expanded by hand is editable, and edits reach the pane
   const childName = page.locator('main [aria-label="Try-it value for child.name"]')
   await expect(childName).toHaveValue('kid')
 
-  await childName.fill('renamed')
+  await editInDoc(page, () => childName.fill('renamed'))
   await expect(tryIt(page).locator('textarea')).toHaveValue(/"renamed"/)
 })
 
@@ -62,7 +62,7 @@ test('a scalar parameter mirrors both ways from its stacked row', async ({ page 
       has: page.locator('code:text-is("limit")'),
     })
     .getByLabel('Try-it value for limit')
-  await docField.fill('25')
+  await editInDoc(page, () => docField.fill('25'))
   await expect(panelField(page, 'limit')).toHaveValue('25')
   await panelField(page, 'limit').fill('50')
   await expect(docField).toHaveValue('50')
@@ -79,7 +79,9 @@ test('parameters of every shape mirror both ways', async ({ page }) => {
   await expect(page.locator('main [aria-label="Try-it value for tags"]').first()).toHaveValue('cat')
 
   // Object parameter (deepObject): one field per property, on both sides.
-  await page.locator('main [aria-label="Try-it value for owner city"]').fill('Lyon')
+  await editInDoc(page, () =>
+    page.locator('main [aria-label="Try-it value for owner city"]').fill('Lyon'),
+  )
   await expect(tryIt(page).locator('[aria-label="owner city"]')).toHaveValue('Lyon')
 })
 
@@ -95,7 +97,7 @@ test('a header parameter mirrors into the panel header rows, both ways', async (
   const panelValue = tryIt(page).locator('[aria-label="Header value"]').first()
 
   await expect(panelName).toHaveValue('X-Trace-Id')
-  await docField.fill('from-doc')
+  await editInDoc(page, () => docField.fill('from-doc'))
   await expect(panelValue).toHaveValue('from-doc')
   await panelValue.fill('from-panel')
   await expect(docField).toHaveValue('from-panel')
@@ -107,7 +109,7 @@ test('a header parameter mirrors into the panel header rows, both ways', async (
 test('an in: querystring parameter mirrors both ways', async ({ page }) => {
   await gotoOp(page, PAGE, 'searchShapes')
   const docField = page.locator('main [aria-label="Try-it value for filter"]')
-  await docField.fill('$.a[0]')
+  await editInDoc(page, () => docField.fill('$.a[0]'))
   await expect(panelField(page, 'filter')).toHaveValue('$.a[0]')
   await panelField(page, 'filter').fill('$.b[1]')
   await expect(docField).toHaveValue('$.b[1]')
@@ -123,9 +125,9 @@ test('a free-form map mirrors its keys as well as its values', async ({ page }) 
   await expect(doc.locator('[aria-label="map key"]')).toHaveValue('alpha')
   await expect(doc.locator('[aria-label="Try-it value for map"]')).toHaveValue('one')
 
-  await doc.locator('[aria-label="map key"]').fill('beta')
+  await editInDoc(page, () => doc.locator('[aria-label="map key"]').fill('beta'))
   await expect(tryIt(page).locator('textarea')).toHaveValue(/"beta"/)
-  await doc.locator('[aria-label="Try-it value for map"]').fill('two')
+  await editInDoc(page, () => doc.locator('[aria-label="Try-it value for map"]').fill('two'))
   await expect(tryIt(page).locator('textarea')).toHaveValue(/"two"/)
 })
 
@@ -139,7 +141,7 @@ test('a tuple mirrors position by position', async ({ page }) => {
   await expect(doc.locator('[aria-label="Try-it value for pair[0]"]')).toHaveValue('left')
   await expect(doc.locator('[aria-label="Try-it value for pair[1]"]')).toHaveValue('7')
 
-  await doc.locator('[aria-label="Try-it value for pair[1]"]').fill('9')
+  await editInDoc(page, () => doc.locator('[aria-label="Try-it value for pair[1]"]').fill('9'))
   await expect(tryIt(page).locator('textarea')).toHaveValue(/"left",\s*9/)
 })
 

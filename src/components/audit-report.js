@@ -518,7 +518,10 @@ function occurrenceRow(finding) {
 function locationLine(finding) {
   const line = el('div', 'flex flex-wrap items-center gap-2 text-xs min-w-0')
   if (finding.opRef) {
-    const link = el('a', 'link link-primary font-mono', text(finding.location))
+    // `py-1` is the 24 px of WCAG 2.5.8: the location sits alone on its line
+    // rather than inside a sentence, so the inline exception does not cover it
+    // and a bare `text-xs` link would be an 16 px target.
+    const link = el('a', 'link link-primary font-mono py-1', text(finding.location))
     link.href = opHash(finding.opRef)
     link.dataset.auditLink = finding.opRef
     line.append(link)
@@ -561,7 +564,9 @@ function rationale(finding) {
   return el(
     'details',
     '',
-    el('summary', 'text-xs cursor-pointer link link-hover w-fit', text(t('audit.why'))),
+    // Same 24 px as the location line above: a standalone disclosure, not text
+    // in a sentence.
+    el('summary', 'text-xs cursor-pointer link link-hover w-fit py-1', text(t('audit.why'))),
     rationaleText(finding),
   )
 }

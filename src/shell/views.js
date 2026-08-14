@@ -370,6 +370,35 @@ export function headerSearchField(onOpen) {
   )
 }
 
+// Id of the content column, and the skip link's target. Name-neutral prefix
+// like the storage keys (docs/architecture.md §14.11).
+export const MAIN_ID = 'apidoc-main'
+
+// WCAG 2.4.1. The nav lists the whole API, so without this the number of Tab
+// presses between the top of the page and the first paragraph of content is a
+// function of the schema's size: a hundred endpoints is a hundred presses, on
+// every page, forever. `<main>` alone makes axe's `bypass` rule green and
+// solves nothing for the person holding the keyboard.
+//
+// The click is cancelled and the focus moved by hand: the fragment belongs to
+// the router (docs/architecture.md §5.2), and letting `#apidoc-main` reach the
+// address bar would parse as an unknown route and drop the reader back on the
+// home page — a skip link that loses the page it was skipping into.
+export function skipToContentLink() {
+  const link = el(
+    'a',
+    'sr-only focus:not-sr-only focus:fixed focus:start-2 focus:top-2 focus:z-50 focus:size-auto btn btn-primary btn-sm',
+    text(t('a11y.skipToContent')),
+  )
+  link.href = `#${MAIN_ID}`
+  link.dataset.skipLink = ''
+  link.addEventListener('click', (event) => {
+    event.preventDefault()
+    document.getElementById(MAIN_ID)?.focus()
+  })
+  return link
+}
+
 export function header(
   branding,
   tools = [],
@@ -429,6 +458,14 @@ export function header(
 // Below lg, everything stays left-aligned behind a reserved end padding: the
 // "Try it" FAB floats at the bottom right, over this bar, and a credit link the
 // thumb cannot reach is not a credit.
+//
+// That reserve is 160 px, and it is what makes the bar wrap instead of clip
+// below lg: at 320 px it leaves 148 px for a credit and a link list that want
+// 271, and a single `truncate` line spent all of it on the links — the credit
+// came out as 22 px of ellipsis, i.e. the whole string lost, which is what
+// WCAG 1.4.10 forbids at that width (`reflow.spec.js`). So the credit only
+// truncates from lg up, where `justify-between` gives it the whole leftover
+// line; below, it keeps its own line and the links take the next one.
 export function footer(links, onAbout) {
   const aboutBtn = el('button', 'link link-hover shrink-0', text(t('about.open')))
   aboutBtn.type = 'button'
@@ -443,10 +480,10 @@ export function footer(links, onAbout) {
   })
   return el(
     'footer',
-    'flex items-center gap-x-3 border-t border-base-300 bg-base-100 px-3 py-1 text-xs text-subtle justify-start lg:justify-between max-lg:pe-40',
+    'flex items-center gap-x-3 border-t border-base-300 bg-base-100 px-3 py-1 text-xs text-subtle justify-start lg:justify-between max-lg:flex-wrap max-lg:pe-40',
     el(
       'span',
-      'truncate',
+      'lg:truncate',
       text(t('about.poweredBy', { name: __APP_NAME__, version: __APP_VERSION__ })),
     ),
     el('div', 'flex items-center gap-3 shrink-0', ...hostLinks, aboutBtn),

@@ -375,9 +375,14 @@ function leafList(rows, { onExtract, onAssert, assertTitle = () => '', place }) 
       // The `?` is stuck to the key, without the row's `gap`: "status?" reads
       // as one block, "status ?" looks like a question asked of the value.
       el('span', 'flex items-baseline shrink-0', key, optional),
+      // Wrapped rather than truncated: a preview is capped at 60 characters
+      // upstream (`inspect.js`), so it costs two lines at worst, and at 320 px
+      // an ellipsis left 36 % of an enum on screen — `: "available" | "pen…`,
+      // which names neither the values nor how many there are (WCAG 1.4.10,
+      // `reflow.spec.js`). Wider than that it never wraps at all.
       el(
         'span',
-        'font-mono text-xs text-faint truncate',
+        'font-mono text-xs text-faint min-w-0 break-all',
         text(row.dynamic ? `: ${t('scenario.chain.dynamicKeys')}` : `: ${row.preview}`),
       ),
     )

@@ -88,7 +88,8 @@ than a hand-picked subset: what they check is that the drawer/sheet layout
 serves the whole product. That works because the shared helpers
 (`tests/e2e/helpers.js`) open whatever hides the thing a desktop-written
 spec reaches for — `openDrawerIfMobile`, `openTryItIfMobile`,
-`closeMobilePanels`, `clickInDoc` — and are no-ops above the breakpoint.
+`closeMobilePanels`, `clickInDoc`, `editInDoc` — and are no-ops above the
+breakpoint.
 Two rules they encode:
 
 - a panel's open state is its `is-open` class, never `isVisible()`:

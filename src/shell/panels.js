@@ -8,6 +8,21 @@ import { readPref, writePref } from '../storage/prefs.js'
 
 const SHEET_DISMISS_PX = 90
 
+// The page an open panel covers, as a selector on the layout root. Below lg the
+// drawer and the sheet are modal surfaces — the scrim already swallows taps —
+// so the rest of the layout goes `inert` while one is open: without it Tab
+// walks straight out of the panel into content the reader cannot see, and a
+// screen reader browses it just as freely.
+//
+// Stated as the page's landmarks rather than "every sibling": the layout root
+// also holds the overlays, and those must keep answering while a panel is open
+// — the scrim, the FAB (the sheet's own trigger, and where focus returns), the
+// modal dialogs, and the toast stack, whose `role=status` would go silent
+// inside an inert subtree.
+const BACKDROP = ':scope > header, :scope > footer, :scope > [data-skip-link]'
+
+const DESKTOP_QUERY = '(min-width: 1024px)'
+
 // Closes the bottom sheet on a downward drag from its handle (expected
 // gesture on mobile). During the drag the transform is driven inline to
 // follow the finger; it's handed back to the stylesheet on release, otherwise
@@ -122,7 +137,12 @@ export function createPanels({
   )
   const tryItAside = el(
     'aside',
-    'api-offcanvas api-sheet w-full lg:w-(--tryit-col) shrink-0 border-t lg:border-t-0 lg:border-s border-base-300 lg:overflow-y-auto p-4 bg-base-200/30 hidden',
+    // `scroll-pt-12` is the sticky handle above (64 px tall, pinned at -16 px,
+    // so it covers the first 48 px of the scrollport): without it, focus
+    // travelling upward is scrolled flush to the scrollport top and lands
+    // entirely behind the handle — WCAG 2.4.11. Dropped from lg, where the
+    // handle is not rendered.
+    'api-offcanvas api-sheet w-full lg:w-(--tryit-col) shrink-0 border-t lg:border-t-0 lg:border-s border-base-300 lg:overflow-y-auto scroll-pt-12 lg:scroll-pt-0 p-4 bg-base-200/30 hidden',
     sheetHandle,
     ...banners,
     tryIt,
@@ -149,9 +169,19 @@ export function createPanels({
     'aside',
     // The padding lives in api-nav (sticky search header requires it).
     // Below lg: off-canvas drawer opened by the header's hamburger.
-    'api-offcanvas api-drawer bg-base-100 w-full lg:w-(--nav-col) shrink-0 lg:border-e border-base-300 lg:overflow-y-auto',
+    // `scroll-pt-14` clears that sticky header (56 px below lg, 48 px above):
+    // Shift+Tab scrolls the focused entry flush to the scrollport top, which is
+    // exactly where the header is pinned, and a 33 px link ends up 100 % hidden
+    // behind it — WCAG 2.4.11.
+    'api-offcanvas api-drawer bg-base-100 w-full lg:w-(--nav-col) shrink-0 lg:border-e border-base-300 lg:overflow-y-auto scroll-pt-14',
     nav,
   )
+  // Landing point when the drawer opens: the hamburger that opened it is in the
+  // header, which the opening makes inert, and focus left on an inert element
+  // is dropped on `<body>`. Focusing the drawer itself rather than its first
+  // control keeps the virtual keyboard shut — the first control is the nav's
+  // search field.
+  navAside.tabIndex = -1
   const navResizer = columnResizer(navAside, '--nav-col', 'layout.navWidth', {
     defaultWidth: 288,
     min: 200,
@@ -172,6 +202,30 @@ export function createPanels({
   function syncFab() {
     tryItFab.classList.toggle('hidden', !tryItAvailable || openPanel !== null)
   }
+
+  // The marked nodes are held rather than re-derived on close: unwinding has to
+  // undo exactly what was set, whatever the layout looks like by then, and an
+  // `inert` left on a node nobody clears is a page that never comes back.
+  const desktop = window.matchMedia(DESKTOP_QUERY)
+  let inertNodes = []
+  const syncInert = () => {
+    for (const node of inertNodes) node.inert = false
+    inertNodes = []
+    // Above lg both panels are ordinary columns and nothing is covered; `inert`
+    // is not media-scoped the way the off-canvas CSS is, so crossing the
+    // breakpoint has to unwind it by hand.
+    if (openPanel === null || desktop.matches) return
+    const open = openPanel === 'nav' ? navAside : tryItAside
+    const row = open.parentElement
+    if (!row) return
+    inertNodes = [
+      ...[...row.children].filter((node) => node !== open),
+      ...(row.parentElement?.querySelectorAll(BACKDROP) ?? []),
+    ]
+    for (const node of inertNodes) node.inert = true
+  }
+  desktop.addEventListener('change', syncInert)
+
   const setOpenPanel = (panel) => {
     openPanel = panel
     navAside.classList.toggle('is-open', panel === 'nav')
@@ -180,11 +234,15 @@ export function createPanels({
     navToggle.setAttribute('aria-expanded', String(panel === 'nav'))
     tryItFabBtn.setAttribute('aria-expanded', String(panel === 'tryit'))
     syncFab()
+    syncInert()
   }
+  // The trigger is read before the close, and focused after it: both triggers
+  // sit in the backdrop the open panel had made inert, and `focus()` on an
+  // inert element does nothing at all.
   const closePanels = ({ restoreFocus = false } = {}) => {
-    const wasTryIt = openPanel === 'tryit'
+    const trigger = openPanel === 'tryit' ? tryItFabBtn : openPanel === 'nav' ? navToggle : null
     setOpenPanel(null)
-    if (restoreFocus && wasTryIt) tryItFabBtn.focus()
+    if (restoreFocus) trigger?.focus()
   }
   const setTryItVisible = (visible) => {
     tryItAvailable = visible
@@ -209,7 +267,11 @@ export function createPanels({
     tryIt.scenarioOwned = scenarioOwned()
   }
 
-  navToggle.addEventListener('click', () => setOpenPanel(openPanel === 'nav' ? null : 'nav'))
+  navToggle.addEventListener('click', () => {
+    const opening = openPanel !== 'nav'
+    setOpenPanel(opening ? 'nav' : null)
+    if (opening) navAside.focus()
+  })
   tryItFabBtn.addEventListener('click', () => {
     setOpenPanel('tryit')
     sheetClose.focus()

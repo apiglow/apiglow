@@ -8,17 +8,24 @@ import { el, text } from './dom.js'
 // only holds it in a form.
 //
 // Swatches are deliberately tiny: they are color markers, not buttons to read.
+// The painted dot stays 16 px and the button around it is 24 px, the WCAG
+// 2.5.8 floor. The spacing exception would have been the cheaper answer, but it
+// does not apply: eleven markers a `gap-1.5` apart leave 22 px of clearance,
+// two short of the 24 it asks for. The ring goes on the dot, not on the button
+// — the button is the target, the dot is what the reader is picking.
 // The selection ring is repositioned by the CALLER's re-render, which is what
 // both callers do on a pick anyway.
 export function envColorPicker(selected, onPick) {
   const swatch = (color, classes, label) => {
-    const btn = el('button', `size-4 shrink-0 rounded-full cursor-pointer ${classes}`)
+    const btn = el('button', 'size-6 shrink-0 grid place-items-center cursor-pointer rounded-full')
+    const dot = el('span', `size-4 shrink-0 rounded-full ${classes}`)
     btn.type = 'button'
     btn.title = label
     btn.setAttribute('aria-label', label)
     btn.setAttribute('aria-pressed', String(selected === color))
     if (selected === color)
-      btn.classList.add('ring-2', 'ring-base-content', 'ring-offset-2', 'ring-offset-base-100')
+      dot.classList.add('ring-2', 'ring-base-content', 'ring-offset-2', 'ring-offset-base-100')
+    btn.append(dot)
     btn.addEventListener('click', () => onPick(color))
     return btn
   }

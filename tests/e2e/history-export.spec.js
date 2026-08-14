@@ -6,6 +6,7 @@ import {
   clickNavOp,
   clipboardText,
   closeMobilePanels,
+  editInDoc,
   expectResponded,
   gotoApp,
   mockApi,
@@ -521,14 +522,18 @@ test('reloading a past call syncs the body fields of the doc, not just the snipp
 
   await mockApi(page)
   await gotoApp(page, '#/op/createPet')
-  await docField('name').fill('Rex')
-  await docField('status').selectOption('sold')
+  await editInDoc(page, async () => {
+    await docField('name').fill('Rex')
+    await docField('status').selectOption('sold')
+  })
   await send(page)
   await expectResponded(page)
 
   // We modify the draft: the archived request must bring back ITS values.
-  await docField('name').fill('Bella')
-  await docField('status').selectOption('pending')
+  await editInDoc(page, async () => {
+    await docField('name').fill('Bella')
+    await docField('status').selectOption('pending')
+  })
 
   await openRunSelector(page)
   await runItems(page).nth(0).click()

@@ -216,7 +216,10 @@ class ImportDialog extends HTMLElement {
 
   #candidateRow(candidate, index) {
     const method = String(candidate.op.method ?? '').toLowerCase()
-    const input = el('input', 'radio radio-xs')
+    // Stock size rather than `radio-xs`: candidate rows stack one line apart,
+    // which leaves a 16 px radio short of both the 24 px target and the 24 px
+    // clearance that would stand in for it (WCAG 2.5.8).
+    const input = el('input', 'radio')
     input.type = 'radio'
     input.name = 'apidoc-import-candidate'
     input.checked = index === this.#candidateIndex

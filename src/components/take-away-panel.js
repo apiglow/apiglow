@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js'
+import { scrollBlock } from './a11y.js'
 import { copyableBlock } from './copy-button.js'
 import { el, icon, text } from './dom.js'
 import { downloadText } from './download.js'
@@ -55,7 +57,10 @@ export function takeAwayPanel({ title, intro, state = {}, onState = () => {} }, 
 // from `highlightSource` for the JSON config.
 export function takeAwaySource(getText, label, codeClass) {
   const code = el('code', codeClass)
-  const pre = el('pre', 'bg-base-300/40 rounded-box p-3 text-xs overflow-x-auto', code)
+  const pre = scrollBlock(
+    el('pre', 'bg-base-300/40 rounded-box p-3 text-xs overflow-x-auto', code),
+    t('a11y.scrollable.code'),
+  )
   return { node: copyableBlock(pre, getText, label), code }
 }
 

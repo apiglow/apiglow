@@ -1727,18 +1727,19 @@ imports the shell and never sees the host config directly.
   try-it a full-screen bottom sheet opened by a floating button. One panel
   open at a time; closes on veil click, Escape, route change, or swiping the
   sheet down.
-- Accessibility: WCAG 2.1 AA on the interactive paths — the model, what is
+- Accessibility: WCAG 2.2 AA on the interactive paths — the model, what is
   enforced and what is knowingly not, in §12.
 
 ## 12. Accessibility
 
-Target: **WCAG 2.1 AA on the interactive paths**. The primitives live in
+Target: **WCAG 2.2 AA on the interactive paths**. The primitives live in
 `src/components/a11y.js` — one implementation, so the contract cannot drift
 into three slightly different versions.
 
 **Keyboard.** Every control is a native `button`, `a`, `input` or `select`:
-there is no `tabindex` on non-interactive elements and no click handler on a
-`div` (the mobile scrim is the exception, and Escape does the same job).
+no click handler on a `div` (the mobile scrim is the exception, and Escape
+does the same job), and the only `tabindex` on a non-interactive element is
+the one scrolling blocks carry (below).
 Tablists — response codes in the doc, pretty/raw/headers in the try-it,
 observed response vs declared schema in the step editor, the code-tab groups
 of a docs page (§5.8) — follow the WAI-ARIA APG pattern: **one tab stop for the whole bar**, arrows to move
@@ -1747,6 +1748,66 @@ focus. Dialogs are native `<dialog>`: Escape closes them, and `openModal()`
 returns focus to the element that opened them (the browser's own restore
 gives up when that element's toolbar re-rendered while the dialog was open,
 which is our common case). The mobile drawer and bottom sheet do the same.
+
+**An open panel makes the page behind it inert.** Below lg the drawer and the
+sheet are modal surfaces, and the scrim only settles the pointer: without more,
+Tab walks straight out of the panel into a page the reader cannot see, and a
+screen reader browses it just as freely. `shell/panels.js` therefore marks the
+rest of the layout `inert` while a panel is open — the other column, the
+resizers, the header, the footer and the skip link — and unwinds it on close,
+when one panel replaces the other, and when a resize crosses lg, which the
+off-canvas CSS handles by media query and `inert` cannot. What stays live is
+what has to answer while a panel is open: the scrim, the FAB, the modal
+dialogs, and the toast stack, whose `role="status"` would go silent inside an
+inert subtree.
+
+The two triggers are in that backdrop, so the panels own the focus round trip
+rather than leaving it to the browser: opening the drawer moves focus onto the
+drawer itself (`tabindex="-1"`, not its search field — that would raise the
+virtual keyboard), opening the sheet onto its close button, and every dismissal
+that is not a navigation — Escape, the scrim, the close button, the downward
+drag — returns focus to the hamburger or to the FAB. Inert is also why the
+central doc cannot be *written* to while the sheet covers it, which is what a
+thumb already experienced: the mirror specs act on the doc through
+`editInDoc()` (helpers.js), the phone gesture itself.
+
+**Skipping the navigation (2.4.1).** The first tab stop of the document is a
+skip link — `sr-only`, revealed on focus — landing on `<main>`, which carries
+`tabindex="-1"` so focus actually stops there and the next Tab continues into
+the content instead of restarting at the top. It cancels its own click and
+moves focus by hand: the fragment belongs to the router (§5.2), and a real
+`#apidoc-main` navigation would parse as an unknown route and render the home
+page. Without it, the distance between the top of a page and its first line of
+content is the length of the nav, which is the size of the documented API.
+For the same reason the nav scrolls its own scrollport to bring a
+deep-linked entry into view rather than calling `scrollIntoView`: Chromium's
+implementation also moves the sequential focus navigation starting point onto
+what it scrolled, which would put a reader's very first Tab in the middle of
+the endpoint list.
+
+**Scrolling blocks are declared tab stops.** A code block, a header dump or a
+wide table scrolls but holds nothing focusable, and a keyboard can only reach
+what it can focus. Chromium and Firefox paper over that by focusing such a box
+themselves; WebKit does not, and there everything past the visible edge is
+reachable by pointer alone — two of the five projects. `scrollBlock()` in
+`a11y.js` therefore states it in the markup rather than inheriting it:
+`tabindex="0"`, `role="group"` and an i18n'd `aria-label` (a group without a
+name is announced as an anonymous one), plus the `.api-scrollport` class that
+paints the ring, since daisyUI paints none for a `<pre>`. It is applied to the
+example and response blocks of the doc and the try-it, the request and
+response bodies of the history, the take-away sources, the Markdown source
+view, the setup dialog's table, and every fence of a rendered Markdown block
+— OpenAPI descriptions and docs pages alike, swept once per block builder in
+`components/markdown.js`. Boxes that already hold a control (the nav, the
+try-it column, a menu, the palette results, the scope checkboxes) are left
+alone: they are reachable through what is inside them.
+
+**The focus ring is painted, and asserted.** daisyUI answers `:focus-visible`
+on a menu entry with a 10 % tint of `base-content` and an explicit
+`outline-style: none` — the same treatment `:hover` gets, so the keyboard has
+no signal of its own. The design layer restores a 2 px ring for every menu the
+app renders, the nav and the dropdowns alike; everywhere else the outline is
+daisyUI's or the platform's.
 
 **Announcements.** A single polite live region, created once and mutated
 afterwards, carries anything the user cannot see happening: send start,
@@ -1774,7 +1835,109 @@ rather than leaving three fragments to be read in a row.
 home, operation doc, try-it (before and after a send), history dialog,
 scenario view, webhook simulator, the search palette and a docs page
 exercising every prose feature at once, gating on
-`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`. It must stay green (rule 15).
+`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`/`wcag22a`/`wcag22aa`. It must stay
+green (rule 15). Selecting the 2.2 tags is what *enables* `target-size`: axe
+ships it off by default, and a tag that names it overrides that — the 2.2 line
+of the list is therefore load-bearing, not decorative.
+
+**The keyboard sweep**, which is what axe structurally cannot do: axe judges
+nodes, and whether a keyboard can reach a control is a property of the walk
+between them. `tests/e2e/keyboard.spec.js` walks the home page and an operation
+with the try-it open by Tab alone, forward then back, on the five projects. It
+derives the expected stops from the live DOM and asserts that none is missing
+and that no stop is unaccounted for; a roving tablist contributes exactly one
+stop by construction, because the derivation reads `tabIndex` rather than a
+list of exceptions. It asserts a non-zero, non-transparent outline at every
+stop — on the control or on the block that owns it, which is where `.collapse`
+paints its own. And it asserts the content is two key presses from a cold
+start, the skip link being the one it activates instead of tabbing past. The
+only stop it accepts without markup asking for it is a scrollport an engine
+made focusable on its own — and the reverse is asserted too: no box may
+scroll, hold nothing focusable, and lack a declared stop, on any engine. On the
+mobile projects it also walks each open panel and asserts the walk never leaves
+it, which is the inert backdrop above read from the keyboard's end.
+
+**Target size (2.5.8), and what carries it.** The 24×24 floor is machine-gated
+like any other rule, and it is the criterion the 2.2 move actually cost
+something: it found 26 nodes over 7 surfaces. Five of them are now sized
+rather than argued — the import candidate radio and the shared `checkbox()`
+of `dom.js` (16 px, and the rows they sit in are one line apart, so no
+clearance stands in for the size), the history toolbar's redaction toggle
+(33×20), the audit report's location link and its *why* disclosure (86×16 and
+95×16, standalone on their line, where the inline-in-a-sentence exception does
+not reach), and the eleven environment color markers, whose painted dot stays
+16 px inside a 24 px button because `gap-1.5` left them 22 px of clearance —
+two short. What remains under 24 px conforms through the criterion's **spacing
+exception**, not through an exemption we granted ourselves: 6 targets on the
+home view, 35 on an operation with its try-it open, 23 on the audit report, 52
+in the environment manager. Those are daisyUI's stock sizes — `btn-xs` paints
+23 px tall, a `badge` button 20 px — and re-cutting them would be owning a
+library's metrics to gain one pixel the criterion does not ask for. axe
+measures the clearance itself and reports **zero** `incomplete` on every swept
+surface, so the exception is verified rather than assumed.
+
+**Reflow (1.4.10) and text spacing (1.4.12), which no scanner asks.** Both are
+questions about the page under a constraint it was not authored for — a 320 px
+viewport, a reader's own stylesheet — and axe only judges the page it is handed.
+`tests/e2e/reflow.spec.js` asks them, on the five projects, over the home view,
+the drawer, an operation with its try-it before and after a send, the history
+with an entry open, settings, the search palette, the environment manager, a
+scenario and its step editor, the webhook simulator, the import dialog, both
+halves of the setup link, the audit and a docs page.
+
+- **1.4.10** is measured on `<main>`, the header, every open `.modal-box` and
+  whichever off-canvas panel is open — not on `<html>`, which would assert
+  nothing: the shell is an `h-screen` column whose content scrolls inside it, so
+  the document never grows and the panels are `position: fixed` over it.
+  Nothing scrolls sideways at 320 px. What the criterion exempts — "content
+  requiring two-dimensional layout" — is not guessed here but named: exactly the
+  `.api-scrollport` blocks above, whose declared tab stop is what makes the
+  exemption honest, and only for their own overflow, never for a container's.
+  The criterion also forbids *loss of information*, which is the half that found
+  something: two boxes threw their text away rather than widen. The footer
+  credit showed 15 % of "Powered by apiglow v0.1.0" — 160 px of the bar are
+  reserved for the "Try it" FAB, leaving 148 for a credit and a link list that
+  want 271 — and now truncates from lg up only, wrapping below. A step editor
+  preview showed 36 % of `: "available" | "pending" | "sold"`; previews are
+  capped at 60 characters upstream, so it wraps instead, at a cost of one line
+  at worst and never above 320 px. The floor is **half the string**, and the two
+  truncations that stay are deliberate: the doc's base-URL reminder at 74 %,
+  which carries `shrink-[9999]` precisely so the path beside it never
+  truncates, and the send meter's `aria-hidden` telemetry at 90 %, whose figures
+  are spelled out in the response header next to it.
+- **1.4.12** injects the criterion's four values as the WCAG working group's own
+  bookmarklet does — `line-height: 1.5`, `letter-spacing: .12em`,
+  `word-spacing: .16em` on `*`, `margin-bottom: 2em` on paragraphs — and
+  measures the *difference*, which is what the criterion asks: not what clips,
+  but what the override costs. Vertically, any new clipping fails, and that is
+  the criterion's own subject: every height-capped cartouche in the app pairs
+  its `max-h-*` with an `overflow-auto` — the history bodies, the step editor's
+  key list, the palette results, the response panes — so the answer is "it
+  scrolls", and nothing is cut. Horizontally only a fall under the half floor
+  fails: widening every line by a few per cent is what a deliberate `truncate`
+  absorbs, and the base-URL reminder goes from whole to 86 % on the widest
+  mobile project by the same rule that keeps the path intact.
+
+**The two criteria a scanner cannot answer.** 2.4.11 *Focus not obscured* and
+3.3.7 *Redundant entry* have no axe rule; both were walked by hand.
+
+- **2.4.11** had one real failure. The nav's search header is `sticky top-0`
+  inside the column's own scrollport, and moving focus *upward* (Shift+Tab)
+  scrolls the entry flush with the scrollport top — which is exactly where the
+  header is pinned: a 33 px link ended up 100 % covered by the 48 px header.
+  The fix is `scroll-padding-top` on the two scrollports that carry a sticky
+  header (`scroll-pt-14` on the nav drawer, `scroll-pt-12` on the try-it sheet
+  below lg, where the 64 px handle pinned at `-top-4` covers the first 48 px).
+  The docs page's table of contents is also sticky but sits in a column of its
+  own, overlapping nothing.
+- **3.3.7** has nothing to fix, by construction. The credentials cartouche
+  reads its fields from the environment store and writes back to it, so a
+  token typed once in the try-it is already there everywhere it is asked for
+  again; sharing an environment as a link offers its variables *for selection*
+  out of that same store rather than asking for them a second time. The setup
+  link **builder** is a blank form on purpose — it is the "build from scratch"
+  path (`docs/env-setup-link.md` §3.5), offered beside the share dialog for
+  someone who has no environment yet, i.e. no previous entry to carry over.
 
 **Color contrast is gated, on the themes we author.** Every scan runs on
 `apiglow` — the sweep stores the choice itself, so a fixture that still asks
@@ -1802,7 +1965,10 @@ than scanner appeasement:
   the ink) and `text-faint` (66 %) carry every secondary text
   throughout the components, never `opacity-40…80`. Opacity multiplies: a `opacity-60` caption
   inside a `text-white/70` chip lands at 0.42 of the ink, and no ratio
-  computed on the token predicts it;
+  computed on the token predicts it. The highlight.js comment is the same
+  rule applied to a token map: it dims at the `text-faint` level by mixing,
+  where an `opacity` would also have reached the fixed palette of the try-it
+  code panel, whose colors are not the theme's to dim;
 - **daisyUI's own dimmed roles are ours now** — `menu-title`, `stat-title`,
   `label`, table heads and inactive tabs are re-colored at the same level as
   any other secondary text. They are 11–12 px labels, the text a
@@ -1821,14 +1987,30 @@ rules above, plus a ratio computed from the painted pixels for the surfaces
 whose whole point is a color (`a11y.spec.js`, `contrastRatio`); a sweep of an
 open dialog gates everything *but* contrast.
 
+The modal is the widest of those blind spots, not the only one: daisyUI paints
+buttons and badges with a depth gradient, which axe reads as a background image
+it cannot resolve, and a one-character count is "too short to determine if it
+is actual text content". Every `incomplete` a sweep collects is therefore
+printed to the Playwright output with the reason axe gives for not answering —
+journalled, never gated, since a check that could not decide is not a defect
+and gating one would redden every dialog by construction. That log is the only
+place a ratio no rule ever measured becomes visible, so it is meant to be read,
+not just emitted.
+
 **What it is not a promise about: the other themes.** The app ships **every**
 standard daisyUI theme (rule 3) and a ratio fixed on `apiglow` says nothing
-about `dracula` — a stock theme's soft badges (`badge-info-soft` at 2.09:1)
-and its highlight.js mapping (1.79:1 on attributes) fail, and overriding a
-library's palette to fix that would replace an inherited limitation with one
-we own. Same reasoning for a host's `theme.custom`: those colors are the
-host's, and the one scan that renders them (`app-themes.html`) is the single
-place the rule is switched off.
+about `dracula`: overriding a library's palette to fix a stock theme would
+replace an inherited limitation with one we own. What the decision owes an
+integrator is the figure, not a repaint — `npm run report:contrast`
+(`scripts/report-theme-contrast.mjs`) measures the design layer's ink recipes
+— the `-soft` and `-outline` badges, the soft alerts, the highlight.js
+mapping, the two secondary text levels — on the painted pixels of every theme
+in `dist/app.css`, and prints the pairs under 4.5:1 per theme, worst first. It
+gates nothing and runs nowhere but by hand; a stock theme costing dozens of
+pairs is information for the person choosing it, not a defect to fix here.
+Same reasoning for a host's `theme.custom`: those colors are the host's, and
+the one scan that renders them (`app-themes.html`) is the single place the
+rule is switched off.
 
 Other gaps we know about: the doc's heading order follows the OpenAPI schema
 it renders, so a schema with odd nesting can produce an odd outline; and no

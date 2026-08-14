@@ -1,7 +1,7 @@
 import { envBadgeClass } from '../env/colors.js'
 import { redactEntry } from '../export/redact.js'
 import { t } from '../i18n/index.js'
-import { modalDismiss, openModal } from './a11y.js'
+import { modalDismiss, openModal, scrollBlock } from './a11y.js'
 import { el, text } from './dom.js'
 import { exportBar } from './export-bar.js'
 import { insightStrip } from './insight-strip.js'
@@ -135,7 +135,10 @@ class RequestHistoryList extends HTMLElement {
   }
 
   connectedCallback() {
-    const { backdrop, dismiss } = modalDismiss({ backdropLabel: t('env.close') })
+    const { backdrop, dismiss } = modalDismiss({
+      backdropLabel: t('history.close'),
+      closeLabel: t('history.close'),
+    })
     this.#toolbar = el('div')
     this.#retentionBox = el('p', 'text-xs text-subtle mt-2')
     this.#listBox = el('div', 'mt-3 flex flex-col gap-2')
@@ -215,7 +218,9 @@ class RequestHistoryList extends HTMLElement {
       this.#renderList()
     })
 
-    const redactToggle = el('input', 'toggle toggle-sm')
+    // Stock size: `toggle-sm` paints 20 px tall, and the toolbar row packs it
+    // against the filters on either side (WCAG 2.5.8).
+    const redactToggle = el('input', 'toggle')
     redactToggle.type = 'checkbox'
     redactToggle.checked = this.#redact
     redactToggle.addEventListener('change', () => {
@@ -580,10 +585,13 @@ function headersBlock(headers) {
 }
 
 function pre(content) {
-  return el(
-    'pre',
-    'bg-base-200 rounded-box p-2 overflow-x-auto max-h-60 overflow-y-auto',
-    el('code', '', text(content)),
+  return scrollBlock(
+    el(
+      'pre',
+      'bg-base-200 rounded-box p-2 overflow-x-auto max-h-60 overflow-y-auto',
+      el('code', '', text(content)),
+    ),
+    t('a11y.scrollable.code'),
   )
 }
 
@@ -600,10 +608,9 @@ function responseBody(raw) {
   const code = el('code', pretty === null ? '' : 'hljs language-json')
   if (pretty === null) code.textContent = source
   else code.innerHTML = highlightSource(source, 'json')
-  const block = el(
-    'pre',
-    'bg-base-200 rounded-box p-2 overflow-x-auto overflow-y-auto max-h-60',
-    code,
+  const block = scrollBlock(
+    el('pre', 'bg-base-200 rounded-box p-2 overflow-x-auto overflow-y-auto max-h-60', code),
+    t('a11y.scrollable.code'),
   )
   if (source.split('\n').length <= BODY_COLLAPSE_LINES) return block
 

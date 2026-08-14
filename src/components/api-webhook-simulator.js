@@ -181,7 +181,10 @@ class ApiWebhookSimulator extends HTMLElement {
       title.append(select)
     } else {
       title.append(
-        el('span', 'text-[11px] font-mono text-white/60 truncate', text(contents[0].mediaType)),
+        // `text-subtle`, not the `text-white/60` its twin in the try-it panel
+        // uses: that one sits inside the dark `api-code-panel`, this row is an
+        // ordinary section on base-100, where white ink is invisible.
+        el('span', 'text-[11px] font-mono text-subtle truncate', text(contents[0].mediaType)),
       )
     }
     const ta = el('textarea', 'textarea textarea-sm w-full font-mono text-xs min-h-40')

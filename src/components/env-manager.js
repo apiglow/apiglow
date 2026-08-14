@@ -64,7 +64,10 @@ class EnvManager extends HTMLElement {
   }
 
   connectedCallback() {
-    const { backdrop, dismiss } = modalDismiss({ backdropLabel: t('env.close') })
+    const { backdrop, dismiss } = modalDismiss({
+      backdropLabel: t('env.close'),
+      closeLabel: t('env.close'),
+    })
     this.#body = el('div')
     // Named rather than reached through its daisyUI class: `data-env-editor` is
     // what the shared e2e helpers target, and a `.modal-box` selector would

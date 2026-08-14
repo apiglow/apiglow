@@ -99,6 +99,7 @@ import { llmsFullExporter, llmsTextExporter } from './shell/exports.js'
 import { createSearchPalette } from './shell/search.js'
 import { createToaster } from './shell/toasts.js'
 import {
+  MAIN_ID,
   errorView,
   firstCallIntro,
   footer,
@@ -106,6 +107,7 @@ import {
   headerSearchField,
   loadingView,
   notFoundView,
+  skipToContentLink,
   specDownloadNotes,
   specSourceDownload,
   welcomeView,
@@ -193,6 +195,11 @@ function appLayout(
   const nav = document.createElement('api-nav')
   // pb-24 below lg: the "Try it" FAB floats above the bottom of the page.
   const main = el('main', 'flex-1 min-w-0 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8')
+  main.id = MAIN_ID
+  // The skip link's landing point. A <main> without it takes the focus() and
+  // hands it straight back, so the next Tab restarts from the top of the
+  // document and the skip has skipped nothing.
+  main.tabIndex = -1
   const doc = document.createElement('api-endpoint-doc')
   const mdPage = document.createElement('md-page')
   const scenarioView = document.createElement('api-scenario-view')
@@ -875,6 +882,8 @@ function appLayout(
   const layout = el(
     'div',
     'h-screen flex flex-col bg-base-100 text-base-content',
+    // First tab stop of the document, by tree order.
+    skipToContentLink(),
     header(
       branding,
       [

@@ -4,6 +4,7 @@
 // theme (colors skill rule 11).
 
 import { currentLanguage, t } from '../../i18n/index.js'
+import { scrollBlock } from '../a11y.js'
 import { confirmed, writeClipboard } from '../copy-button.js'
 import { el, text } from '../dom.js'
 import { CHECK_SVG_SM, COPY_SVG_SM } from '../icons.js'
@@ -126,7 +127,10 @@ export function responseBody(content, isJson) {
   )
   if (isJson) code.innerHTML = highlightSource(content ?? '', 'json')
   else code.textContent = content ?? ''
-  return el('pre', 'p-3 text-xs overflow-x-auto max-h-80 overflow-y-auto', code)
+  return scrollBlock(
+    el('pre', 'p-3 text-xs overflow-x-auto max-h-80 overflow-y-auto', code),
+    t('a11y.scrollable.code'),
+  )
 }
 
 // All received headers, with no filtering on the tool's side: what's
@@ -148,5 +152,8 @@ export function headersView(headerEntries) {
       el('span', 'text-white/80', text(`: ${value}`)),
     ),
   )
-  return el('div', 'p-3 text-xs flex flex-col gap-1 max-h-80 overflow-y-auto', count, ...rows, note)
+  return scrollBlock(
+    el('div', 'p-3 text-xs flex flex-col gap-1 max-h-80 overflow-y-auto', count, ...rows, note),
+    t('a11y.scrollable.headers'),
+  )
 }

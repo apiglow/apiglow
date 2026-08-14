@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import {
   THEMES_PAGE,
   clickNavOp,
+  closeMobilePanels,
   credentialsCard,
   expectResponded,
   gotoApp,
@@ -19,11 +20,11 @@ import {
 } from './helpers.js'
 import { encodeSetupLink } from '../../src/env/setup-link.js'
 
-// WCAG 2.1 A + AA, which is the level `docs/architecture.md` states as the
+// WCAG 2.2 A + AA, which is the level `docs/architecture.md` states as the
 // target. `best-practice` is deliberately out: it flags stylistic rules
 // (landmark counts, heading order across a doc generated from someone else's
 // schema) that are not the contract we sign up to.
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
+const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
 
 // `color-contrast` IS gated here, and the scope of that promise is exactly the
 // two themes we author: the fixtures run on the `apiglow` pair (§4.1), which
@@ -85,9 +86,26 @@ async function settle(page) {
   }, SETTLE_MS)
 }
 
+// `incomplete` is what axe could not decide, and inside a modal that is by
+// design (see `contrastRatio` below). Everywhere else it is a question worth
+// reading, so the sweep prints it. It stays a log line and never a gate: a
+// check that failed to answer is not a defect, and turning "I could not tell"
+// into a red run would make the suite flaky on the modals it already handles.
+function logIncomplete(results, where) {
+  for (const check of results.incomplete) {
+    // Same shape as a violation summary, message included: "could not tell" is
+    // only readable next to the reason axe gives for not telling.
+    const nodes = check.nodes.map((n) => `${n.target.join(' ')} — ${n.any?.[0]?.message ?? ''}`)
+    console.log(`axe incomplete — ${check.id} @ ${where}: ${nodes.join(' | ')}`)
+  }
+}
+
 async function expectNoViolations(page, options) {
   await settle(page)
-  expect(violationSummary(await scan(page, options))).toEqual([])
+  const results = await scan(page, options)
+  // The URL, because a single test sweeps several surfaces in a row.
+  logIncomplete(results, page.url().replace('http://localhost:4173', ''))
+  expect(violationSummary(results)).toEqual([])
 }
 
 // The AA floor for normal text, which `color-contrast` gates everywhere it can
@@ -184,6 +202,10 @@ test('the dark half of the pair holds the same contrast floor', async ({ page })
   await expect(page.locator('main header .badge', { hasText: 'Beta' })).toBeVisible()
   await expectNoViolations(page)
 
+  // Below lg the operation above left the sheet open over the header, and the
+  // page behind an open panel is both scrimmed and inert: the import button is
+  // reached the way a thumb reaches it, by putting the panel away first.
+  await closeMobilePanels(page)
   await page.getByRole('button', { name: 'Import a request' }).click()
   await page.locator('import-dialog textarea').fill(`curl -X PURGE 'https://api.e2e.test/v3/pets'`)
   const candidateBadge = page.locator('import-dialog .badge', { hasText: 'PURGE' })
@@ -450,11 +472,46 @@ test('a reader who asked for less motion gets the state without the movement', a
   expect(await railMotion()).toContain('box-shadow')
 })
 
+// 2.4.11 Focus not obscured, which no axe rule covers. The nav's search header
+// is `sticky top-0` inside the column's own scrollport, so an entry focused
+// from below — Shift+Tab scrolls it flush with the scrollport top — lands
+// exactly where the header is pinned and disappears whole behind it. What
+// keeps it visible is the scrollport's `scroll-padding-top` (§12), a value the
+// header can silently outgrow; the walk goes upward because that is the
+// direction the browser aligns to the top edge.
+test('focus never disappears behind the sticky nav header', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 600 })
+  await gotoApp(page)
+  await page.evaluate(() => {
+    for (const details of document.querySelectorAll('api-nav details')) details.open = true
+  })
+  const links = page.locator('api-nav .menu a')
+  const count = await links.count()
+  const covered = []
+  for (let i = count - 1; i >= 0; i--) {
+    await links.nth(i).focus()
+    const hidden = await page.evaluate(() => {
+      const node = document.activeElement
+      const rect = node.getBoundingClientRect()
+      const header = document.querySelector('api-nav .sticky').getBoundingClientRect()
+      const overlap =
+        Math.min(rect.bottom, header.bottom) - Math.max(rect.top, header.top) >= rect.height &&
+        Math.min(rect.right, header.right) - Math.max(rect.left, header.left) > 0
+      return overlap ? node.textContent.trim().slice(0, 40) : null
+    })
+    if (hidden) covered.push(hidden)
+  }
+  expect(covered).toEqual([])
+})
+
 // Roving tabindex: the response tab bar is a single Tab stop, arrows move
 // inside it. Ten declared status codes must not cost ten Tab presses.
 test('response tabs answer to arrow keys', async ({ page }) => {
   await gotoApp(page)
   await clickNavOp(page, 'listPets')
+  // The doc is the subject, so below lg the sheet the nav click left open has
+  // to go: it makes the page behind it inert, and nothing inert takes focus.
+  await closeMobilePanels(page)
   const tabs = page.locator('api-endpoint-doc [role="tablist"] [role="tab"]')
   // `count()` does not retry: the doc renders after the nav click.
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true')

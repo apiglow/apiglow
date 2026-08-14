@@ -14,6 +14,8 @@ import xml from 'highlight.js/lib/languages/xml'
 import { marked } from 'marked'
 import { docsMarkdownToHtml } from '../docs/markdown.js'
 import { headingIds } from '../docs/sections.js'
+import { t } from '../i18n/index.js'
+import { scrollBlock } from './a11y.js'
 
 // All HTML coming from external content (OpenAPI descriptions, .md pages) goes
 // through DOMPurify, without exception (rule 5).
@@ -47,13 +49,23 @@ function isolateDetailsTags(source) {
     .replace(/<\/?details[^>]*>/gi, (m) => `\n\n${m}\n\n`)
 }
 
+// `.md-content pre` scrolls horizontally (app.css) and a fenced block holds no
+// control, so each one is a declared tab stop. Run on the sanitized tree, once
+// per block builder: a code fence is the one thing all three of them produce.
+// A block a tab group later promotes to `role=tabpanel` keeps the stop and the
+// name — a tabpanel with nothing focusable in it is a tab stop by APG anyway.
+function scrollableFences(root) {
+  for (const pre of root.querySelectorAll('pre')) scrollBlock(pre, t('a11y.scrollable.code'))
+  return root
+}
+
 // Full Markdown block → <div class="md-content"> styled by app.css.
 export function markdownBlock(source) {
   if (!source) return null
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(marked.parse(isolateDetailsTags(source), { async: false }))
-  return div
+  return scrollableFences(div)
 }
 
 // Docs page (docs/docs-pages.md §4.1): same sanitization, richer markdown —
@@ -65,7 +77,7 @@ export function docsMarkdownBlock(source) {
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(docsMarkdownToHtml(isolateDetailsTags(source)))
-  return div
+  return scrollableFences(div)
 }
 
 // Docs page authored as HTML (docs/docs-pages.md §4.1): the same DOMPurify
@@ -76,7 +88,7 @@ export function htmlBlock(source) {
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(String(source ?? ''))
-  return div
+  return scrollableFences(div)
 }
 
 // Inline variant (no <p>) for short descriptions in a cell/row.

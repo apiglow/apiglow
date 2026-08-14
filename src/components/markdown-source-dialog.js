@@ -1,5 +1,5 @@
 import { t } from '../i18n/index.js'
-import { modalDismiss, openModal } from './a11y.js'
+import { modalDismiss, openModal, scrollBlock } from './a11y.js'
 import { copyableBlock } from './copy-button.js'
 import { el, text } from './dom.js'
 import { downloadText } from './download.js'
@@ -21,10 +21,13 @@ export function openMarkdownSource(markdown, { title, filename }) {
   const download = el('button', 'btn btn-sm', text(t('doc.viewMarkdownDownload')))
   download.type = 'button'
   download.addEventListener('click', () => downloadText(filename, markdown))
-  const source = el(
-    'pre',
-    'max-h-[60vh] overflow-auto rounded-box border border-base-300 bg-base-200/50 p-3 text-xs whitespace-pre-wrap break-words',
-    el('code', '', text(markdown)),
+  const source = scrollBlock(
+    el(
+      'pre',
+      'max-h-[60vh] overflow-auto rounded-box border border-base-300 bg-base-200/50 p-3 text-xs whitespace-pre-wrap break-words',
+      el('code', '', text(markdown)),
+    ),
+    t('a11y.scrollable.code'),
   )
   const dialog = el(
     'dialog',

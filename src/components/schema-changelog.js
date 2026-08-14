@@ -33,7 +33,10 @@ class SchemaChangelog extends HTMLElement {
   }
 
   connectedCallback() {
-    const { backdrop, dismiss } = modalDismiss({ backdropLabel: t('env.close') })
+    const { backdrop, dismiss } = modalDismiss({
+      backdropLabel: t('changelog.close'),
+      closeLabel: t('changelog.close'),
+    })
     this.#body = el('div')
     this.#dialog = el(
       'dialog',

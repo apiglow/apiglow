@@ -170,10 +170,12 @@ test('picking a color in the manager paints a gradient on the switcher, persiste
 
   await openEnvManager(page)
   await page.locator('env-manager').getByRole('button', { name: 'Red' }).click()
-  // selected swatch = ring, and the header badge gets the gradient
-  await expect(page.locator('env-manager').getByRole('button', { name: 'Red' })).toHaveClass(
-    /ring-2/,
-  )
+  // selected swatch = ring, and the header badge gets the gradient. The ring
+  // is on the painted dot, not on the button: the button is the 24 px target
+  // (§12), the dot inside it is the 16 px marker the ring belongs to.
+  await expect(
+    page.locator('env-manager').getByRole('button', { name: 'Red' }).locator('span'),
+  ).toHaveClass(/ring-2/)
   await expect(switcher).toHaveClass(/bg-linear-to-r/)
   await expect(switcher).toHaveClass(/from-red-500\/40/)
 

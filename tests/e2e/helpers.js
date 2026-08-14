@@ -191,11 +191,19 @@ export async function closeMobilePanels(page) {
 // sheet's scrim below lg. This is the phone gesture itself — close the sheet,
 // act on the doc, bring the panel back to read the effect — and a plain click
 // above the breakpoint, which is why the mirror specs can stay one spec.
-export async function clickInDoc(page, locator) {
+//
+// Required for every kind of edit, not only the ones Playwright refuses to
+// deliver through the scrim: an open panel makes the page behind it `inert`, so
+// `fill()` and `selectOption()` — which hit-test nothing and used to write into
+// a doc no thumb could reach — now write nowhere at all. Reading the doc needs
+// none of this; only writing to it does.
+export async function editInDoc(page, edit) {
   await closeMobilePanels(page)
-  await locator.click()
+  await edit()
   await openTryItIfMobile(page)
 }
+
+export const clickInDoc = (page, locator) => editInDoc(page, () => locator.click())
 
 // Clicks an endpoint in the nav, opening its <details> group if needed — and,
 // below lg, the drawer that holds the nav at all. Navigating closes the drawer

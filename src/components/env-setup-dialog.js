@@ -1,6 +1,6 @@
 import { t } from '../i18n/index.js'
 import { MASK } from '../export/redact.js'
-import { modalDismiss, openModal } from './a11y.js'
+import { modalDismiss, openModal, scrollBlock } from './a11y.js'
 import { el, text } from './dom.js'
 
 // Preview of an environment setup link (docs/env-setup-link.md §4.3).
@@ -145,26 +145,29 @@ function rowsTable(caption, rows, kind) {
     'section',
     'flex flex-col gap-1',
     el('h4', 'text-xs font-bold text-subtle', text(caption)),
-    el(
-      'div',
-      'overflow-x-auto',
+    scrollBlock(
       el(
-        'table',
-        'table table-xs',
+        'div',
+        'overflow-x-auto',
         el(
-          'thead',
-          '',
+          'table',
+          'table table-xs',
           el(
-            'tr',
+            'thead',
             '',
-            // i18n keys, not Tailwind classes: rule 2 is about the JIT purge.
-            ...['columnName', 'columnAction', 'columnValue'].map((key) =>
-              el('th', '', text(t(`envSetup.${key}`))),
+            el(
+              'tr',
+              '',
+              // i18n keys, not Tailwind classes: rule 2 is about the JIT purge.
+              ...['columnName', 'columnAction', 'columnValue'].map((key) =>
+                el('th', '', text(t(`envSetup.${key}`))),
+              ),
             ),
           ),
+          body,
         ),
-        body,
       ),
+      t('a11y.scrollable.table'),
     ),
   )
 }

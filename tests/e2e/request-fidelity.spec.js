@@ -3,7 +3,7 @@
 // reaches the cURL export and not the network), an XML body, and a urlencoded
 // body whose Encoding Object decides how its fields are spelled on the wire.
 import { expect, test } from '@playwright/test'
-import { expectResponded, gotoOp, mockApi, panelField, send, tryIt } from './helpers.js'
+import { editInDoc, expectResponded, gotoOp, mockApi, panelField, send, tryIt } from './helpers.js'
 
 const PAGE = '/tests/e2e/fixtures/app-request.html'
 
@@ -47,7 +47,7 @@ test('a cookie parameter is editable, reaches the cURL export, and says it will 
 test('the cookie field mirrors between the doc and the panel', async ({ page }) => {
   await gotoOp(page, PAGE, 'searchBooks')
   const docField = page.locator('main [aria-label="Try-it value for session"]')
-  await docField.fill('from-doc')
+  await editInDoc(page, () => docField.fill('from-doc'))
   await expect(panelField(page, 'session')).toHaveValue('from-doc')
   await panelField(page, 'session').fill('from-panel')
   await expect(docField).toHaveValue('from-panel')

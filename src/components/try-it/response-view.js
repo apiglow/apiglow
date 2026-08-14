@@ -21,7 +21,7 @@ import { t } from '../../i18n/index.js'
 import { displayableExample } from '../../openapi/examples.js'
 import { sampleValue } from '../../openapi/sample.js'
 import { isXmlMedia, xmlSample } from '../../openapi/sample-xml.js'
-import { linkTabPanel, wireTablist } from '../a11y.js'
+import { linkTabPanel, scrollBlock, wireTablist } from '../a11y.js'
 import { el, text } from '../dom.js'
 import { detailsDropdown } from '../dropdown.js'
 import { CARET_SVG, HISTORY_SVG, RESTORE_SVG } from '../icons.js'
@@ -385,7 +385,10 @@ export function createResponseView({
         if (typeof value === 'string' && !xml) code.textContent = value
         else code.innerHTML = highlightSource(shownText, xml ? 'xml' : 'json')
         panel.replaceChildren(
-          el('pre', 'p-3 text-xs overflow-x-auto max-h-80 overflow-y-auto', code),
+          scrollBlock(
+            el('pre', 'p-3 text-xs overflow-x-auto max-h-80 overflow-y-auto', code),
+            t('a11y.scrollable.code'),
+          ),
         )
       } else {
         shownText = ''

@@ -11,7 +11,7 @@ import { effectiveBaseUrl } from '../openapi/request-builder.js'
 import { isXmlMedia } from '../openapi/sample-xml.js'
 import { opHash } from '../router.js'
 import { readHeaderMemory } from '../storage/header-memory.js'
-import { linkTabPanel, wireTablist } from './a11y.js'
+import { linkTabPanel, scrollBlock, wireTablist } from './a11y.js'
 import { platformNotes, schemeLocation, schemeTypeLabel } from './auth-labels.js'
 import { changeBadge, changeDot } from './change-badge.js'
 import { confirmed, hoverCopyButton, writeClipboard } from './copy-button.js'
@@ -529,7 +529,11 @@ function labelBadges(op) {
     )
     // A bare word beside the deprecation badge reads as nothing on its own:
     // the accessible name says what kind of thing it is, and keeps the visible
-    // text inside it (label-in-name).
+    // text inside it (label-in-name). `role="img"` is what lets the span carry
+    // that name at all — `aria-label` on a bare <span> is prohibited by ARIA
+    // and dropped by part of the stack, same reason as the variable chips
+    // (`docs-content.js`).
+    badge.setAttribute('role', 'img')
     badge.setAttribute('aria-label', t('doc.tagLabel', { label: label.summary ?? label.name }))
     const description = tooltipText(label.description)
     if (description) badge.title = description
@@ -931,7 +935,10 @@ function exampleBlock(example) {
     'div',
     'mt-2',
     heading,
-    el('pre', 'bg-base-200 rounded-box p-3 text-xs overflow-x-auto', code),
+    scrollBlock(
+      el('pre', 'bg-base-200 rounded-box p-3 text-xs overflow-x-auto', code),
+      t('a11y.scrollable.code'),
+    ),
   )
   if (shown.json) highlightCode(block)
   return block
