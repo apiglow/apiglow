@@ -130,15 +130,6 @@ rationale; re-checked each run that the rationale still holds.
   Validation: delegated by the user to the run's judgment. Reopens if
   the boot budget or invariant 9 disappears, or if a staged surface
   gains no budget covering it.
-- **Markdown documentation pages — not a target**: `docs-pages/` is demo
-  markdown shown in dev and on the two demo pages; no host contract
-  rests on it today, so the family owes it no critical-path row of its
-  own. The *feature* is guarded anyway inside the routing row —
-  `navigation.spec.js:17,65,94,108`, `bootstrap.spec.js:122,136`,
-  `specs.test.js:241-274`. Its one uncovered branch is the failed-fetch
-  alert (`md-page.js:50-61`). Reopens if hosts start shipping their own
-  pages, which turns `docsPages` into a published contract.
-
 <!-- Template:
 - **{skill A} vs {skill B} — {what differs}**: {why the difference
   serves comprehension; what would reopen it}.
