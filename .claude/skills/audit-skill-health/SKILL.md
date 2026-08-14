@@ -5,9 +5,7 @@ description: >
   code-health, upgrade-code — by keeping their shared machinery coherent
   and their coverage current with what the codebase actually does. Finds
   what no audit skill watches (a new technology, paradigm, subsystem,
-  rule or design decision) and plans the rule that would watch it. Run ONLY when the
-  user explicitly invokes /audit-skill-health — never proactively, never
-  as a side effect of another task.
+  rule or design decision) and plans the rule that would watch it.
 disable-model-invocation: true
 ---
 
@@ -175,17 +173,19 @@ pointer, and close the plan" (see **Closing a plan**).
    re-verify the active plan's unexecuted sessions, write a new plan file
    merging survivors with this run's findings, fold the old one into it
    (final progress table into the new plan's "Superseded predecessors"
-   section, then `git rm` — no bare `.md` that will never be executed may
-   outlive its replacement), keep exactly one active plan. A surviving
+   section, then delete it — the fold is the only surviving trace, and
+   no bare `.md` that will never be executed may outlive its
+   replacement), keep exactly one active plan. A surviving
    `needs-go` session stays `needs-go` — rewriting a plan is never a way
    to launder a missing go.
    Before writing the plan file, check the sibling registries' active
    plans and record in the session's Why any overlap with a session
    already in flight.
 
-7. **Finish.** Update the registry (measurements, dates, declared
-   divergences, pointer). Commit registry + plan together in a single
-   `docs(skills): …` commit, touching nothing else. Summarize: what
+7. **Finish.** Update the registry (measurements, declared
+   divergences, pointer). Commit the registry — a single
+   `docs(skills): …` commit, touching nothing else; the plan is
+   untracked and enters no commit. Summarize: what
    drifted, what's uncovered, what's planned, what's declared, routed
    findings, or "nothing to do".
 
@@ -205,8 +205,9 @@ one). If it is marked `needs-go`, **ask the user before doing anything
 else** (see **Asking for a go**). Each session is independently
 executable; the documentation-only perimeter above binds. One session =
 one commit (`docs(skills): …`, `chore(…)` for tooling). End by flipping
-the session's status to `done ⟨date⟩ ⟨commit⟩` in the plan file (same
-commit). If it was the last session, perform the registry-update session,
+the session's status to `done ⟨date⟩ ⟨commit⟩` in the plan file
+(untracked, so no commit carries it). If it was the last session,
+perform the registry-update session,
 close the plan (see **Closing a plan**) and tell the user a fresh
 `/audit-skill-health` should report "nothing to do".
 
@@ -282,13 +283,15 @@ A plan whose sessions have all been executed is renamed on the spot:
 point — `ls docs/upgrade/` then says at a glance which plans are behind
 you and which one is live, without opening a single file.
 
-Mechanics, all inside the registry-update commit:
+Mechanics, at registry-update time:
 
-- `git mv` the file, so its history follows it;
-- fix every reference to the old name in the same commit — the
-  registry's active-plan pointer (which goes back to `none`) and any
-  prose in it that cites the plan by filename, plus cross-references
-  from the sibling skills' registries and plans;
+- rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never
+  enter a commit, CONTRIBUTING.md doctrine), so no git history follows
+  the file and none is expected;
+- fix every reference to the old name — the registry's active-plan
+  pointer (which goes back to `none`) and any prose in it that cites
+  the plan by filename, plus cross-references from the sibling skills'
+  registries and plans;
 - a **superseded** plan is never renamed `.done.md`: it did not finish,
   it was replaced — and it was folded into its successor's "Superseded
   predecessors" section at supersede time, so no file of it remains.
@@ -371,5 +374,5 @@ plan makes an unanswerable question.
   code-health holds for dead defensive code.
 - Baselines never loosen silently; declared divergences and non-targets
   carry the user's validation and a rationale.
-- English everywhere (repo rule 17); the plan and registry are part of
-  the codebase.
+- English everywhere (repo rule 17); the registry is tracked
+  documentation, and the untracked plan is written to the same standard.

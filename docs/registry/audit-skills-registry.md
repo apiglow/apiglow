@@ -22,7 +22,7 @@ it must not measure a dimension another skill owns.
 | Dimension | Detector | Baseline | Severity |
 |---|---|---|---|
 | Shared sections | `npm run health:skills` | **35/35** — 7 sections × 5 skills | none — hold it |
-| Canonical sentences | `npm run health:skills` | **43/43** identical across the family (whitespace-normalized). The list holds the whole shared skeleton, and an entry may bind a declared subset (`among`) when a divergence below justifies it | none — hold it |
+| Canonical sentences | `npm run health:skills` | **44/44** identical across the family (whitespace-normalized). The list holds the whole shared skeleton, and an entry may bind a declared subset (`among`) when a divergence below justifies it | none — hold it |
 | Emergent shared sentences | `npm run health:skills` | **0** — no sentence-sized unit shared verbatim by ≥4 skills sits outside CANONICAL. This is what catches a rule added to four of five, the most common source of new divergence | none — hold it at 0 |
 | Plan & pointer lint | `npm run health:skills` | **0 problems** — every registry's Active-plan pointer resolves (`none` or a real, still-open plan), `docs/upgrade/` holds no orphan, active plans keep the status vocabulary and end on the registry-update session. Replaces the manual "Sibling active plans" row for *state*; whether an edit invalidates a session in flight stays the run's judgment | none — hold it at 0 |
 | Coverage — CLAUDE.md rules | `npm run health:skills` | **0** of 20 | none — hold it at 0 |

@@ -5,8 +5,7 @@ description: >
   indirection, idiom drift, size hotspots — across src/ and tests/, then
   produce one consolidated, session-sliced cleanup plan in docs/upgrade/.
   Strictly behavior-preserving: a code-health session never changes what
-  the app does. Run ONLY when the user explicitly invokes /code-health —
-  never proactively, never as a side effect of another task.
+  the app does.
 disable-model-invocation: true
 ---
 
@@ -115,7 +114,10 @@ Conservative by default; structural work is opt-in.
 - **Not findings**: speculative abstraction (two similar sites are not a
   pattern), style opinions (Biome is the arbiter, rule 18), renames for
   taste, reformatting untouched code, replacing a working idiom with a
-  trendier one. Dead *defensive* code — guards against impossible cases,
+  trendier one — and anything annotated `// @acceptable-debt <reason>`:
+  CLAUDE.md makes that a recorded decision, excluded from audits, and
+  removing the annotation needs the same justification as adding it.
+  Dead *defensive* code — guards against impossible cases,
   back-compat shims — IS a finding (the project has no users and bans
   pre-prod fallbacks), but each removal must state why the case is
   impossible, not just that it looks unreachable.
@@ -179,8 +181,9 @@ Binding on every `clean` and `structural` session:
    re-verify the active plan's unexecuted sessions, write a new plan file
    merging survivors with this run's findings, fold the old one into it
    (final progress table into the new plan's "Superseded predecessors"
-   section, then `git rm` — no bare `.md` that will never be executed may
-   outlive its replacement), keep exactly one active plan. A surviving
+   section, then delete it — the fold is the only surviving trace, and
+   no bare `.md` that will never be executed may outlive its
+   replacement), keep exactly one active plan. A surviving
    `needs-go` session stays `needs-go` — rewriting a plan is never a way
    to launder a missing go.
    Before writing the plan file, check the sibling registries' active
@@ -189,9 +192,10 @@ Binding on every `clean` and `structural` session:
    already implied by an `app-health` or coverage session are
    cross-referenced, not duplicated.
 
-6. **Finish.** Update the registry (measurements, dates, thresholds,
-   pointer). Commit registry + plan together in a single `docs(code): …`
-   commit, touching nothing else. Summarize: what regressed vs baseline,
+6. **Finish.** Update the registry (measurements, thresholds,
+   pointer). Commit the registry — a single `docs(code): …`
+   commit, touching nothing else; the plan is untracked and enters no
+   commit. Summarize: what regressed vs baseline,
    what's planned (clean vs structural), what's accepted, routed
    findings, or "nothing to do".
 
@@ -211,7 +215,8 @@ else** (see **Asking for a go**). Each session is
 independently executable; the behavior-preservation contract above binds.
 One session = one commit (`refactor(…)`, `chore(…)` for tooling). End by
 flipping the session's status to `done ⟨date⟩ ⟨commit⟩` in the plan file
-(same commit). If it was the last session, perform the registry-update
+(untracked, so no commit carries it). If it was the last session,
+perform the registry-update
 session, close the plan (see **Closing a plan**) and tell the user a
 fresh `/code-health` should report "nothing to do".
 
@@ -277,13 +282,15 @@ A plan whose sessions have all been executed is renamed on the spot:
 point — `ls docs/upgrade/` then says at a glance which plans are behind
 you and which one is live, without opening a single file.
 
-Mechanics, all inside the registry-update commit:
+Mechanics, at registry-update time:
 
-- `git mv` the file, so its history follows it;
-- fix every reference to the old name in the same commit — the
-  registry's active-plan pointer (which goes back to `none`) and any
-  prose in it that cites the plan by filename, plus cross-references
-  from the sibling skills' registries and plans;
+- rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never
+  enter a commit, CONTRIBUTING.md doctrine), so no git history follows
+  the file and none is expected;
+- fix every reference to the old name — the registry's active-plan
+  pointer (which goes back to `none`) and any prose in it that cites
+  the plan by filename, plus cross-references from the sibling skills'
+  registries and plans;
 - a **superseded** plan is never renamed `.done.md`: it did not finish,
   it was replaced — and it was folded into its successor's "Superseded
   predecessors" section at supersede time, so no file of it remains.
@@ -362,5 +369,5 @@ unanswerable question.
 - Every finding cites file:line evidence measured this run. No findings
   from memory.
 - Biome is the style arbiter; this skill never argues formatting.
-- English everywhere (repo rule 17); the plan and registry are part of
-  the codebase.
+- English everywhere (repo rule 17); the registry is tracked
+  documentation, and the untracked plan is written to the same standard.

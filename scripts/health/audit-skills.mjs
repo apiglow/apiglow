@@ -74,7 +74,7 @@ const CANONICAL = [
   // session execution
   'take the first unexecuted session (or the named one)',
   'If it is marked `needs-go`, **ask the user before doing anything else** (see **Asking for a go**).',
-  "End by flipping the session's status to `done ⟨date⟩ ⟨commit⟩` in the plan file (same commit).",
+  "End by flipping the session's status to `done ⟨date⟩ ⟨commit⟩` in the plan file (untracked, so no commit carries it).",
   'perform the registry-update session, close the plan (see **Closing a plan**) and tell the user a fresh',
   // chained execution
   'A `needs-go` session asks for its go at execution time.',
@@ -100,14 +100,17 @@ const CANONICAL = [
   // closing a plan
   'A plan whose sessions have all been executed is renamed on the spot:',
   'The `.done` is the whole point — `ls docs/upgrade/` then says at a glance which plans are behind you and which one is live, without opening a single file.',
-  'Mechanics, all inside the registry-update commit:',
-  '`git mv` the file, so its history follows it;',
-  "fix every reference to the old name in the same commit — the registry's active-plan pointer (which goes back to `none`) and any prose in it that cites the plan by filename, plus cross-references from the sibling skills' registries and plans;",
+  'Mechanics, at registry-update time:',
+  'rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never enter a commit, CONTRIBUTING.md doctrine), so no git history follows the file and none is expected;',
+  "fix every reference to the old name — the registry's active-plan pointer (which goes back to `none`) and any prose in it that cites the plan by filename, plus cross-references from the sibling skills' registries and plans;",
   'a **superseded** plan is never renamed `.done.md`: it did not finish, it was replaced — and it was folded into its successor\'s "Superseded predecessors" section at supersede time, so no file of it remains. `.done.md` means *executed*, not merely closed.',
   // plan file format & guardrails
   'One line = one session; update Status at the end of each session.',
   '**User-invoked only.** Never run any part of this skill uninvited',
-  'English everywhere (repo rule 17); the plan and registry are part of the codebase.',
+  'English everywhere (repo rule 17); the registry is tracked documentation, and the untracked plan is written to the same standard.',
+  // plans live in gitignored docs/upgrade/ — the registry is the only
+  // tracked artifact of a run (CONTRIBUTING.md doctrine)
+  'the plan is untracked and enters no commit.',
   // deep mode — upgrade-code has none by declared divergence ("a scoped run
   // *is* the deep audit of that scope")
   {

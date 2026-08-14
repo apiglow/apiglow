@@ -5,9 +5,7 @@ description: >
   mirror, send pipeline, sanitization, storage bounds, theming, exports, …):
   detect unguarded or thinly-guarded paths, tautological tests, and drift
   between the code's real surface and what the tests assert, then produce
-  one consolidated, session-sliced fix plan in docs/upgrade/. Run ONLY when
-  the user explicitly invokes /app-health — never proactively, never as a
-  side effect of another task.
+  one consolidated, session-sliced fix plan in docs/upgrade/.
 disable-model-invocation: true
 ---
 
@@ -132,12 +130,13 @@ verifying the net has no new holes.
      the feature keeps running.
 
 4. **Invariants check.** The registry lists cross-cutting invariants and
-   the permanent guard enforcing each. Once `scripts/check-invariants.mjs`
-   exists (installed by a plan session, wired into CI), this step verifies
-   the script still covers the registry's list and the code's reality —
-   not by re-running the analysis by hand. Until then, every unenforced
-   invariant is a standing gap: it stays in the plan, it does not get
-   hand-checked inline as a substitute.
+   the permanent guard enforcing each — `scripts/check-invariants.mjs`
+   (run by CI via `npm run check:invariants`) is home of the statically
+   checkable ones. This step verifies the script still covers the
+   registry's list and the code's reality — not by re-running the
+   analysis by hand. An invariant no guard enforces is a standing gap:
+   it becomes a plan session, it does not get hand-checked inline as a
+   substitute.
 
 5. **Consolidate into one plan.** If the registry points at an active plan
    with unexecuted sessions, re-verify each one against the current code
@@ -148,8 +147,9 @@ verifying the net has no new holes.
    behind: its final progress table (statuses, commits) goes into the new
    plan's "Superseded predecessors" section — together with any such
    section the old file already carried — with one line on what was
-   executed, carried or dropped, and the old file is `git rm`-ed in the
-   same commit. Its full text stays in git history; what must not remain
+   executed, carried or dropped, and the old file is then deleted. The
+   fold is the only trace that survives — plans are untracked, git holds
+   no copy — which is why it is never optional; what must not remain
    is a bare `.md` in `docs/upgrade/` that will never be executed. Exactly
    one active plan exists at any time; the registry's pointer is updated.
    Before writing the plan file, check the sibling registries' active
@@ -157,12 +157,14 @@ verifying the net has no new holes.
    already in flight.
    Sessions come in two kinds: **fix** (a real regression or defect found)
    and **ratchet** (install a missing permanent guard). Gaps already
-   covered by a `todo` session of `docs/openapi-coverage.md` or of the
-   active spec-sync plan are cross-referenced, **not** duplicated.
+   covered by the active spec-sync plan are cross-referenced, **not**
+   duplicated; a boundary `docs/openapi-coverage.md` §5.1 records as a
+   deliberate degradation is a documented waiver, not a gap.
 
 6. **Finish.** Update the registry (verdicts, guards, waivers,
-   active-plan pointer). Commit the registry + plan together in a single
-   `docs(health): …` commit, touching nothing else. Summarize for the
+   active-plan pointer). Commit the registry — a single
+   `docs(health): …` commit, touching nothing else; the plan is untracked
+   and enters no commit. Summarize for the
    user: what drifted, what's planned (fix vs ratchet), what's waived, or
    "nothing to do".
 
@@ -190,7 +192,8 @@ changes, snapshots regenerated deliberately, one commit per session.
 Ratchet sessions must leave the new guard wired into what CI runs
 (`npm test`, the e2e suite, or a script invoked by CI) — a guard that only
 the audit runs is not a ratchet. End by flipping the session's status
-to `done ⟨date⟩ ⟨commit⟩` in the plan file (same commit). If it was
+to `done ⟨date⟩ ⟨commit⟩` in the plan file (untracked, so no commit
+carries it). If it was
 the last session, also perform the registry-update session, close the
 plan (see **Closing a plan**) and tell the user a fresh `/app-health`
 should now report "nothing to do".
@@ -256,13 +259,15 @@ A plan whose sessions have all been executed is renamed on the spot:
 point — `ls docs/upgrade/` then says at a glance which plans are behind
 you and which one is live, without opening a single file.
 
-Mechanics, all inside the registry-update commit:
+Mechanics, at registry-update time:
 
-- `git mv` the file, so its history follows it;
-- fix every reference to the old name in the same commit — the
-  registry's active-plan pointer (which goes back to `none`) and any
-  prose in it that cites the plan by filename, plus cross-references
-  from the sibling skills' registries and plans;
+- rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never
+  enter a commit, CONTRIBUTING.md doctrine), so no git history follows
+  the file and none is expected;
+- fix every reference to the old name — the registry's active-plan
+  pointer (which goes back to `none`) and any prose in it that cites
+  the plan by filename, plus cross-references from the sibling skills'
+  registries and plans;
 - a **superseded** plan is never renamed `.done.md`: it did not finish,
   it was replaced — and it was folded into its successor's "Superseded
   predecessors" section at supersede time, so no file of it remains.
@@ -272,8 +277,7 @@ Mechanics, all inside the registry-update commit:
 
 `docs/upgrade/health.{YYYYMMDD-HHmm}.md` while it still has unexecuted
 sessions, `docs/upgrade/health.{YYYYMMDD-HHmm}.done.md` once they are all
-executed. Modeled on `docs/openapi-coverage.md` (the proven
-agent-executable format here):
+executed:
 
 ```markdown
 # App health plan — {date}
@@ -333,5 +337,5 @@ focused agent run each.
 - Never make a run green by weakening a guard — loosening a budget,
   skipping a test, or shrinking an assertion is a regression, not a fix
   (rule 14 applies to the net itself).
-- English everywhere (repo rule 17); the plan and registry are part of the
-  codebase.
+- English everywhere (repo rule 17); the registry is tracked
+  documentation, and the untracked plan is written to the same standard.

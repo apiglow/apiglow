@@ -5,9 +5,7 @@ description: >
   the bundle (app), the build/test toolchain and Node (build), and the
   browser/JS platform itself (platform: new widely-available APIs worth
   adopting) — then produce one consolidated, session-sliced upgrade plan
-  in docs/upgrade/. Run ONLY when the user explicitly invokes
-  /upgrade-code — never proactively, never as a side effect of another
-  task.
+  in docs/upgrade/.
 disable-model-invocation: true
 ---
 
@@ -17,7 +15,7 @@ Fourth of the four-skill audit family — spec-sync (the claimed specs),
 app-health (the functional guard net), code-health (the code itself),
 upgrade-code (the technical platform). This skill keeps the platform
 current:
-the four runtime deps shipped to users, the build/test toolchain, Node,
+the runtime deps shipped to users, the build/test toolchain, Node,
 and the browser/JS platform the app runs on. The stack is pinned by
 design (CLAUDE.md "Stack (pinned)") — pinning without a watch is how a
 stack fossilizes; this skill is the watch.
@@ -41,18 +39,20 @@ deep audit of that scope.
 
 - `/upgrade-code` — full watch: app + build + platform.
 - `/upgrade-code app` — the runtime deps shipped in the bundle
-  (`dependencies`: ref-parser, dompurify, highlight.js, marked, plus
-  whatever spec/format work has since justified). **Upgrading a member is
+  (`dependencies`: ref-parser, dompurify, highlight.js, marked, json-p3,
+  plus whatever spec/format work has since justified). **Upgrading a member is
   this skill's job; adding one is never it** — architecture.md §14.2
   opened the set, but it opened it to a deliberate decision recorded in
   the README, not to a version watch. App bumps ship to users — bundle-size delta is measured
   and reported in the session.
-- `/upgrade-code build` — the toolchain (`devDependencies`: Vite,
-  Tailwind, daisyUI, Biome, Vitest, Playwright, axe, fake-indexeddb),
+- `/upgrade-code build` — the toolchain (every `devDependencies` row of
+  the registry: Vite, Tailwind, daisyUI, Biome, Vitest, Playwright, axe,
+  fake-indexeddb, and the rest of the pinned dev set),
   Node (`.nvmrc`), npm, and the CI actions versions.
 - `/upgrade-code platform` — the browser/JS platform: new APIs and
   language features that could replace hand-rolled code or lift a
-  documented limitation, plus the `es2022` build target and Node LTS
+  documented limitation, plus the `browserslist` floor the build target
+  derives from, and Node LTS
   status. Governed by the **Baseline policy**: a feature is adoptable
   when Baseline rates it *Widely Available* (web-platform-dx /
   baseline-status as the single source). The policy is recorded in
@@ -113,7 +113,8 @@ plan" (see **Closing a plan**).
    hand-rolled mechanism, lift a waiver/documented fallback, or simplify
    a subsystem? An `adopt` session exists only with a **concrete cited
    benefit** (the code it deletes or the limitation it lifts) — platform
-   fashion is not a finding. Also: whether raising the `es2022` target is
+   fashion is not a finding. Also: whether raising the `browserslist`
+   floor — and with it the derived build target — is
    warranted (all target browsers per the Baseline policy), and Node LTS
    drift for `.nvmrc`.
 
@@ -121,8 +122,9 @@ plan" (see **Closing a plan**).
    re-verify the active plan's unexecuted sessions, write a new plan file
    merging survivors with this run's findings, fold the old one into it
    (final progress table into the new plan's "Superseded predecessors"
-   section, then `git rm` — no bare `.md` that will never be executed may
-   outlive its replacement), exactly one active plan. A surviving
+   section, then delete it — the fold is the only surviving trace, and
+   no bare `.md` that will never be executed may outlive its
+   replacement), exactly one active plan. A surviving
    `needs-go` session stays `needs-go` — rewriting a plan is never a way
    to launder a missing go.
    Before writing the plan file, check the sibling registries' active
@@ -137,8 +139,9 @@ plan" (see **Closing a plan**).
    asks when it runs (see **Asking for a go**).
 
 6. **Finish.** Update the registry (versions, holds, pointer).
-   Commit registry + plan together in a single `docs(stack): …` commit,
-   touching nothing else. Summarize: what moved, what's planned (bump /
+   Commit the registry — a single `docs(stack): …` commit,
+   touching nothing else; the plan is untracked and enters no commit.
+   Summarize: what moved, what's planned (bump /
    adopt / policy, majors flagged), what's held, or "nothing to do".
 
 ## Upgrade rituals (the repo-specific couplings)
@@ -192,7 +195,8 @@ first. Each session is independently executable; one session =
 one commit (`chore(deps): …` for bumps, `refactor(…)` for adopts,
 `docs`/`chore` for policy). The session's ritual is part of its
 acceptance. End by flipping the session's status to `done ⟨date⟩
-⟨commit⟩` in the plan file (same commit). If it was the last session,
+⟨commit⟩` in the plan file (untracked, so no commit carries it). If it
+was the last session,
 perform the
 registry-update session, close the plan (see **Closing a plan**) and tell
 the user a fresh `/upgrade-code` should report "nothing to do".
@@ -259,13 +263,15 @@ A plan whose sessions have all been executed is renamed on the spot:
 point — `ls docs/upgrade/` then says at a glance which plans are behind
 you and which one is live, without opening a single file.
 
-Mechanics, all inside the registry-update commit:
+Mechanics, at registry-update time:
 
-- `git mv` the file, so its history follows it;
-- fix every reference to the old name in the same commit — the
-  registry's active-plan pointer (which goes back to `none`) and any
-  prose in it that cites the plan by filename, plus cross-references
-  from the sibling skills' registries and plans;
+- rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never
+  enter a commit, CONTRIBUTING.md doctrine), so no git history follows
+  the file and none is expected;
+- fix every reference to the old name — the registry's active-plan
+  pointer (which goes back to `none`) and any prose in it that cites
+  the plan by filename, plus cross-references from the sibling skills'
+  registries and plans;
 - a **superseded** plan is never renamed `.done.md`: it did not finish,
   it was replaced — and it was folded into its successor's "Superseded
   predecessors" section at supersede time, so no file of it remains.
@@ -332,5 +338,5 @@ go**).
   explain blocks the session.
 - Platform adoptions require the Baseline policy (architecture.md
   §14.15) and a concrete cited benefit — no fashion-driven churn.
-- English everywhere (repo rule 17); the plan and registry are part of
-  the codebase.
+- English everywhere (repo rule 17); the registry is tracked
+  documentation, and the untracked plan is written to the same standard.

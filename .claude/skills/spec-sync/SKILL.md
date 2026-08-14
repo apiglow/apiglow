@@ -4,9 +4,7 @@ description: >
   Audit the project's claimed spec/format support (OpenAPI, JSON Schema,
   Arazzo, HAR, Postman, llms.txt, MCP, …) against the latest published
   versions and against the codebase, then produce one consolidated,
-  session-sliced upgrade plan in docs/upgrade/. Run ONLY when the user
-  explicitly invokes /spec-sync — never proactively, never as a side effect
-  of another task.
+  session-sliced upgrade plan in docs/upgrade/.
 disable-model-invocation: true
 ---
 
@@ -95,7 +93,7 @@ implemented versions, clear the active-plan pointer, and close the plan"
    construct-level coverage has never been established, say so and offer a
    `deep` run — the **Deep audits** table in the registry is what records
    whether it has. Reaching for it uninvited is not thoroughness, it is the
-   contract in step 0 being broken one construct at a time.
+   idempotence contract being broken one construct at a time.
 
 4. **Drift check** (light, every run):
    - registry vs code: `npm run health:specs` compares the version
@@ -103,8 +101,8 @@ implemented versions, clear the active-plan pointer, and close the plan"
      `version`, …) to the `Implemented` column;
    - existing waivers: rationale still holds (a platform limitation may
      have been lifted);
-   - `docs/openapi-coverage.md` status table: sessions marked done are
-     actually merged;
+   - `docs/openapi-coverage.md` §5.1 (deliberate degradations) and the
+     registry's waiver list still name the same boundaries;
    - the registry's **Inventory verdicts that can go stale** table: one
      `npm view <pkg> version` per row against the version weighed. A
      verdict that kept in-house code because a library lacked something
@@ -126,19 +124,21 @@ implemented versions, clear the active-plan pointer, and close the plan"
    behind: its final progress table (statuses, commits) goes into the new
    plan's "Superseded predecessors" section — together with any such
    section the old file already carried — with one line on what was
-   executed, carried or dropped, and the old file is `git rm`-ed in the
-   same commit. Its full text stays in git history; what must not remain
+   executed, carried or dropped, and the old file is then deleted. The
+   fold is the only trace that survives — plans are untracked, git holds
+   no copy — which is why it is never optional; what must not remain
    is a bare `.md` in `docs/upgrade/` that will never be executed. Exactly
    one active plan exists at any time; the registry's pointer is updated.
    Before writing the plan file, check the sibling registries' active
    plans and record in the session's Why any overlap with a session
    already in flight.
-   Gaps already covered by a `todo` session of `docs/openapi-coverage.md`
-   are cross-referenced, **not** duplicated into the plan.
+   A gap `docs/openapi-coverage.md` §5.1 already records as a deliberate
+   degradation is an existing waiver, **not** a plan session.
 
 6. **Finish.** Update the registry (`Latest known`, waivers,
-   active-plan pointer). Commit the registry + plan together in a single
-   `docs(specs): …` commit, touching nothing else. Summarize for the user:
+   active-plan pointer). Commit the registry — a single
+   `docs(specs): …` commit, touching nothing else; the plan is untracked
+   and enters no commit. Summarize for the user:
    what moved, what's planned, what's waived, or "nothing to do".
 
 ## Deep audit (`/spec-sync deep <format>`)
@@ -173,7 +173,8 @@ Each session is written to be executable with no prior context; still, the
 repo rules bind: `npm test` green before commit, snapshots regenerated
 deliberately, e2e after build-affecting changes, one commit per session.
 End by flipping the session's status to `done ⟨date⟩ ⟨commit⟩` in the
-plan file (same commit). If it was the last session, also perform
+plan file (untracked, so no commit carries it). If it was the last
+session, also perform
 the registry-update session, close the plan (see **Closing a plan**) and
 tell the user a fresh `/spec-sync` should now report "nothing to do".
 
@@ -233,13 +234,15 @@ A plan whose sessions have all been executed is renamed on the spot:
 point — `ls docs/upgrade/` then says at a glance which plans are behind
 you and which one is live, without opening a single file.
 
-Mechanics, all inside the registry-update commit:
+Mechanics, at registry-update time:
 
-- `git mv` the file, so its history follows it;
-- fix every reference to the old name in the same commit — the
-  registry's active-plan pointer (which goes back to `none`) and any
-  prose in it that cites the plan by filename, plus cross-references
-  from the sibling skills' registries and plans;
+- rename with a plain `mv` — `docs/upgrade/` is gitignored (plans never
+  enter a commit, CONTRIBUTING.md doctrine), so no git history follows
+  the file and none is expected;
+- fix every reference to the old name — the registry's active-plan
+  pointer (which goes back to `none`) and any prose in it that cites
+  the plan by filename, plus cross-references from the sibling skills'
+  registries and plans;
 - a **superseded** plan is never renamed `.done.md`: it did not finish,
   it was replaced — and it was folded into its successor's "Superseded
   predecessors" section at supersede time, so no file of it remains.
@@ -249,8 +252,7 @@ Mechanics, all inside the registry-update commit:
 
 `docs/upgrade/specs.{YYYYMMDD-HHmm}.md` while it still has unexecuted
 sessions, `docs/upgrade/specs.{YYYYMMDD-HHmm}.done.md` once they are all
-executed. Modeled on `docs/openapi-coverage.md` (the proven
-agent-executable format here):
+executed:
 
 ```markdown
 # Spec upgrade plan — {date}
@@ -303,7 +305,7 @@ one focused agent run each.
   into an earlier approval.
 - Every version claim and every change analysed cites a URL fetched during
   the run. No plan content from memory.
-- English everywhere (repo rule 17); the plan and registry are part of the
-  codebase.
+- English everywhere (repo rule 17); the registry is tracked
+  documentation, and the untracked plan is written to the same standard.
 - Newest-wins normalization (rule 19) shapes every plan session: model the
   newest semantics, convert older spellings into it.
