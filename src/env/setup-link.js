@@ -7,7 +7,7 @@
 import { fromBase64Url, toBase64Url } from '../export/share.js'
 import { normalizeEnvColor } from './colors.js'
 
-export const SETUP_LINK_VERSION = 1
+const SETUP_LINK_VERSION = 1
 
 // §3.3. A link is untrusted input arriving in a URL, and `environments` is the
 // one localStorage dataset with no numeric cap (architecture §6.2) — these

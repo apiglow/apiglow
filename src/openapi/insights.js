@@ -294,7 +294,7 @@ function byteCount(value) {
 
 // Long enough for a cold TLS handshake, short enough that the verdict arrives
 // while the user is still looking at the error (§3.1).
-export const PROBE_TIMEOUT_MS = 5000
+const PROBE_TIMEOUT_MS = 5000
 
 /**
  * Explains a fetch that died before any HTTP response. The checks of the §3.1

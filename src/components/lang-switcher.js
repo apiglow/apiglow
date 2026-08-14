@@ -8,7 +8,7 @@ const LANG_KEY = 'language'
 // Virtual choice following the browser's own preferences; never a language code.
 // Same shape as the theme's 'system' (docs/architecture.md §5.9): a choice that
 // resolves at boot rather than a value to store.
-export const BROWSER = 'browser'
+const BROWSER = 'browser'
 
 // The first offered language the browser asks for, in the order IT ranks them.
 // Matched on the primary subtag too: a browser asking for `fr-CA` gets `fr`,

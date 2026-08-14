@@ -96,7 +96,7 @@ const JSONPATH = new JSONPathEnvironment({ maxRecursionDepth: MAX_QUERY_DEPTH })
 // Never throws, like everything else here: an expression that is not valid
 // RFC 9535 is a failed assertion carrying a code, not an exception escaping
 // into the runner.
-export function queryMatches(root, expression) {
+function queryMatches(root, expression) {
   const { found, code } = queryFirst(root, expression)
   if (code) return { ok: false, code }
   return { ok: found, code: null }
@@ -107,7 +107,7 @@ export function queryMatches(root, expression) {
 // "which node" — first wins, the same rule the Overlay resolution applies when
 // it needs one node from a query. The walk stops there either way, which is
 // also why no result cap is needed on this side.
-export function queryFirst(root, expression) {
+function queryFirst(root, expression) {
   let query
   try {
     query = JSONPATH.compile(String(expression ?? ''))
@@ -139,7 +139,7 @@ export function queryFirst(root, expression) {
 // are legitimate, which nothing here can do correctly.
 const MAX_REGEX_SUBJECT = 100_000
 
-export function regexMatches(value, pattern) {
+function regexMatches(value, pattern) {
   let expression
   try {
     expression = new RegExp(String(pattern ?? ''))

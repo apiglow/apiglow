@@ -23,7 +23,7 @@ export function writePref(key, value) {
 
 // Removal rather than writing `null`: a stored `null` reads back as the
 // fallback, but keeps a key the storage inventory would still count and purge.
-export function removePref(key) {
+function removePref(key) {
   try {
     window.localStorage.removeItem(PREFIX + key)
   } catch {

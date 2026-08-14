@@ -50,7 +50,7 @@ function compactJson(body) {
   }
 }
 
-export function toFetch({ method, url, headers = {}, body = null, form = null, file = null }) {
+function toFetch({ method, url, headers = {}, body = null, form = null, file = null }) {
   const lines = []
   const opts = [`  method: '${String(method).toUpperCase()}',`]
   const headerEntries = Object.entries(headers)
@@ -85,14 +85,7 @@ export function toFetch({ method, url, headers = {}, body = null, form = null, f
   return lines.join('\n')
 }
 
-export function toPythonRequests({
-  method,
-  url,
-  headers = {},
-  body = null,
-  form = null,
-  file = null,
-}) {
+function toPythonRequests({ method, url, headers = {}, body = null, form = null, file = null }) {
   const m = String(method).toLowerCase()
   const args = [`    ${pyQuote(url)},`]
   const headerEntries = Object.entries(headers)
@@ -134,7 +127,7 @@ export function toPythonRequests({
   ].join('\n')
 }
 
-export function toPhpCurl({ method, url, headers = {}, body = null, form = null, file = null }) {
+function toPhpCurl({ method, url, headers = {}, body = null, form = null, file = null }) {
   const lines = ['<?php', `$ch = curl_init(${phpQuote(url)});`]
   lines.push(`curl_setopt($ch, CURLOPT_CUSTOMREQUEST, '${String(method).toUpperCase()}');`)
   lines.push('curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);')
@@ -215,7 +208,7 @@ export function toGo({ method, url, headers = {}, body = null, form = null, file
   return lines.join('\n')
 }
 
-export function toHttpie({ method, url, headers = {}, body = null, form = null, file = null }) {
+function toHttpie({ method, url, headers = {}, body = null, form = null, file = null }) {
   const lines = [`http ${String(method).toUpperCase()} ${shellQuote(url)}`]
   if (form?.length) {
     lines[0] = `http --form ${String(method).toUpperCase()} ${shellQuote(url)}`
@@ -238,7 +231,7 @@ export function toHttpie({ method, url, headers = {}, body = null, form = null, 
   return lines.join(' \\\n  ')
 }
 
-export function toNodeAxios({ method, url, headers = {}, body = null, form = null, file = null }) {
+function toNodeAxios({ method, url, headers = {}, body = null, form = null, file = null }) {
   const imports = ["import axios from 'axios'"]
   const pre = []
   const opts = [`  method: ${jsQuote(String(method).toLowerCase())},`, `  url: ${jsQuote(url)},`]
@@ -346,7 +339,7 @@ export function toRuby({ method, url, headers = {}, body = null, form = null, fi
   ].join('\n')
 }
 
-export function toJava({ method, url, headers = {}, body = null, form = null, file = null }) {
+function toJava({ method, url, headers = {}, body = null, form = null, file = null }) {
   const m = String(method).toUpperCase()
   const imports = new Set([
     'java.net.URI',
