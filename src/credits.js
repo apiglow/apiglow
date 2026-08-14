@@ -15,7 +15,7 @@ export const BUNDLED_CREDITS = [
     id: 'daisyui',
     pkg: 'daisyui',
     name: 'daisyUI',
-    version: '5.7.16',
+    version: '5.7.17',
     license: 'MIT',
     url: 'https://daisyui.com',
   },

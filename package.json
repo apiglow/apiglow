@@ -85,7 +85,7 @@
     "@tailwindcss/vite": "4.3.3",
     "@vitest/coverage-v8": "4.1.10",
     "browserslist-to-esbuild": "2.1.1",
-    "daisyui": "5.7.16",
+    "daisyui": "5.7.17",
     "es-check": "9.6.4",
     "fake-indexeddb": "6.2.5",
     "tailwindcss": "4.3.3",

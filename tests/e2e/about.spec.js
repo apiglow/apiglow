@@ -33,7 +33,7 @@ test('About states the license, what it reads, and what it bundles', async ({ pa
   await expect(dialog(page)).toContainText('Arazzo 1.1.0')
   // Every bundled component is credited with its version and its license.
   for (const [name, version] of [
-    ['daisyUI', '5.7.16'],
+    ['daisyUI', '5.7.17'],
     ['Tailwind CSS', '4.3.3'],
     ['JSON Schema $Ref Parser', '15.5.1'],
     ['Marked', '18.0.9'],
