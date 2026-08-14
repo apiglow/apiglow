@@ -17,7 +17,7 @@ Detector: `npm run health:skills`
 `npm run health` — that aggregate is code-health's contract, and a run of
 it must not measure a dimension another skill owns.
 
-**Active plan**: `docs/upgrade/skills.20260814-1608.md`
+**Active plan**: none
 
 | Dimension | Detector | Baseline | Severity |
 |---|---|---|---|
@@ -26,8 +26,8 @@ it must not measure a dimension another skill owns.
 | Emergent shared sentences | `npm run health:skills` | **0** — no sentence-sized unit shared verbatim by ≥4 skills sits outside CANONICAL. This is what catches a rule added to four of five, the most common source of new divergence | none — hold it at 0 |
 | Plan & pointer lint | `npm run health:skills` | **0 problems** — every registry's Active-plan pointer resolves (`none` or a real, still-open plan), `docs/upgrade/` holds no orphan, active plans keep the status vocabulary and end on the registry-update session. Replaces the manual "Sibling active plans" row for *state*; whether an edit invalidates a session in flight stays the run's judgment | none — hold it at 0 |
 | Coverage — CLAUDE.md rules | `npm run health:skills` | **0** of 20 | none — hold it at 0 |
-| Coverage — design decisions (architecture.md §14) | `npm run health:skills` | **{§14.3, §14.4, §14.5, §14.6, §14.7, §14.8, §14.10, §14.13, §14.14}** — 9 of 15, stored as a set, not a count: a swap (one declared entry leaving while a new unwatched one arrives) keeps the count at 9 and must still read as drift. All nine watched through the rule or row that implements them, declared non-targets below. A **new** entry appearing here is a finding until triaged | none at this set — any change to it is a finding |
-| Coverage — `src/` subsystems | `npm run health:skills` | **0** of 13 | none — hold it at 0 |
+| Coverage — design decisions (architecture.md §14) | `npm run health:skills` | **{§14.3, §14.4, §14.5, §14.6, §14.7, §14.8, §14.10, §14.13, §14.14, §14.19, §14.20}** — 11 of 20, stored as a set, not a count: a swap (one declared entry leaving while a new unwatched one arrives) keeps the count at 11 and must still read as drift. All eleven watched through the rule or row that implements them, declared non-targets below. A **new** entry appearing here is a finding until triaged | none at this set — any change to it is a finding |
+| Coverage — `src/` subsystems | `npm run health:skills` | **0** of 14 | none — hold it at 0 |
 | New tech / paradigms | manual sweep | surfaces outside `src/` confronted with the family — `demo/`, `scripts/`, `.github/workflows/`, `dist/`, `docs/`, `tests/` all named by at least one skill or registry | none — the next sweep reads `git log` since the registry's last commit |
 
 ## What the detector measures, and what it cannot
