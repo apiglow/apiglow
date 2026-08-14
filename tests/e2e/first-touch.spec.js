@@ -3,6 +3,7 @@ import {
   API_BASE,
   clickNavOp,
   credentialsCard,
+  envTrigger,
   gotoApp,
   gotoFixture,
   mockApi,
@@ -62,6 +63,33 @@ test('a send blocked on a missing credential names it and focuses the field', as
   await tryIt(page).locator('[data-cred-var="auth.apiKeyAuth"]').blur()
   await send(page)
   await expect(tryIt(page)).toContainText('200')
+})
+
+// A schema loaded on a host that declares no environment: the cartouche used
+// to hand back a field disabled into invisibility, and the only way through
+// was the environments popin. It now creates what it needs to write.
+test('the first credential entered creates the environment it lands in', async ({ page }) => {
+  const calls = await mockApi(page)
+  await gotoFixture(page, '/tests/e2e/fixtures/app-no-env.html')
+  await clickNavOp(page, 'listOrders')
+  await expect(envTrigger(page)).toContainText('No environment')
+
+  const field = credentialsCard(page).locator('[data-cred-var="auth.apiKeyAuth"]')
+  await expect(field).toBeEnabled()
+  await expect(credentialsCard(page)).toContainText('An environment will be created')
+  await field.fill('key-123')
+  // Provisioning the environment must not rebuild the fields: the write lands
+  // on blur, before focus reaches the control the Tab was headed for.
+  await field.press('Tab')
+  await expect(
+    credentialsCard(page).getByRole('button', { name: 'Show / hide value' }),
+  ).toBeFocused()
+
+  await expect(envTrigger(page)).toContainText('Environment 1')
+  await expect(credentialsCard(page)).toContainText('Environment 1')
+  await send(page)
+  await expect(tryIt(page)).toContainText('200')
+  expect(calls.at(-1).headers['x-api-key']).toBe('key-123')
 })
 
 test.describe('generated onboarding page', () => {

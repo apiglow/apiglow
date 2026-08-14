@@ -17,11 +17,8 @@ import { el, text } from './dom.js'
 // ENVIRONMENT variable alone — a host value is never displayed, not even
 // masked, so there is no doubt about what editing the field does (§6).
 export function credentialsForm({ scheme, envStore, save, variables }) {
-  const hasEnv = Boolean(envStore.selected())
   const wrap = el('div', 'flex flex-col gap-2')
-  wrap.append(
-    ...credentialFields(scheme).map((field) => row(field, envStore, hasEnv, save, variables)),
-  )
+  wrap.append(...credentialFields(scheme).map((field) => row(field, envStore, save, variables)))
   if (variables.host.hasProvider) wrap.append(refreshButton(scheme, variables.host))
   return wrap
 }
@@ -50,7 +47,7 @@ function refreshButton(scheme, host) {
   return button
 }
 
-function row(field, envStore, hasEnv, save, variables) {
+function row(field, envStore, save, variables) {
   // Re-read on every comparison: the field survives successive writes, its
   // reference value is the store's, not the first render's.
   const stored = () => envStore.variablesOf()[field.name]
@@ -90,7 +87,9 @@ function row(field, envStore, hasEnv, save, variables) {
   input.value = variable?.value ?? ''
   input.autocomplete = 'off'
   input.spellcheck = false
-  input.disabled = !hasEnv
+  // No environment yet is not a reason to lock the field: the first value
+  // entered creates one (the panel's `save` does it).
+  input.disabled = !envStore.writable
   // Written on blur / Enter only: on every keystroke, the change emitted by
   // the store would rebuild the field under the user's fingers.
   input.addEventListener('change', () => {

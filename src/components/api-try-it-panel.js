@@ -803,6 +803,16 @@ class ApiTryItPanel extends HTMLElement {
       })
       if (oauth) detail.append(oauth)
     }
+    // Where the value entered above lands. Without an environment the line
+    // announces the one the first write will create, rather than a bare
+    // "none" that reads as a dead end.
+    const envLine = el('div', 'text-[11px] text-faint min-w-0')
+    const renderEnvLine = () => {
+      const env = this.#envStore.selected()
+      const empty = this.#envStore.writable ? 'tryit.credEnvOnWrite' : 'tryit.credNoEnv'
+      envLine.replaceChildren(text(env ? t('tryit.credEnv', { name: env.name }) : t(empty)))
+    }
+    renderEnvLine()
     select.addEventListener('change', () => {
       this.#state.authSchemeName = select.value || null
       renderDetail()
@@ -817,7 +827,9 @@ class ApiTryItPanel extends HTMLElement {
     this.#ui.renderAuth = () => {
       renderDetail()
       renderStatus()
+      renderEnvLine()
     }
+    this.#ui.renderEnvLine = renderEnvLine
 
     const summary = el(
       'summary',
@@ -825,30 +837,17 @@ class ApiTryItPanel extends HTMLElement {
       el('span', 'text-label uppercase text-subtle', text(t('tryit.auth'))),
       status,
     )
-    // "Environments" is laid out on the summary row but lives OUTSIDE the
-    // <summary>: a focusable control nested in a disclosure widget gets
-    // swallowed into that widget's accessible name, and its own activation
-    // fights the toggle. Absolutely positioned instead, with the summary's
-    // end padding reserving the room it used to take as a flex child.
+    // "Environments" sits beside the line naming where the credentials land,
+    // not on the summary row: a focusable control nested in a disclosure
+    // widget gets swallowed into that widget's accessible name, and the
+    // absolute positioning that kept it out of the <summary> had no room —
+    // label, status badge and button do not fit across a 336px column.
     let manage = null
     if (this.#onManageEnv) {
-      manage = el(
-        'button',
-        'btn btn-ghost btn-xs absolute end-10 top-1/2 -translate-y-1/2',
-        text(t('env.manage')),
-      )
+      manage = el('button', 'btn btn-ghost btn-xs shrink-0', text(t('env.manage')))
       manage.type = 'button'
       manage.addEventListener('click', () => this.#onManageEnv())
-      summary.classList.remove('pe-10')
-      summary.classList.add('pe-40')
     }
-
-    const env = this.#envStore.selected()
-    const envLine = el(
-      'div',
-      'text-[11px] text-faint',
-      text(env ? t('tryit.credEnv', { name: env.name }) : t('tryit.credNoEnv')),
-    )
 
     // The select is only justified if there's a choice to make.
     const hasChoice = security.schemes.length > 1 || security.optional
@@ -861,14 +860,14 @@ class ApiTryItPanel extends HTMLElement {
         'collapse-content p-3 pt-0 flex flex-col gap-2',
         hasChoice ? select : null,
         detail,
-        envLine,
+        el('div', 'flex items-center justify-between gap-2', envLine, manage),
       ),
     )
     details.open = !renderStatus()
     // A blocked send reopens it: the collapse is the user's to close, but a
     // field inside a closed <details> cannot take focus.
     this.#ui.authDetails = details
-    return manage ? el('div', 'relative', details, manage) : details
+    return details
   }
 
   // Writing a credential entered in the cartouche: the rebuild on
@@ -876,15 +875,28 @@ class ApiTryItPanel extends HTMLElement {
   // preview, missing-variable warning) are refreshed — the field itself is
   // not rebuilt, the user can keep typing without interruption.
   #writeCredential(name, value, options) {
-    const env = this.#envStore.selected()
-    if (!env) return
+    // A spec that declares no environment used to leave the cartouche with
+    // nowhere to write: the first credential entered creates one, and
+    // `create` selects it. Locked mode has no such escape — the host owns the
+    // list — and the field is disabled there.
+    let env = this.#envStore.selected()
+    const created = !env && this.#envStore.writable
     this.#writingCredential = true
     try {
+      if (created)
+        env = this.#envStore.create({
+          name: t('env.defaultName', { n: this.#envStore.list().length + 1 }),
+        })
       this.#envStore.setVariable(env.id, name, value, options)
     } finally {
       this.#writingCredential = false
     }
     this.#refresh()
+    // Creating one only moves the line naming where the credentials land. The
+    // fields themselves are never rebuilt: `change` fires on blur, before
+    // focus reaches the control the Tab was headed for — and that control is
+    // inside the DOM a full cartouche redraw would replace.
+    if (created) this.#ui.renderEnvLine?.()
   }
 
   #paramsSection(location, title) {

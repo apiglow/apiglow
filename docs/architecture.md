@@ -602,7 +602,11 @@ load, a revision we do not know. An overlay never breaks a load.
 - Try-it: a credentials selector that captures **and** injects the right
   mechanics per type; every conventional variable of the scheme is editable
   in place (written to the selected environment on blur) — the environments
-  dialog is never a mandatory stop to send a request. Injection:
+  dialog is never a mandatory stop to send a request. A host declaring no
+  environment is no exception: the first value entered creates one
+  (`env.defaultName`) and selects it, and the cartouche says so before the
+  write. Only `environmentsLocked` leaves the fields disabled — there the
+  host owns the list. Injection:
   - `http bearer` → `Authorization: Bearer {{auth.X}}`;
   - `apiKey` → header/query/cookie named by the schema;
   - `http basic` → `Authorization: Basic base64(user:pass)` from
@@ -935,7 +939,9 @@ legibly when it can't.
   cartouche's terms (the scheme's name, not `auth.X`) and moves focus into
   the field that fixes it, reopening the collapse if the reader closed it.
   Other missing variables keep their own message; both are announced in the
-  live region.
+  live region. That field is editable even when nothing has been selected
+  yet — a schema opened on a host without environments would otherwise block
+  on a disabled field (§5.4).
 - **Generated "First call" page** (`#/first-call`, `features.onboarding`,
   off by default). `pickFirstCallOperation` chooses the cheapest read the
   schema declares — a GET, no request body, not deprecated, fewest required

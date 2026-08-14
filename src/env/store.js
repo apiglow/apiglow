@@ -99,6 +99,15 @@ export class EnvStore extends EventTarget {
     return this.#locked
   }
 
+  // Whether a runtime value entered in the UI has somewhere to land. With no
+  // environment selected there still is: the write creates one. Locked mode is
+  // the only dead end — the config owns the set, nothing may be added to it.
+  // Read by every surface that offers such a write, so the field's enabled
+  // state and the writer's willingness to create can never drift apart.
+  get writable() {
+    return Boolean(this.selected()) || !this.#locked
+  }
+
   list() {
     return this.#envs
   }

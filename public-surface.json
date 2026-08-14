@@ -1004,6 +1004,7 @@
     "tryit.credHostRefresh",
     "tryit.credHostRetried",
     "tryit.credMissing",
+    "tryit.credEnvOnWrite",
     "tryit.credNoEnv",
     "tryit.credentialsMissing",
     "tryit.diag.cors",

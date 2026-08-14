@@ -334,7 +334,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | User overlay (storage + cap, dry run, editor, badge, download, purge, the host's starting patch) | `user-overlay.test.js` | `user-overlay.spec.js`, `a11y.spec.js` |
 | Arazzo 1.0 import (mapping matrix, export/import round trip) | `import-arazzo.test.js` | `workflows.spec.js` |
 | Code snippets (10 languages) | `snippets.test.js` | `tryit.spec.js` |
-| First touch: parameter prefill, blocked credential focus, generated onboarding page | `prefill.test.js` | `first-touch.spec.js`, `a11y.spec.js` |
+| First touch: parameter prefill, blocked credential focus, environment created on the first credential, generated onboarding page | `prefill.test.js` | `first-touch.spec.js`, `a11y.spec.js` |
 | Scenarios: model, run, chaining, step-by-step | `scenario-*.test.js` | `scenarios.spec.js`, `scenarios-disabled.spec.js` |
 | Scenario sharing + Arazzo export | `share.test.js`, `scenario-exports.test.js` | `scenarios.spec.js` |
 | Declared scenarios: the two formats (envelope, Arazzo document) and the two carriers (`url`, `document`), workflow ids, degraded render (`docs/scenario-handoff.md` §2.1) | `scenario-loader.test.js`, `specs.test.js`, `scenario-roundtrip.test.js` | `workflows.spec.js` |

@@ -349,6 +349,7 @@
   "tryit.credHostRetried": "Credentials expired: refreshed and request sent again.",
   "tryit.credEnv": "From environment “{name}”",
   "tryit.credNoEnv": "No environment selected",
+  "tryit.credEnvOnWrite": "An environment will be created for the first value entered",
   "tryit.pathParams": "Path parameters",
   "tryit.queryParams": "Query parameters",
   "tryit.queryString": "Query string",

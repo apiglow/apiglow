@@ -349,6 +349,7 @@
   "tryit.credHostRetried": "Identifiants expirés : rafraîchis, requête renvoyée.",
   "tryit.credEnv": "Depuis l'environnement « {name} »",
   "tryit.credNoEnv": "Aucun environnement sélectionné",
+  "tryit.credEnvOnWrite": "Un environnement sera créé à la première valeur saisie",
   "tryit.pathParams": "Paramètres de chemin",
   "tryit.queryParams": "Paramètres de requête",
   "tryit.queryString": "Chaîne de requête",
