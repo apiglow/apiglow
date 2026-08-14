@@ -459,7 +459,10 @@ test('a webhook send leaves the keyboard on Send, and says how it went', async (
   await gotoApp(page, '#/op/webhook-post-petadopted')
   await openTryItIfMobile(page)
   const sim = page.locator('api-webhook-simulator')
-  await sim.locator('input[type="url"]').fill(`${API_BASE}/hooks/receiver`)
+  // By label, not by selector: the field's name is the assertion. `labeledBlock`
+  // draws a heading, so without an `aria-label` the name falls through to the
+  // placeholder — which axe accepts and a reader announces as the URL example.
+  await sim.getByLabel('Receiver URL').fill(`${API_BASE}/hooks/receiver`)
   const sendBtn = sim.locator('button', { hasText: 'Send event' })
   await sendBtn.focus()
   await page.keyboard.press('Enter')

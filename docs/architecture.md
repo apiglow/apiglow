@@ -2028,16 +2028,21 @@ rule is switched off.
 judges the walk between them; neither hears anything. `npm run report:speech`
 (`scripts/report-screen-reader.py`) does: it drives a real Orca over Firefox by
 keyboard alone — landing and skip link, an operation opened from the nav, a
-send, the response tablist, the history dialog, the environment menu, the search
-palette, a scenario run — and prints what Orca said at each step, read out of
-Orca's own speech log. Attribution is by timestamp rather than by draining a
-buffer after each press: an announcement that arrives late is exactly what a
-live region is for, and it has to land in the report rather than in the gap
-between two reads. It gates nothing and runs by hand, on a Linux session with
-`orca` and `Xvfb`; nothing is ever spoken out loud, speech-dispatcher being
-pointed at a `printf` for the occasion. Four findings, none of them reachable by
-a scanner: three are properties of what a press *does*, and the fourth is a
-silence that only listening could hear.
+send, the response tablist, a webhook delivery, the history dialog, the
+environment menu, the search palette, a scenario run — and prints what Orca said
+at each step, read out of Orca's own speech log. Attribution is by timestamp
+rather than by draining a buffer after each press: an announcement that arrives
+late is exactly what a live region is for, and it has to land in the report
+rather than in the gap between two reads. It gates nothing: it runs by hand on a
+Linux session with `orca` and `Xvfb`, and as the CI job the manual dispatch adds
+alongside the other engines, where the transcript is the run summary. Nothing is
+ever spoken out loud, speech-dispatcher being pointed at a `printf` for the
+occasion, and the report holds stdout on a descriptor of its own — the daemons
+under the virtual display write thirty lines there before the first key is
+pressed. Five findings, none of them reachable by
+a scanner: three are properties of what a press *does*, one is a silence that
+only listening could hear, and the last is a field a scanner reads as named
+because a placeholder is a name to it.
 
 - **A send dropped the keyboard on `<body>`.** The Send button disabled itself
   under the finger that had just pressed it, so the reader restarted at the top
@@ -2071,6 +2076,17 @@ silence that only listening could hear.
   Nothing in the DOM shows it: the text is there, correct, in a live region that
   is genuinely live. `openModal()` now walks the region into the top layer with
   the dialog and hands it back on close, to the dialog below if two are stacked.
+- **The webhook simulator answered to nobody.** Its Send disabled itself with no
+  Cancel to lend the keyboard to, so it dropped focus exactly like the try-it's —
+  and it announced a departure, "Sending…", before the request left. On a
+  receiver that answers in milliseconds that is the message which *wins*: the
+  region collapses two announcements made inside its debounce into one, and the
+  status and the duration were erased by the sentence preceding them. The button
+  now stays enabled behind a re-entry guard, and only the outcome is spoken —
+  which is what the try-it already did. Its receiver URL field, meanwhile, was
+  labelled on screen and anonymous to a reader: `labeledBlock` draws a heading,
+  not a label, so the accessible name fell through to the placeholder — a name
+  axe accepts, and Orca reads out as "https://example.com/hooks/…".
 
 Other gaps we know about: the doc's heading order follows the OpenAPI schema
 it renders, so a schema with odd nesting can produce an odd outline; and the

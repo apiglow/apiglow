@@ -33,6 +33,7 @@ import threading
 import time
 
 INNER = "APIGLOW_SR_INNER"
+REPORT_FD = "APIGLOW_SR_REPORT_FD"
 URL = os.environ.get("SR_URL", "http://localhost:4173/demo/cdn-install.html")
 
 
@@ -55,6 +56,16 @@ def preflight():
 # transcript holds nothing but this browser.
 if os.environ.get(INNER) != "1":
     preflight()
+    # Every daemon under xvfb-run inherits fd 1 — dbus alone writes thirty
+    # lines there before the first key is pressed, and the X server signs off
+    # with a fatal-looking IO error on teardown. So fd 1 becomes stderr for the
+    # whole tree, and the real stdout rides down on a spare descriptor that
+    # only the transcript writes to: `> transcript.md` catches the report and
+    # nothing else.
+    keep = os.dup(1)
+    os.set_inheritable(keep, True)
+    os.dup2(2, 1)
+    os.environ[REPORT_FD] = str(keep)
     # Marked BEFORE the exec, which never returns: an unmarked child re-execs
     # itself, and one display per generation is a fork bomb with a screen.
     os.environ[INNER] = "1"
@@ -66,6 +77,7 @@ if os.environ.get(INNER) != "1":
     )
 
 FF = preflight()
+REPORT = os.fdopen(int(os.environ[REPORT_FD]), "w")
 
 import gi  # noqa: E402
 
@@ -287,6 +299,11 @@ class Reader:
             name, _role = self.focused()
             if name and rx.search(name):
                 return True
+        # A miss must be readable in the report, not just in the return value no
+        # caller checks: every press after it lands somewhere else, and a walk
+        # that typed into the wrong field still produces a transcript that looks
+        # like a walk. This is the line that says otherwise.
+        self.mark(f"✖ never reached {pattern!r} in {limit} stops — what follows walks blind")
         return False
 
     # -- reporting ---------------------------------------------------------
@@ -341,6 +358,24 @@ def scenarios(r):
         r.mark("Right arrow again")
         r.press("Right", settle=2.0)
 
+    def webhook():
+        r.mark("Tab to a webhook in the nav")
+        r.tab_to(r"Pet status changed", limit=90)
+        r.mark("Enter — the simulator opens")
+        r.press("Enter", settle=4.0)
+        r.mark("Tab to the receiver URL")
+        r.tab_to(r"Receiver URL", limit=60)
+        # The demo API has no receiver endpoint and answers 404. That is a real
+        # round trip, which is the whole of what this act listens for: the Send
+        # here has no Cancel to lend the keyboard to.
+        r.mark("type a receiver the demo API will refuse")
+        r.write("http://localhost:4173/demo-api/v3/hooks/in", settle=1.0)
+        r.mark("Tab to Send event")
+        r.tab_to(r"^Send event$", limit=20)
+        r.mark("Enter on Send event, then 10 s of doing nothing")
+        r.press("Enter", settle=10.0)
+        r.mark(f"…and focus is on {r.focused()[0]!r}")
+
     def history():
         r.mark("Tab to History")
         r.tab_to(r"^History$", limit=40)
@@ -389,6 +424,7 @@ def scenarios(r):
         ("Landing and skip link", landing),
         ("Opening an operation", operation),
         ("Sending, and hearing the answer", send),
+        ("Delivering a webhook event", webhook),
         ("History dialog", history),
         ("Environment menu", environment),
         ("Search palette", palette),
@@ -400,7 +436,8 @@ def main():
     r = Reader(URL)
     try:
         if not r.ready("Petstore", timeout=90):
-            print(f"✖ {URL} never reached the accessibility tree — is the server up?")
+            print(f"✖ {URL} never reached the accessibility tree — is the server up?",
+                  file=sys.stderr)
             return 1
         time.sleep(8)
         only = os.environ.get("SR_ONLY", "").lower()
@@ -414,16 +451,20 @@ def main():
             r.mark("load the page")
             r.open(URL)
             act()
-        print(f"# apiglow — what Orca says\n\n<{URL}>, Firefox + Orca, keyboard only.\n")
+        def say(line):
+            print(line, file=REPORT)
+
+        say(f"# apiglow — what Orca says\n\n<{URL}>, Firefox + Orca, keyboard only.\n")
         for label, lines in r.transcript():
             if label.startswith("### "):
-                print(f"\n## {label[4:]}\n")
+                say(f"\n## {label[4:]}\n")
                 continue
-            print(f"- **{label}**")
+            say(f"- **{label}**")
             for dt, txt in lines:
-                print(f"    - `+{dt:.1f}s` {txt}")
+                say(f"    - `+{dt:.1f}s` {txt}")
             if not lines:
-                print("    - _(silence)_")
+                say("    - _(silence)_")
+        REPORT.flush()
         return 0
     finally:
         r.close()

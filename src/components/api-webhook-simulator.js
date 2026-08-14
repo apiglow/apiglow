@@ -97,6 +97,12 @@ class ApiWebhookSimulator extends HTMLElement {
     const input = el('input', 'input input-sm w-full font-mono')
     input.type = 'url'
     input.placeholder = 'https://example.com/hooks/…'
+    // `labeledBlock` paints a heading, it does not name a field — six of its
+    // seven callers wrap a group, and this is the one that wraps a bare input.
+    // Without this the accessible name falls through to the placeholder, which
+    // axe accepts as a name and Orca reads out as "https://example.com/hooks/…
+    // entry": the field is labelled on screen and anonymous to a reader.
+    input.setAttribute('aria-label', t('webhook.targetUrl'))
     input.value = this.#state.url
     input.addEventListener('input', () => {
       this.#state.url = input.value
@@ -352,7 +358,11 @@ class ApiWebhookSimulator extends HTMLElement {
       el('span', 'loading loading-spinner loading-xs'),
       text(` ${t('tryit.sending')}`),
     )
-    announce(t('tryit.sending'))
+    // The spinner is visual and stays visual: announcing "Sending…" here is the
+    // announcement that WINS against the outcome, because the live region
+    // collapses two messages made inside its debounce into one and a receiver
+    // on localhost answers well inside it. Orca said "Sending…" and never the
+    // status — the try-it never announces a departure either, for this reason.
     const startedAt = performance.now()
     try {
       const response = await fetch(url, {

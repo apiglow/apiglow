@@ -85,3 +85,56 @@ jobs:
           name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 7
+
+  speech:
+    name: What a screen reader says (Orca)
+    # Manual run only, like the other two engines: it drives a real Orca in a
+    # virtual display and produces a transcript to READ, not a verdict — there
+    # is nothing here for a push to wait on, and nothing it could turn red on
+    # its own findings. It fails only when the harness itself broke.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # AT-SPI is the platform accessibility API on Linux and the only way to
+      # register for a focus event or synthesize a key through the reader
+      # (scripts/report-screen-reader.py). Orca reaches it over a session bus of
+      # its own, on a display of its own, and speaks through speech-dispatcher —
+      # pointed at a `printf`, so nothing is ever said out loud.
+      - name: Install Orca and the accessibility stack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            orca xvfb dbus-x11 at-spi2-core speech-dispatcher \
+            python3-gi gir1.2-atspi-2.0 libglib2.0-bin
+      # The distribution Firefox is a confined snap, invisible to the
+      # accessibility bus; the toolchain's own build is not.
+      - name: Install Firefox
+        run: npx playwright install --with-deps firefox
+      # Server and walk in one step: a background server started in a step of
+      # its own does not reliably outlive it.
+      - name: Walk the app with Orca
+        run: |
+          set -o pipefail   # without it `tee` answers for the walk, always 0
+          npm run preview:cdn &
+          timeout 300 bash -c \
+            'until curl -sf -o /dev/null http://localhost:4173/demo/cdn-install.html; do sleep 2; done'
+          npm run report:speech | tee orca-transcript.md
+      # The transcript is the deliverable, so it is read from the run page
+      # rather than dug out of a log — including when the walk died halfway,
+      # where what Orca managed to say is exactly what explains the death.
+      - name: Publish the transcript
+        if: always()
+        run: '[ -f orca-transcript.md ] && cat orca-transcript.md >> "$GITHUB_STEP_SUMMARY"'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screen-reader-transcript
+          path: orca-transcript.md
+          retention-days: 30

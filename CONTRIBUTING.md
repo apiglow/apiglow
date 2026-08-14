@@ -27,7 +27,7 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run check:surface` | Frozen public surfaces (tags, events, `apidoc…` names, i18n keys) against `public-surface.json`; `-- --update` accepts a deliberate change (CONVENTIONS.md) |
 | `npm run check:syntax` | `es-check` against the declared `browserslist` baseline — the built bundle parses on every supported browser |
 | `npm run report:contrast` | **Informative, gates nothing**: contrast of the design layer's ink recipes on every shipped daisyUI theme, measured in a browser against `dist/app.css` (`--all` lists every pair). Needs a build |
-| `npm run report:speech` | **Informative, gates nothing**: drives a real Orca screen reader over the app by keyboard and prints what it says, step by step. Linux + `orca` + `Xvfb`; serve the app first (`npm run preview:cdn`) |
+| `npm run report:speech` | **Informative, gates nothing**: drives a real Orca screen reader over the app by keyboard and prints what it says, step by step. Linux + `orca` + `Xvfb`; serve the app first (`npm run preview:cdn`). Also a CI job on manual dispatch (Actions → CI → Run workflow), where the transcript is the run summary |
 | `npm run lint` | Biome — format check + lint |
 | `npm run lint:fix` | Biome — apply the safe fixes |
 | `npm run format` | Biome — reformat in place |
