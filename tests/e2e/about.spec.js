@@ -35,7 +35,7 @@ test('About states the license, what it reads, and what it bundles', async ({ pa
   for (const [name, version] of [
     ['daisyUI', '5.7.17'],
     ['Tailwind CSS', '4.3.3'],
-    ['JSON Schema $Ref Parser', '15.5.1'],
+    ['JSON Schema $Ref Parser', '16.0.0'],
     ['Marked', '18.0.9'],
     ['DOMPurify', '3.4.13'],
     ['highlight.js', '11.12.0'],

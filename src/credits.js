@@ -31,7 +31,7 @@ export const BUNDLED_CREDITS = [
     id: 'ref-parser',
     pkg: '@apidevtools/json-schema-ref-parser',
     name: 'JSON Schema $Ref Parser',
-    version: '15.5.1',
+    version: '16.0.0',
     license: 'MIT',
     url: 'https://apidevtools.com/json-schema-ref-parser/',
   },
