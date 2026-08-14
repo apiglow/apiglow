@@ -528,9 +528,11 @@ function appLayout(
   }
 
   // OAuth redirect return (Authorization Code + PKCE): exchange the code
-  // for a token, stored in auth.X of the originating environment (falls back
-  // to the selected environment if it's gone), then restore the
-  // route left behind — the hash doesn't survive the authorization round trip.
+  // for a token, stored in auth.X of the originating environment, then restore
+  // the route left behind — the hash doesn't survive the authorization round
+  // trip. That environment can be gone (deleted while the login was away): the
+  // token cost a full redirect, so it falls back to the selected one, or to
+  // one provisioned for it, rather than being dropped on arrival.
   resumeAuthorizationLogin().then((result) => {
     if (!result) return
     if (result.returnHash && result.returnHash !== window.location.hash) {
@@ -540,13 +542,13 @@ function appLayout(
       showToast('error', oauthErrorMessage(result.error))
       return
     }
-    const envId = envStore.get(result.envId) ? result.envId : envStore.selectedId
-    if (!envId) {
-      showToast('error', t('oauth.noEnv'))
+    const env = envStore.get(result.envId) ?? envForWrite(envStore)
+    if (!env) {
+      showToast('error', t('env.lockedNone'))
       return
     }
-    envStore.setVariable(envId, `auth.${result.schemeName}`, result.token, { sensitive: true })
-    showToast('success', t('oauth.tokenSaved', { env: envStore.get(envId)?.name ?? '' }))
+    envStore.setVariable(env.id, `auth.${result.schemeName}`, result.token, { sensitive: true })
+    showToast('success', t('oauth.tokenSaved', { env: env.name }))
   })
 
   // Resolved at call time, not at build time: the selected environment can

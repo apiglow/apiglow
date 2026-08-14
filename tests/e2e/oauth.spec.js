@@ -185,6 +185,36 @@ test('with no environment declared, getting a token creates the one it lands in'
   await expect(tryIt(page)).toContainText('Authorization: Bearer e2e-access-token')
 })
 
+// The environment named when the login left is gone on the way back (another
+// tab deleted it). The token cost a full redirect: it lands in one provisioned
+// on arrival rather than being dropped with an error.
+test('a token whose environment vanished mid-flight still lands somewhere', async ({ page }) => {
+  const tokenCalls = mockTokenEndpoint(page)
+  page.route(`${AUTH_BASE}/authorize*`, async (route) => {
+    const url = new URL(route.request().url())
+    const back = new URL(url.searchParams.get('redirect_uri'))
+    back.searchParams.set('code', 'e2e-auth-code')
+    back.searchParams.set('state', url.searchParams.get('state'))
+    const relay = new URL('/tests/e2e/fixtures/oauth-relay.html', back.origin)
+    relay.searchParams.set('drop', 'environments')
+    relay.searchParams.set('to', back.href)
+    await redirectTo(route, relay.href)
+  })
+
+  await page.goto('/tests/e2e/fixtures/app-no-env.html#/op/createOrder')
+  await openTryItIfMobile(page)
+  const card = credCard(page)
+  await card.getByLabel('Client ID').fill('no-env-client')
+  await card.getByRole('button', { name: 'Get a token' }).click()
+
+  await expect(page.locator('.toast .alert-success')).toContainText(
+    'saved in environment “Environment 1”',
+  )
+  expect(tokenCalls).toHaveLength(1)
+  await openTryItIfMobile(page)
+  await expect(tryIt(page)).toContainText('Authorization: Bearer e2e-access-token')
+})
+
 test('denied authorization surfaces an error toast, no token written', async ({ page }) => {
   mockAuthorizeEndpoint(page, { error: 'access_denied' })
   const tokenCalls = mockTokenEndpoint(page)

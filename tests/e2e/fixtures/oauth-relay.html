@@ -1,9 +1,10 @@
 <!doctype html>
 <!-- Same-origin hop inserted in the middle of an OAuth round trip, to simulate
-     what a second tab would do: change the shared `spec.selected` preference
-     while the login is away. On the way back the hash is gone and the
-     preference names another spec, so the pending handshake is the only thing
-     that still knows which spec asked for the token. -->
+     what a second tab would do while the login is away: change the shared
+     `spec.selected` preference, or drop a stored key outright. On the way back
+     the hash is gone and the preference names another spec, so the pending
+     handshake is the only thing that still knows which spec asked for the
+     token — and the environment it named may no longer exist. -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -12,7 +13,10 @@
   <body>
     <script>
       const params = new URLSearchParams(location.search)
-      localStorage.setItem('apidoc:spec.selected', JSON.stringify(params.get('select')))
+      if (params.has('select')) {
+        localStorage.setItem('apidoc:spec.selected', JSON.stringify(params.get('select')))
+      }
+      if (params.has('drop')) localStorage.removeItem(`apidoc:${params.get('drop')}`)
       location.replace(params.get('to'))
     </script>
   </body>
