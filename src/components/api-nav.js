@@ -213,7 +213,7 @@ class ApiNav extends HTMLElement {
     // "Search the docs" button at a time keeps the accessible name unique.
     const trigger = searchTrigger(
       () => this.onOpenSearch?.(),
-      'input input-sm w-full cursor-pointer gap-2 text-base-content/70 lg:hidden',
+      'input input-sm w-full cursor-pointer gap-2 text-subtle lg:hidden',
     )
     this.#collapseBtn = el(
       'button',

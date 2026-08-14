@@ -366,7 +366,7 @@ export function firstCallIntro(op, { hasAuth = false } = {}) {
 export function headerSearchField(onOpen) {
   return searchTrigger(
     onOpen,
-    'input input-sm w-72 xl:w-96 cursor-pointer items-center gap-2 bg-base-200/40 text-base-content/70 transition-colors hover:bg-base-200',
+    'input input-sm w-72 xl:w-96 cursor-pointer items-center gap-2 bg-base-200/40 text-subtle transition-colors hover:bg-base-200',
   )
 }
 
