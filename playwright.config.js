@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// Headless Chromium probes the D-Bus session bus at startup; under parallel
+// workers and repeated runs those probes pile up (spawned dbus daemons,
+// connection stalls) and congest the host. Chromium runs fine without a bus,
+// so point it at nothing — launched browsers inherit the runner's env. The
+// manual launch sites (scripts/render-social.mjs,
+// scripts/report-theme-contrast.mjs) restate this line.
+process.env.DBUS_SESSION_BUS_ADDRESS = '/dev/null'
+
 // e2e runs against the CDN simulation (npm run build + npm pack + static
 // server): it tests the actually-distributed bundle, not the dev sources.
 // The build is re-run every time the server starts; locally, a server

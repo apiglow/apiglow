@@ -124,51 +124,57 @@ const body = themes
   })
   .join('')
 
+// No D-Bus session bus for headless Chromium — see playwright.config.js.
+process.env.DBUS_SESSION_BUS_ADDRESS = '/dev/null'
 const browser = await chromium.launch()
-const page = await browser.newPage()
-await page.setContent(`<!doctype html><html><body>${body}</body></html>`)
-await page.addStyleTag({ path: cssPath })
+let measured
+try {
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><body>${body}</body></html>`)
+  await page.addStyleTag({ path: cssPath })
 
-const measured = await page.evaluate(() => {
-  const canvas = document.createElement('canvas')
-  canvas.width = 1
-  canvas.height = 1
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
-  // Layers painted in order over an opaque white start, source-over: a
-  // transparent one contributes nothing and a translucent one blends, exactly
-  // as on screen. `alpha` carries the element's own `opacity`, which the
-  // computed `color` does not include: a recipe that dims that way — daisyUI
-  // has a few — would otherwise be reported at full ink strength.
-  const paint = (layers, alpha = 1) => {
-    ctx.clearRect(0, 0, 1, 1)
-    ctx.globalAlpha = 1
-    for (const [i, layer] of ['#ffffff', ...layers].entries()) {
-      ctx.globalAlpha = i === layers.length ? alpha : 1
-      ctx.fillStyle = layer
-      ctx.fillRect(0, 0, 1, 1)
+  measured = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    // Layers painted in order over an opaque white start, source-over: a
+    // transparent one contributes nothing and a translucent one blends, exactly
+    // as on screen. `alpha` carries the element's own `opacity`, which the
+    // computed `color` does not include: a recipe that dims that way — daisyUI
+    // has a few — would otherwise be reported at full ink strength.
+    const paint = (layers, alpha = 1) => {
+      ctx.clearRect(0, 0, 1, 1)
+      ctx.globalAlpha = 1
+      for (const [i, layer] of ['#ffffff', ...layers].entries()) {
+        ctx.globalAlpha = i === layers.length ? alpha : 1
+        ctx.fillStyle = layer
+        ctx.fillRect(0, 0, 1, 1)
+      }
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+      const channels = [r, g, b].map((v) => {
+        const c = v / 255
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
     }
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
-    const channels = [r, g, b].map((v) => {
-      const c = v / 255
-      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    return [...document.querySelectorAll('[data-probe]')].map((node) => {
+      const backgrounds = []
+      let alpha = 1
+      for (let el = node; el; el = el.parentElement) {
+        const style = getComputedStyle(el)
+        backgrounds.unshift(style.backgroundColor)
+        alpha *= Number(style.opacity)
+      }
+      const background = paint(backgrounds)
+      const ink = paint([...backgrounds, getComputedStyle(node).color], alpha)
+      const [lighter, darker] = background > ink ? [background, ink] : [ink, background]
+      return { probe: node.dataset.probe, ratio: (lighter + 0.05) / (darker + 0.05) }
     })
-    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
-  }
-  return [...document.querySelectorAll('[data-probe]')].map((node) => {
-    const backgrounds = []
-    let alpha = 1
-    for (let el = node; el; el = el.parentElement) {
-      const style = getComputedStyle(el)
-      backgrounds.unshift(style.backgroundColor)
-      alpha *= Number(style.opacity)
-    }
-    const background = paint(backgrounds)
-    const ink = paint([...backgrounds, getComputedStyle(node).color], alpha)
-    const [lighter, darker] = background > ink ? [background, ink] : [ink, background]
-    return { probe: node.dataset.probe, ratio: (lighter + 0.05) / (darker + 0.05) }
   })
-})
-await browser.close()
+} finally {
+  await browser.close()
+}
 
 const byTheme = new Map(themes.map((theme) => [theme, []]))
 for (const { probe, ratio } of measured) {
