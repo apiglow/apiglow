@@ -4,6 +4,7 @@ import {
   clickNavOp,
   clipboardText,
   closeMobilePanels,
+  envTrigger,
   expectResponded,
   gotoApp,
   mockApi,
@@ -1126,6 +1127,80 @@ test('an extracted value can be saved into the environment after the run', async
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('apidoc:environments')))
   const variable = stored[0].variables.find((v) => v.name === 'auth.session')
   expect(variable).toMatchObject({ value: 'Rex', sensitive: true })
+})
+
+// A host that declares no environment: a runtime value produced by a scenario
+// lands like any other (architecture.md §5.4), rather than being refused by a
+// toast pointing at a popin. The two write paths provision it independently —
+// the box under a missing variable, and the report's button afterwards — so
+// each is reached from a run that has not created one yet.
+const NO_ENV = '/tests/e2e/fixtures/app-no-env.html'
+// Nothing supplies the bearer the schema requires: step 1 stops on it and
+// offers to type it, which is where the box lives.
+async function provideBearer(page, { persist }) {
+  await expect(stepper(page)).toContainText('Missing variables')
+  await stepper(page).locator('[data-missing-var="auth.bearerAuth"]').fill('e2e-bearer-token')
+  if (persist) await stepper(page).locator('[data-missing-persist]').check()
+  await stepAction(page, 'provide').click()
+}
+
+test('with no environment, a provided variable saved on the way creates the one it lands in', async ({
+  page,
+}) => {
+  await chainMock(page)
+  await page.goto(`${NO_ENV}#/scenario/onboarding`)
+  await view(page).getByRole('button', { name: 'Step by step' }).click()
+  await provideBearer(page, { persist: true })
+
+  await expect(stepper(page)).toContainText('Review the request')
+  await expect(envTrigger(page)).toContainText('Environment 1')
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('apidoc:environments')))
+  expect(stored).toHaveLength(1)
+  expect(stored[0].name).toBe('Environment 1')
+  expect(stored[0].variables).toContainEqual({
+    name: 'auth.bearerAuth',
+    value: 'e2e-bearer-token',
+    sensitive: false,
+  })
+})
+
+test('with no environment, the report saves its extractions into one it creates', async ({
+  page,
+}) => {
+  await chainMock(page)
+  await page.goto(`${NO_ENV}#/scenario/onboarding`)
+  // Local copy without the orphan step: the report only offers the pending
+  // extraction once the run has reached its end.
+  await view(page).getByRole('button', { name: 'Duplicate' }).click()
+  await step(page, 2).getByLabel('Step actions').click()
+  await step(page, 2).getByText('Remove this step').click()
+  await expect(view(page).locator('li[data-step-id]')).toHaveCount(2)
+  await view(page).getByRole('button', { name: 'Step by step' }).click()
+  // Unchecked: the bearer stays in the run scope, so the run reaches its end
+  // with nothing written and still no environment.
+  await provideBearer(page, { persist: false })
+  await expect(envTrigger(page)).toContainText('No environment')
+
+  await send(page)
+  await expectResponded(page)
+  await stepAction(page, 'next').click()
+  await expect(panelField(page, 'petId')).toHaveValue('{{petId}}')
+  await send(page)
+  await expectResponded(page)
+  await stepAction(page, 'next').click()
+  await expect(stepper(page)).toBeHidden()
+
+  await view(page)
+    .getByRole('button', { name: /Save 1 variable/ })
+    .click()
+  await expect(page.locator('.toast')).toContainText('1 variable(s) saved in "Environment 1"')
+  await expect(envTrigger(page)).toContainText('Environment 1')
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('apidoc:environments')))
+  expect(stored[0].variables).toContainEqual({
+    name: 'auth.session',
+    value: 'Rex',
+    sensitive: true,
+  })
 })
 
 test('a skipped step offers to type the missing variable instead of a dead end', async ({

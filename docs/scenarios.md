@@ -398,7 +398,10 @@ Step = {
 - **Persisting `persist` extractions**: applied at end of run (or of step,
   in step-by-step) via the environment store, with the `sensitive` flag.
   Allowed even with `environmentsLocked`: it is a runtime value, same
-  status as an OAuth token.
+  status as an OAuth token — and like one it provisions an environment on a
+  host that declared none (`envForWrite`, `architecture.md` §5.4). Only a
+  locked configuration declaring no environment at all refuses the write,
+  and says so.
 - Auto run: strictly sequential steps (chaining requires it), no delay or
   retry.
 - CORS/proxy: same settings and same explanatory messages as the try-it.

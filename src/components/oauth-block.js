@@ -207,7 +207,7 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
     // The only dead end left: the config owns the environments and declared
     // none, so there is nothing to select and nothing may be created.
     if (!envStore.writable)
-      footer.append(el('span', 'text-xs text-subtle', text(t('oauth.envLocked'))))
+      footer.append(el('span', 'text-xs text-subtle', text(t('env.lockedNone'))))
     else if (state.flow.key === 'authorizationCode') {
       footer.append(el('span', 'text-[11px] text-subtle', text(t('oauth.redirectNote'))))
     }

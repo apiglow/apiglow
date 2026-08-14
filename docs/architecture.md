@@ -606,10 +606,12 @@ load, a revision we do not know. An overlay never breaks a load.
   environment is no exception: the first runtime value written creates one
   (`env.defaultName`) and selects it, and the cartouche says so before the
   write. One rule, one place — `envForWrite` (`src/components/env-write.js`)
-  over the store's `writable`, shared by the credential fields and the "Get a
-  token" button, so an enabled control and a possible write never drift apart.
-  Only `environmentsLocked` closes it: the config owns the set, and declaring
-  none there leaves both surfaces disabled and saying why. Injection:
+  over the store's `writable` — for every runtime write: the credential
+  fields, the "Get a token" button, and the scenario extractions marked
+  `persist` (`scenarios.md` §6), so an enabled control and a possible write
+  never drift apart. Only `environmentsLocked` closes it: the config owns the
+  set, and declaring none there refuses the write and says why
+  (`env.lockedNone`). Injection:
   - `http bearer` → `Authorization: Bearer {{auth.X}}`;
   - `apiKey` → header/query/cookie named by the schema;
   - `http basic` → `Authorization: Basic base64(user:pass)` from

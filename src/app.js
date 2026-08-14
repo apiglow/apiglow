@@ -90,6 +90,7 @@ import { flattenDocsOutline, mergeDocsPages, resolveDocsOutline } from './docs/p
 import { announce } from './components/a11y.js'
 import { loadDocsPageSource } from './components/docs-source.js'
 import { el } from './components/dom.js'
+import { envForWrite } from './components/env-write.js'
 import { loadDocsSources } from './shell/docs.js'
 import { applyHead, applyNoIndex, headFor } from './shell/head.js'
 import { createPanels } from './shell/panels.js'
@@ -1080,11 +1081,12 @@ function appLayout(
       },
       // "This scenario configures your token": extractions marked persist
       // join the active environment, locked or not (runtime value,
-      // same status as an OAuth token — docs/architecture.md §5.3).
+      // same status as an OAuth token — docs/architecture.md §5.3), and
+      // provision one when the host declared none.
       persist: async (extracts) => {
-        const env = envStore.selected()
+        const env = envForWrite(envStore)
         if (!env) {
-          showToast('error', t('oauth.noEnv'))
+          showToast('error', t('env.lockedNone'))
           return
         }
         for (const extract of extracts) {
@@ -1269,13 +1271,13 @@ function appLayout(
   // to the env on every step unblock would pollute it with test values.
   stepper.onDecision = (kind, payload) => {
     if (kind === 'provide' && payload?.persist) {
-      const env = envStore.selected()
+      const env = envForWrite(envStore)
       if (env) {
         for (const [name, entry] of Object.entries(payload.variables)) {
           envStore.setVariable(env.id, name, entry.value, { sensitive: false })
         }
       } else {
-        showToast('error', t('oauth.noEnv'))
+        showToast('error', t('env.lockedNone'))
       }
     }
     stepController.decide(kind, payload)
