@@ -1707,16 +1707,17 @@ imports the shell and never sees the host config directly.
 - **Playwright** covers UI behavior, persistence and the bootstrap — always
   against the **packed tarball** served by the CDN simulation
   (`npm run preview:cdn`), not dev sources: every e2e run revalidates the
-  real distribution. In CI the whole suite runs on three engines and two
-  emulated phones (§13.0). Includes a performance budget test against the
+  real distribution. The whole suite covers three engines and two emulated
+  phones; CI gates on Chromium and dispatches the rest (§13.0). Includes a
+  performance budget test against the
   heaviest document the repo ships, the demo's GitHub REST schema
   (`demo/schemas/github.json`, ~12 MB, 1220 operations).
 
 ## 11. Non-functional requirements
 
 - Runs on the declared support baseline — Chrome/Edge ≥ 111, Firefox ≥ 128,
-  Safari/iOS ≥ 16.4 — enforced at build time and exercised on three engines
-  in CI. Policy, enforcement chain and the API audit behind it: §13.
+  Safari/iOS ≥ 16.4 — enforced at build time and exercised on three engines.
+  Policy, enforcement chain and the API audit behind it: §13.
 - No account or internet dependency, apart from loading the remote schema,
   remote `.md` pages, language files, and the test requests themselves.
 - Performance is a feature: parse/first-render budgets are enforced by the
@@ -2050,17 +2051,19 @@ the engine matrix below.
 
 ### 13.0 The engine matrix
 
-Five Playwright projects, three browser binaries. CI runs all of them on
-every push and pull request, as three parallel jobs keyed on the binary —
-the mobile projects reuse the one their desktop sibling installed:
+Five Playwright projects, three browser binaries, as parallel CI jobs keyed
+on the binary — the mobile projects reuse the one their desktop sibling
+installed. A push or a pull request runs the chromium job; the other two
+engines run when the workflow is dispatched by hand
+(`docs/cross-browser.md` §1):
 
-| Project | Engine | Profile | CI job | Not run |
-|---|---|---|---|---|
-| `chromium` | Chromium | Desktop Chrome | chromium | — |
-| `mobile-chrome` | Chromium | Pixel 7 | chromium | `perf.spec` |
-| `firefox` | Firefox | Desktop Firefox | firefox | `perf.spec`, `mobile.spec` |
-| `webkit` | WebKit | Desktop Safari | webkit | `perf.spec` |
-| `mobile-safari` | WebKit | iPhone 14 | webkit | `perf.spec` |
+| Project | Engine | Profile | CI job | Runs on | Not run |
+|---|---|---|---|---|---|
+| `chromium` | Chromium | Desktop Chrome | chromium | push, PR, dispatch | — |
+| `mobile-chrome` | Chromium | Pixel 7 | chromium | push, PR, dispatch | `perf.spec` |
+| `firefox` | Firefox | Desktop Firefox | firefox | dispatch | `perf.spec`, `mobile.spec` |
+| `webkit` | WebKit | Desktop Safari | webkit | dispatch | `perf.spec` |
+| `mobile-safari` | WebKit | iPhone 14 | webkit | dispatch | `perf.spec` |
 
 `npm run test:e2e` stays Chromium-only so a dev loop or an agent run never
 pays for the matrix by accident; `npm run test:e2e:all` is the local opt-in.

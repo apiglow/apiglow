@@ -7,8 +7,9 @@ users the baseline covers (§2), through two complementary levers:
    answer to "old browser versions", since Playwright only ever ships one
    version of each engine.
 2. **The full e2e suite running on the three browser engines** (Chromium,
-   Firefox, WebKit) **plus two emulated mobile devices** in CI — catching
-   real engine divergences on the current versions.
+   Firefox, WebKit) **plus two emulated mobile devices** — catching real
+   engine divergences on the current versions. Chromium and its mobile
+   sibling are the CI gate; the other engines are a dispatched run (§1).
 
 Scope guard: the multi-engine matrix is **CI-only**. Local development and
 agent runs keep the single-Chromium behavior (`npm run test:e2e`); running
@@ -26,10 +27,15 @@ five projects locally is opt-in (`test:e2e:all`).
 - **Old versions are handled statically, not executed.** Declared
   browserslist baseline + build target derived from it + syntax tripwire
   on the built artifact. Running old versions is explicitly out of scope.
-- **Full suite, every PR and every push to main.** Jobs are parallel, so
-  wall-clock time is unchanged; only runner minutes grow. No
-  label-gating, no nightly-only matrix: a Firefox regression must block
-  the PR that introduces it.
+- **Chromium on every PR and every push to main; Firefox and WebKit on
+  demand.** The two other engines run when the workflow is dispatched by
+  hand (Actions → CI → Run workflow), against whatever ref is picked. A
+  push waits for one engine, not three — the divergences the matrix finds
+  are real (§4) but rare, and none has ever been what made a change unsafe
+  to land. The cost of that trade is explicit: a Firefox or WebKit
+  regression is found by the next manual run, not by the PR that
+  introduces it, so a change touching layout, focus, clipboard or storage
+  is worth dispatching before it ships.
 - **Mobile is first-class, not a later tier**: two emulated device
   projects, same CI-only rule. Emulation (viewport, touch, UA, DPR) — not
   real devices; that is the accepted fidelity level.
@@ -122,21 +128,21 @@ supported fix; CI does it through `--with-deps`.
 
 ### 3.3 CI shape
 
-The e2e job is a 3-way matrix keyed on the browser binary — not five
-jobs, because the mobile projects reuse a binary already installed by
-their desktop sibling:
+The e2e job is a matrix keyed on the browser binary — not five jobs,
+because the mobile projects reuse a binary already installed by their
+desktop sibling. The matrix itself is the trigger's: a push or a PR
+generates the first row alone, a manual dispatch generates all three.
 
-| Matrix entry | Installs | Runs projects |
-|---|---|---|
-| `chromium` | chromium | `chromium`, `mobile-chrome` |
-| `firefox` | firefox | `firefox` |
-| `webkit` | webkit | `webkit`, `mobile-safari` |
+| Matrix entry | Installs | Runs projects | On |
+|---|---|---|---|
+| `chromium` | chromium | `chromium`, `mobile-chrome` | push, PR, dispatch |
+| `firefox` | firefox | `firefox` | dispatch |
+| `webkit` | webkit | `webkit`, `mobile-safari` | dispatch |
 
 Each entry rebuilds and packs the tarball itself (the Playwright
 `webServer` already does this), uploads `playwright-report-⟨browser⟩` on
 failure, and keeps the 2-retry/trace-on-first-retry settings.
-`fail-fast: false`, so one engine's failure still reports the others, and
-each check is individually required-green.
+`fail-fast: false`, so one engine's failure still reports the others.
 
 ## 4. Known engine obstacles
 

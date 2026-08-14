@@ -185,12 +185,16 @@ every push to `main`, in two parallel jobs:
 - **quality** — `biome ci`, `npm run check:invariants`,
   `npm run check:surface`, unit tests with coverage, `npm run build`, then
   `npm run check:dist` on its output
-- **e2e** — three parallel jobs, one per browser binary (Chromium, Firefox,
-  WebKit), each running its desktop project and the mobile project that
-  shares its binary. `fail-fast: false`, so one engine's failure still
-  reports the other two, and each uploads its own
-  `playwright-report-⟨browser⟩` artifact. Playwright against the packed tarball; on failure the HTML
-  report (traces included) is uploaded as an artifact
+- **e2e** — one parallel job per browser binary, each running its desktop
+  project and the mobile project that shares its binary. A push or a PR
+  runs Chromium alone; Firefox and WebKit run when the workflow is
+  dispatched by hand (Actions → CI → Run workflow), which is worth doing
+  before shipping a change to layout, focus, clipboard or storage
+  (`docs/cross-browser.md` §1). `fail-fast: false`, so one engine's failure
+  still reports the others, and each uploads its own
+  `playwright-report-⟨browser⟩` artifact. Playwright runs against the packed
+  tarball; on failure the HTML report (traces included) is uploaded as an
+  artifact
 
 Coverage is informational: reported, never a gate. There is deliberately no
 publish or release job.
@@ -258,11 +262,13 @@ file, key-synced with `en.json`.
 ### The browser matrix
 
 `npm run test:e2e` runs Chromium only, on purpose — a dev loop should not pay
-for five projects. CI runs all of them (`docs/architecture.md` §13.0), and
-`npm run test:e2e:all` is the local opt-in, after
-`npx playwright install --with-deps firefox webkit`.
+for five projects. CI gates on the same one and keeps the other two engines
+behind a manual dispatch (`docs/architecture.md` §13.0), so the five-project
+run is something you ask for: `npm run test:e2e:all` locally, after
+`npx playwright install --with-deps firefox webkit`, or the dispatched
+workflow on a branch you are about to ship.
 
-When CI fails on one engine, reproduce it alone and watch it:
+When an engine fails, reproduce it alone and watch it:
 
 ```bash
 npx playwright test --project=webkit tests/e2e/tryit.spec.js --headed

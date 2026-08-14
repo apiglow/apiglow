@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 # A new push on a branch makes the previous run pointless.
 concurrency:
@@ -47,20 +48,24 @@ jobs:
     name: End-to-end (${{ matrix.browser }})
     runs-on: ubuntu-latest
     strategy:
-      # One engine's failure must not hide the other two: the point of the
+      # One engine's failure must not hide the others: the point of the
       # matrix is knowing which engines a change breaks, not just that it does.
       fail-fast: false
       matrix:
         # Keyed on the browser binary, not on the Playwright project, because
         # the mobile projects reuse a binary their desktop sibling installs —
-        # three jobs, five projects. docs/cross-browser.md §3.3.
-        include:
-          - browser: chromium
-            projects: --project=chromium --project=mobile-chrome
-          - browser: firefox
-            projects: --project=firefox
-          - browser: webkit
-            projects: --project=webkit --project=mobile-safari
+        # three jobs for five projects when all of them run.
+        # docs/cross-browser.md §3.3.
+        #
+        # Chromium is what a push and a PR pay for. The other two engines are
+        # a manual run (Actions → CI → Run workflow), because carrying them on
+        # every push costs more waiting than the divergences it catches: they
+        # are rare, and none of them has ever been the thing that made a push
+        # unsafe to land.
+        include: >-
+          ${{ github.event_name == 'workflow_dispatch'
+          && fromJSON('[{"browser":"chromium","projects":"--project=chromium --project=mobile-chrome"},{"browser":"firefox","projects":"--project=firefox"},{"browser":"webkit","projects":"--project=webkit --project=mobile-safari"}]')
+          || fromJSON('[{"browser":"chromium","projects":"--project=chromium --project=mobile-chrome"}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
