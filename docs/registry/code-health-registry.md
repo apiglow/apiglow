@@ -20,27 +20,29 @@ while reviewing a diff. Their bar is deliberately narrow (see the skill's
 **The bar**): wasted work counts only on a hot, startup, or budget-covered
 path, and altitude findings enter plans as `structural`. Wasted work
 currently reads empty (its one recorded instance left the code); altitude
-read below bar until its recorded reopen condition fired — the proof the
-rows earn their keep by holding instances the next run compares against.
+fired its recorded reopen condition, was read in full and came back an
+accepted threshold — the proof the rows earn their keep by holding
+instances the next run compares against, whichever way the reading goes.
 
-Perimeter at these baselines: `src/` **214** `.js` files /
-**40 903** lines; unit tests 94 files / **1642** tests green; e2e 45
-specs; `biome check` 388 files, 0 diagnostics.
+Perimeter at these baselines: `src/` **216** `.js` files /
+**40 979** lines; unit tests 94 files / **1642** tests green; e2e 45
+specs; `biome ci` 390 files, 0 diagnostics; `check:surface` 1144 frozen
+names.
 
-**Active plan**: `docs/upgrade/code.20260814-1631.md`
+**Active plan**: none.
 
 | Dimension | Detector | Baseline | Severity |
 |---|---|---|---|
-| Dead exports | `npm run health:exports` | **0 dead**, **13 module-private** (measured this run; session 1 of the active plan drops the keywords), **37 test-only** (accepted), of 629 exports | low — planned |
+| Dead exports | `npm run health:exports` | **0 dead**, **0 module-private**, **37 test-only** (accepted), of 620 exports. The module-private keywords are gone; the two shell factories extracted since publish exactly what `app.js` names | none — hold it |
 | Dead i18n keys | `npm run health:i18n` | **0** of 1100 keys; `en`/`fr` both 1100, 0 missing, 0 extra | none — hold it |
-| Orphan files | `npm run health:orphans` | **0** — 214/214 of `src/` reachable from `src/app.js` + `scripts/bake.mjs` | none — hold it |
+| Orphan files | `npm run health:orphans` | **0** — 216/216 of `src/` reachable from `src/app.js` + `scripts/bake.mjs` | none — hold it |
 | Unused deps / scripts | manual | **0** — all 13 devDeps and 26 npm scripts referenced (re-verified this run: `es-check` → `check:syntax`, `browserslist-to-esbuild` + `@fontsource-variable/source-serif-4` → `vite.config.js`, `@vitest/coverage-v8` → `test:coverage`) | none — hold it |
-| Duplication | `npm run health:svg` | **0** duplicate SVG bodies — 55 distinct icons in **1** file (`components/icons.js`). The 3 remaining near-pairs (`COPY_SVG`/`COPY_SVG_SM`, the 3 `CHECK_*`, `CHEVRON`/`CARET`) are the same path at different sizes/weights: a design choice, not debt. Modal-dismiss preambles, `downloadText`, e2e `goto`/`openSettings` and `fakeLocalStorage` all factored. The RFC 6901 escape hand-rolled beyond `scenarios/pointer.js` (re-verified this run at 9 sites in 8 files) is session 2 of the active plan — the collapse onto the existing module the row always called for | low — planned |
-| Size / complexity | `npm run health:size` | files > 800 lines, **6** of 214: `app.js` **2066** (`appLayout()` ~1700 lines, app.js:186→~1890 — split planned, session 6 of the active plan, needs-go), `api-try-it-panel.js` **1707**, `model.js` **1220**, `api-endpoint-doc.js` **1211**, `api-scenario-view.js` **1096**, `settings-panel.js` **845** (all but app.js accepted, see Accepted thresholds). `src/` total **40 903** lines. Detector caveat: the longest-function pass mis-parses object-literal getters (`get source()` at app.js:323, 3 lines, reported as 656) — session 4 fixes it | medium — planned |
-| Idiom drift | `npm run health:svg` (sizing arm) + manual sweep | **0 bypassed shared helpers** — the in-panel alert/label helpers all live in `try-it/view-bits.js`, call sites naming the colour as a static literal. **0** `h-4 w-4` sites (all `size-*`). **Text de-emphasis** (architecture.md §14.16 — a secondary level is a colour, never an opacity; the rule is what keeps the AA floor computable, and that floor is a documented waiver, so a reintroduced dimmer breaks contrast with no gate noticing): **0** text-bearing `opacity-*` sites — `grep -rn "opacity-\|text-[a-z-]*/[0-9]" src/ --include='*.js'` returns 4 `opacity-*`, all decoration (`icons.js:54,143,155` SVG glyphs, `api-nav.js:220` an icon-only ghost button), which the rule does not cover. **2** sites spell a token's own ratio inline instead of using it: `shell/views.js:369` and `api-nav.js:216` carry `text-base-content/70`, which *is* `text-subtle` — session 3 of the active plan. `api-endpoint-doc.js:551` `text-base-content/30` (below the floor on a hover-revealed glyph button) is a design/a11y decision, routed to the user via the plan's Routed findings, not a cleanup. *Not* debt: the `text-white/50…/80` scale in the fixed navy panel and the webhook simulator — that is §14.16's third level, and `text-quiet` mixes `currentColor` at one 75 % ratio, so it cannot express a graded scale. *Not* debt: 34 `console.error` (uniform `[api-doc]` prefix), 20 non-literal `t()` calls (legitimate dynamic keys) | low |
+| Duplication | `npm run health:svg` | **0** duplicate SVG bodies — 55 distinct icons in **1** file (`components/icons.js`). The 3 remaining near-pairs (`COPY_SVG`/`COPY_SVG_SM`, the 3 `CHECK_*`, `CHEVRON`/`CARET`) are the same path at different sizes/weights: a design choice, not debt. Modal-dismiss preambles, `downloadText`, e2e `goto`/`openSettings` and `fakeLocalStorage` all factored. The RFC 6901 escape is collapsed onto `scenarios/pointer.js`, which exports `escapeToken`/`unescapeToken` and is the only implementation left in `src/` — the 9 hand-rolled sites in 8 files are gone | none — hold it |
+| Size / complexity | `npm run health:size` | files > 800 lines, **6** of 216: `app.js` **1924** (longest `appLayout()` **1555**, down from 1714 — the setup-link and spec-export wiring left for `shell/setup-links.js` and `shell/spec-exports.js`), `api-try-it-panel.js` **1707**, `model.js` **1220**, `api-endpoint-doc.js` **1211**, `api-scenario-view.js` **1096**, `settings-panel.js` **845**. All six accepted, see Accepted thresholds. `src/` total **40 979** lines. The longest-function pass now reads object-literal getters and wrapped signatures correctly, so the figure above is a real function | none — accepted |
+| Idiom drift | `npm run health:svg` (sizing arm) + manual sweep | **0 bypassed shared helpers** — the in-panel alert/label helpers all live in `try-it/view-bits.js`, call sites naming the colour as a static literal. **0** `h-4 w-4` sites (all `size-*`). **Text de-emphasis** (architecture.md §14.16 — a secondary level is a colour, never an opacity; the rule is what keeps the AA floor computable, and that floor is a documented waiver, so a reintroduced dimmer breaks contrast with no gate noticing): **0** text-bearing `opacity-*` sites — `grep -rn "opacity-\|text-[a-z-]*/[0-9]" src/ --include='*.js'` returns 4 `opacity-*`, all decoration (`icons.js:54,143,155` SVG glyphs, `api-nav.js:220` an icon-only ghost button), which the rule does not cover. **0** sites spell a token's own ratio inline: `grep -rn 'text-base-content/70' src/` returns nothing, the two former sites (`shell/views.js`, `api-nav.js`) now carry `text-subtle`. `api-endpoint-doc.js:551` `text-base-content/30` (below the floor on a hover-revealed glyph button) is a design/a11y decision, routed to the user via the plan's Routed findings, not a cleanup. *Not* debt: the `text-white/50…/80` scale in the fixed navy panel and the webhook simulator — that is §14.16's third level, and `text-quiet` mixes `currentColor` at one 75 % ratio, so it cannot express a graded scale. *Not* debt: 34 `console.error` (uniform `[api-doc]` prefix), 20 non-literal `t()` calls (legitimate dynamic keys) | low |
 | Defensive / dead branches | manual sweep | **clean**: 0 TODO/FIXME/HACK/XXX in `src/` and `tests/`, 0 back-compat shims; only the two `DB_VERSION = 2` dev-profile constants (accepted below) | very low |
 | Test code health | manual sweep | e2e `helpers.js` adopted by **42/45** specs (`inline-spec`, `perf` and `bake` abstain by design — `bake` drives the baked static fixtures, not the app); unit: one shared storage double, `fake-indexeddb/auto` hoisted into `vitest.config.js` `setupFiles` (0 per-file imports) | low |
-| CSS | `npm run health:css` | **0 orphans** of 55 class selectors in `src/styles/app.css`; the 26 `hljs-*` are emitted by highlight.js at runtime and allowlisted in the detector | none — hold it |
+| CSS | `npm run health:css` | **0 orphans** of 89 class selectors in `src/styles/app.css`; the 26 `hljs-*` are emitted by highlight.js at runtime and allowlisted in the detector | none — hold it |
 | Wasted work | manual sweep | **0 instances.** The previously recorded one — the per-header `authNames` rebuild inside try-it `#refresh()` — is gone from the code (no `authNames` in `src/`; the one `security.schemes.find()` left is a memoized getter at `api-try-it-panel.js:448`). Clean: `api-nav.js:70` `set route` calls `#highlight()`, never `#renderList()`; **0** `JSON.parse(JSON.stringify())` in `src/`; the `structuredClone` sites are load-path and each is required (ref-parser mutates its input) | none — hold it |
 | Altitude / special-casing | manual sweep | **20 hand-rolled `alert alert-*` sites** outside `view-bits.js:93` `alertBox` — the reopen condition the row predicted, fired and then read in full: **accepted** (user-validated, see Accepted thresholds). The sites diverge on five independent axes — tag (`div` ×18, `p` `api-nav.js:498`, `ul` `env-setup-builder.js:107`), role (`alert` ×6, `note` ×7, `status` ×2, none ×5), size (none ×6, `text-xs`, `text-sm`), extra classes (`alert-soft`, `items-start`, `mt-4`, `mt-3`, `mx-2 my-1`, `border-0`, `flex-col items-start gap-1`) and children (span-wrapped text ×10, bare text node ×3, element trees ×7) — so no generalization absorbs more than the 10 span-wrapped sites. Still cleared: `openModal` (0 raw `showModal()`), `announce`, `request-history-list.js` `responseBody` (a different affordance, correctly separate) | none — accepted |
 
@@ -61,7 +63,7 @@ here is what the sweep step watches for:
   hand-rolled `escapeHtml` anywhere.
 - **No pre-prod fallbacks**: the no-users rule holds in the code
   (`history.js:11` even states it).
-- **i18n discipline**: 804 keys, `en`/`fr` in exact sync, zero dead keys,
+- **i18n discipline**: 1100 keys, `en`/`fr` in exact sync, zero dead keys,
   zero call sites passing a non-key.
 - **Uniform log prefix**: all 34 `console.error` calls carry `[api-doc]`.
 - **One-way module layering**: `schema-view.js` → `schema-editors.js`,
@@ -69,9 +71,9 @@ here is what the sweep step watches for:
   (rule 20). The same shape holds for `src/shell/` and
   `src/components/try-it/`.
 - **A split publishes only what crosses it**: the extracted modules
-  (`shell/panels.js`, `shell/views.js`, `try-it/body-state.js`,
-  `schema-editors.js`) export exactly the symbols their importers name,
-  nothing more. Publishing more than the importers name is the failure
+  (`shell/panels.js`, `shell/views.js`, `shell/setup-links.js`,
+  `shell/spec-exports.js`, `try-it/body-state.js`, `schema-editors.js`)
+  export exactly the symbols their importers name, nothing more. Publishing more than the importers name is the failure
   mode `health:exports` exists to catch.
 - **`view-bits.js` is the one home for the in-panel alert**: 3 importers
   (`api-try-it-panel.js`, `try-it/response-view.js`,
@@ -129,6 +131,20 @@ run that the rationale still holds.
   duplicating `alertBox`'s exact shape (xs + `py-2` + span-wrapped text +
   `role="alert"`): that one is a private copy of a live helper, not a
   different alert.
+
+- **`app.js` (1924 l), whose `appLayout()` is 1555 l** (accepted,
+  user-validated): boot wiring is one concern, executed once, in
+  dependency order. The two clusters that came out with a clean seam are
+  out — `shell/setup-links.js` and `shell/spec-exports.js`, both taking
+  resolved values and publishing exactly what `app.js` names. The third
+  candidate, the scenario record sync, was read and refused: it owns
+  three pieces of mutable state (`configRecords`, `localScenarios`,
+  `currentScenarioId`) that seven sites elsewhere in `appLayout()` read
+  directly and the router writes, so extracting ~114 lines would publish
+  accessors for all three and change 8 call sites outside the moved block
+  — a net loss in directness for a file that stays flagged either way.
+  Reopens if `appLayout()` gains a concern that is not wiring, or if
+  `app.js` passes 2500 lines.
 
 - **`api-try-it-panel.js` (1707 l), `api-endpoint-doc.js` (1211 l) and
   `settings-panel.js` (845 l) over the 800-line mark** (accepted,
