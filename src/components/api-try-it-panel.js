@@ -1534,11 +1534,19 @@ class ApiTryItPanel extends HTMLElement {
     // Captured now: changing operation during a send rebuilds the panel,
     // and the driven box would otherwise be the new form's.
     const meter = this.#ui.meter
+    // Disabling the button under the finger that just pressed it drops focus
+    // on <body>: the keyboard restarts at the top of the document, and Orca
+    // reads the whole page rather than the outcome. Cancel takes its place for
+    // the flight and hands focus back when it disappears (below).
+    const sendHadFocus = document.activeElement === this.#ui.sendBtn
     this.#ui.sendBtn.disabled = true
     const controller = new AbortController()
     this.#ui.abort = controller
     const cancelBtn = this.#ui.cancelBtn
-    if (cancelBtn) cancelBtn.hidden = false
+    if (cancelBtn) {
+      cancelBtn.hidden = false
+      if (sendHadFocus) cancelBtn.focus()
+    }
 
     const entry = historyEntry({ op: this.#op, env, built, proxied })
     Object.assign(entry, this.#entryDecorator?.(entry, this.#op) ?? {})
@@ -1557,6 +1565,10 @@ class ApiTryItPanel extends HTMLElement {
       signal: controller.signal,
     })
     applyResult(entry, result)
+    // Re-enabled before the focus hand-back below, not at the end of the
+    // method: focus() on a disabled button is a no-op, and the reader would
+    // land on <body> — the very drop this whole round trip exists to avoid.
+    this.#ui.sendBtn.disabled = false
     if (cancelBtn) {
       // The control disappears under the keyboard user who just pressed it:
       // hand focus back to Send instead of dropping it on the body.
@@ -1573,7 +1585,6 @@ class ApiTryItPanel extends HTMLElement {
       // and the reader asked for exactly that.
       this.#ui.alerts.append(alertBox('alert-info', t('tryit.canceled')))
       spoken(t('tryit.canceled'))
-      this.#ui.sendBtn.disabled = false
       return
     }
     if (result.error) {
@@ -1591,7 +1602,6 @@ class ApiTryItPanel extends HTMLElement {
         }),
       )
     }
-    this.#ui.sendBtn.disabled = false
 
     // Auto-write to history (docs/architecture.md §5.5), including network failures.
     this.#history?.add(entry).catch((err) => console.error('[api-doc] history write failed:', err))

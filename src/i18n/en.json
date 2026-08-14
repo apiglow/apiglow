@@ -32,6 +32,7 @@
   "search.hint": "Search operations, pages and schema fields.",
   "search.noResults": "No results.",
   "search.count": "{n} result(s)",
+  "search.results": "Search results",
   "search.page": "Page",
   "search.fields": "Fields: {names}",
   "search.scopeLabel": "Search scope",

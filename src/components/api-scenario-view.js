@@ -486,8 +486,16 @@ class ApiScenarioView extends HTMLElement {
       text(this.#running ? t('scenario.running') : t('scenario.runAll')),
     )
     btn.type = 'button'
-    btn.disabled = this.#running
-    btn.addEventListener('click', () => this.#run(scenario))
+    // Not disabled while running, unlike every other control here: this is the
+    // button the keyboard is standing on when the run starts, and a disabled
+    // button cannot hold focus — the reader would be dropped on <body> and lose
+    // the scenario at the exact moment it starts reporting. `keepPlace` carries
+    // focus across the refresh instead, onto a button that now says "Running…",
+    // and the guard below is what `disabled` was there to buy.
+    btn.dataset.keepFocus = 'scenario-run'
+    btn.addEventListener('click', () => {
+      if (!this.#running) this.#run(scenario)
+    })
     return btn
   }
 

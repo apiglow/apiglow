@@ -1749,6 +1749,11 @@ focus. Dialogs are native `<dialog>`: Escape closes them, and `openModal()`
 returns focus to the element that opened them (the browser's own restore
 gives up when that element's toolbar re-rendered while the dialog was open,
 which is our common case). The mobile drawer and bottom sheet do the same.
+`modalDismiss()` refuses to build a dismiss control without both an accessible
+name for the backdrop and one for the button. Four of those names spell out the
+dialog they close; the rest are a plain "Close", which is what a reader needs
+beside a dialog that has just announced its own title — harmonizing the ten
+would be churn, not a fix.
 
 **An open panel makes the page behind it inert.** Below lg the drawer and the
 sheet are modal surfaces, and the scrim only settles the pointer: without more,
@@ -1816,7 +1821,10 @@ response status and duration, network failure, scenario run verdict, and a
 blocked send. This is deliberately *not* the `role="alert"` boxes the
 components render — a live region inserted with its text already in place is
 a new node, not a mutation, and screen readers stay silent on it. A blocked
-send also moves focus to the field that blocked it.
+send also moves focus to the field that blocked it. The region travels with the
+top layer: a modal `<dialog>` makes the rest of the document inert, and an
+inert region is announced to no one, so `openModal()` moves it inside the
+dialog for its lifetime and hands it back on close.
 
 **Motion.** What the design layer animates is small on purpose — the nav's
 active rail, a tab underline, the send meter and the status flash — and all of
@@ -1996,7 +2004,10 @@ printed to the Playwright output with the reason axe gives for not answering —
 journalled, never gated, since a check that could not decide is not a defect
 and gating one would redden every dialog by construction. That log is the only
 place a ratio no rule ever measured becomes visible, so it is meant to be read,
-not just emitted.
+not just emitted. Read end to end, it answers for itself: the fourteen button
+and badge surfaces it leaves undecided clear 4.5:1 on both authored themes. That
+is a reading, not a gate — the day a token moves, the same reading is what will
+catch it.
 
 **What it is not a promise about: the other themes.** The app ships **every**
 standard daisyUI theme (rule 3) and a ratio fixed on `apiglow` says nothing
@@ -2013,10 +2024,56 @@ Same reasoning for a host's `theme.custom`: those colors are the host's, and
 the one scan that renders them (`app-themes.html`) is the single place the
 rule is switched off.
 
+**What a screen reader actually says.** axe judges nodes and the keyboard sweep
+judges the walk between them; neither hears anything. `npm run report:speech`
+(`scripts/report-screen-reader.py`) does: it drives a real Orca over Firefox by
+keyboard alone — landing and skip link, an operation opened from the nav, a
+send, the response tablist, the history dialog, the environment menu, the search
+palette, a scenario run — and prints what Orca said at each step, read out of
+Orca's own speech log. Attribution is by timestamp rather than by draining a
+buffer after each press: an announcement that arrives late is exactly what a
+live region is for, and it has to land in the report rather than in the gap
+between two reads. It gates nothing and runs by hand, on a Linux session with
+`orca` and `Xvfb`; nothing is ever spoken out loud, speech-dispatcher being
+pointed at a `printf` for the occasion. Four findings, none of them reachable by
+a scanner: three are properties of what a press *does*, and the fourth is a
+silence that only listening could hear.
+
+- **A send dropped the keyboard on `<body>`.** The Send button disabled itself
+  under the finger that had just pressed it, so the reader restarted at the top
+  of the document — and the document-level focus change swallowed the polite
+  announcement that followed 100 ms later, so the one sentence carrying the
+  status and the duration was never spoken at all. Cancel now takes the focus
+  for the flight and hands it back to Send. The hand-back was already written,
+  and had never once run: nothing ever gave Cancel the focus it tested for. It
+  also needs Send re-enabled *first* — `focus()` on a disabled button is a
+  no-op, and re-enabling at the end of the method is too late.
+- **A scenario run did the same through the other door**: the view rebuilds
+  itself when the run starts, and a disabled button cannot be handed focus back.
+  The run button stays enabled, carries `data-keep-focus` so `keepPlace()`
+  brings the focus across the refresh, and holds the re-entry guard `disabled`
+  used to buy.
+- **The search palette was silent.** It moves a highlight through a list its
+  input never leaves, and the active result was a CSS class and nothing else:
+  arrowing announced nothing, and Enter opened something that had never been
+  named. It is now the ARIA 1.2 combobox its behavior always described —
+  `role="combobox"` on the input, `role="listbox"` on the list, `role="option"`
+  per result, `aria-activedescendant` following the highlight — and the result
+  count goes through the shared region, a list rebuilt whole on every keystroke
+  being an insertion rather than a mutation.
+- **And everything a dialog said was said to nobody.** The single region above
+  lives on `<body>`, which a modal `<dialog>` makes inert, and an inert subtree
+  is not announced — so the settings clearing a dataset, an import landing, a
+  palette counting its results all reached a region no reader was listening to.
+  Nothing in the DOM shows it: the text is there, correct, in a live region that
+  is genuinely live. `openModal()` now walks the region into the top layer with
+  the dialog and hands it back on close, to the dialog below if two are stacked.
+
 Other gaps we know about: the doc's heading order follows the OpenAPI schema
-it renders, so a schema with odd nesting can produce an odd outline; and no
-screen-reader pass has been run on real assistive tech — the guarantees above
-are what automation plus the keyboard model cover, nothing more.
+it renders, so a schema with odd nesting can produce an odd outline; and the
+reader we listened to is Orca on Gecko — NVDA, JAWS and VoiceOver have never
+been run, so what the pass above establishes is that the model holds on one
+real stack, not on all of them.
 
 ## 13. Browser support
 

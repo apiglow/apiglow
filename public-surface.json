@@ -41,6 +41,7 @@
     "apidoc-main",
     "apidoc-scenarios",
     "apidoc-schema",
+    "apidoc-search-results",
     "apidoc.oauth.pending",
     "apidoc:",
     "apidoc:operation"
@@ -913,6 +914,7 @@
     "search.noResults",
     "search.page",
     "search.placeholder",
+    "search.results",
     "search.scenario",
     "search.scope.all",
     "search.scope.pages",

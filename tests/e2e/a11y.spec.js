@@ -403,6 +403,22 @@ test('a scenario run announces its verdict', async ({ page }) => {
   await expect(page.locator('[data-live-region]')).toContainText(/steps succeeded/)
 })
 
+// Same drop as the send below, through the other door: the view rebuilds itself
+// when the run starts, and a disabled button cannot be handed focus back.
+test('a scenario run keeps the keyboard on the button that started it', async ({ page }) => {
+  await mockApi(page)
+  await gotoApp(page)
+  await openDrawerIfMobile(page)
+  await page.locator('api-nav a[data-scenario-id="onboarding"]').click()
+  const run = page.locator('api-scenario-view').getByRole('button', { name: 'Run all' })
+  await run.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('[data-live-region]')).toContainText(/steps succeeded/)
+  await expect(
+    page.locator('api-scenario-view').getByRole('button', { name: 'Run all' }),
+  ).toBeFocused()
+})
+
 // The verdict alert arrives inside a container inserted whole, which is not
 // reliably read: what the failure means has to reach the shared region too.
 test('a failed send announces the diagnosis, not just the failure', async ({ page }) => {
@@ -415,6 +431,24 @@ test('a failed send announces the diagnosis, not just the failure', async ({ pag
   // one surface where secondary text sits on a container that paints its own
   // ink (`text-quiet`), and they exist only after a send has gone wrong.
   await expectNoViolations(page)
+})
+
+// Disabling the button under the finger that just pressed it is how a send used
+// to drop the keyboard on <body>: the reader restarted at the top of the
+// document, and the response announcement was swallowed by that focus change
+// (`scripts/report-screen-reader.py` is what heard it — axe judges nodes, never
+// what a press does). Cancel takes the focus for the flight, Send takes it back.
+test('a send leaves the keyboard on Send, and says how it went', async ({ page }) => {
+  await mockApi(page)
+  await gotoApp(page)
+  await clickNavOp(page, 'listPets')
+  await openTryItIfMobile(page)
+  const sendBtn = tryIt(page).getByRole('button', { name: 'Send', exact: true })
+  await sendBtn.focus()
+  await page.keyboard.press('Enter')
+  await expectResponded(page)
+  await expect(sendBtn).toBeFocused()
+  await expect(page.locator('[data-live-region]')).toContainText(/Response 200\b/)
 })
 
 test('the search palette is reachable by keyboard and returns focus on close', async ({ page }) => {
@@ -435,6 +469,44 @@ test('the search palette is reachable by keyboard and returns focus on close', a
   // closed, and re-opening the drawer would move focus itself — so the claim
   // is asserted on the desktop projects, which is where it can be true.
   if (!isMobileLayout(page)) await expect(opener).toBeFocused()
+})
+
+// A modal `<dialog>` makes the rest of the document inert, and an inert subtree
+// is not announced: parked on `<body>`, the shared region says everything a
+// dialog has to say to nobody at all.
+test('the live region follows a dialog into the top layer', async ({ page }) => {
+  await gotoApp(page)
+  await openDrawerIfMobile(page)
+  await page.getByRole('button', { name: /Search the docs/ }).click()
+  const dialog = page.locator('search-palette dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator('[data-live-region]')).toHaveCount(1)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('body > [data-live-region]')).toHaveCount(1)
+})
+
+// The palette moves a highlight, never focus: without the combobox wiring the
+// active result is a CSS class and nothing more, so a reader arrows through
+// silence and then opens something that was never named.
+test('the palette names the result the arrows land on', async ({ page }) => {
+  await gotoApp(page)
+  await openDrawerIfMobile(page)
+  await page.getByRole('button', { name: /Search the docs/ }).click()
+  const input = page.locator('search-palette input[type="search"]')
+  await input.fill('pet')
+  await expect(page.locator('[data-live-region]')).toContainText(/result/)
+  const options = page.locator('search-palette [role="listbox"] [role="option"]')
+  await expect(options.first()).toHaveAttribute('aria-selected', 'true')
+  await expect(input).toHaveAttribute(
+    'aria-activedescendant',
+    await options.first().evaluate((n) => n.id),
+  )
+  await page.keyboard.press('ArrowDown')
+  await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(input).toHaveAttribute(
+    'aria-activedescendant',
+    await options.nth(1).evaluate((n) => n.id),
+  )
 })
 
 // The design layer's motion is a taste; `prefers-reduced-motion` is an answer

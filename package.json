@@ -55,6 +55,7 @@
     "preview:cdn": "node scripts/preview-cdn.mjs",
     "brand:social": "node scripts/render-social.mjs",
     "report:contrast": "node scripts/report-theme-contrast.mjs",
+    "report:speech": "python3 scripts/report-screen-reader.py",
     "health": "npm run health:exports --silent && npm run health:i18n --silent && npm run health:orphans --silent && npm run health:svg --silent && npm run health:size --silent && npm run health:css --silent",
     "health:exports": "node scripts/health/dead-exports.mjs",
     "health:i18n": "node scripts/health/i18n-keys.mjs",

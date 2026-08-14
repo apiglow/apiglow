@@ -27,6 +27,7 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run check:surface` | Frozen public surfaces (tags, events, `apidoc…` names, i18n keys) against `public-surface.json`; `-- --update` accepts a deliberate change (CONVENTIONS.md) |
 | `npm run check:syntax` | `es-check` against the declared `browserslist` baseline — the built bundle parses on every supported browser |
 | `npm run report:contrast` | **Informative, gates nothing**: contrast of the design layer's ink recipes on every shipped daisyUI theme, measured in a browser against `dist/app.css` (`--all` lists every pair). Needs a build |
+| `npm run report:speech` | **Informative, gates nothing**: drives a real Orca screen reader over the app by keyboard and prints what it says, step by step. Linux + `orca` + `Xvfb`; serve the app first (`npm run preview:cdn`) |
 | `npm run lint` | Biome — format check + lint |
 | `npm run lint:fix` | Biome — apply the safe fixes |
 | `npm run format` | Biome — reformat in place |
@@ -365,7 +366,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Settings panel: storage inventory, targeted purges, full reset | `maintenance.test.js` | `settings.spec.js` |
 | Footer, About dialog, license and third-party notices | `credits.test.js` | `about.spec.js` |
 | Parse/render performance budgets | — | `perf.spec.js` |
-| Accessibility: axe sweep, focus return, tablist keys, live regions | — | `a11y.spec.js` |
+| Accessibility: axe sweep, focus return, tablist keys, live regions, the keyboard a send or a run must not drop, the palette's combobox wiring | — | `a11y.spec.js` |
 | Keyboard sweep: every visible control reachable by Tab, a visible ring at every stop, skip link to `<main>`, scrolling blocks as declared tab stops, an open mobile panel the walk cannot leave | — | `keyboard.spec.js` |
 | Reflow at 320 px and the reader's text-spacing stylesheet: no sideways scrolling, no text clipped below half, no box newly cut short vertically | — | `reflow.spec.js` |
 | Browser support baseline: degradation when an above-floor API is absent | — | `baseline.spec.js` |

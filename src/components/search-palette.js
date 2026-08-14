@@ -1,7 +1,7 @@
 import { t } from '../i18n/index.js'
 import { opHash, pageHash, scenarioHash } from '../router.js'
 import { searchIndex } from '../search/index.js'
-import { openModal } from './a11y.js'
+import { announce, openModal } from './a11y.js'
 import { el, icon, text } from './dom.js'
 import { SEARCH_SVG } from './icons.js'
 import { methodBadgeClass } from './method-colors.js'
@@ -10,6 +10,14 @@ const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
 
 // Bounds the DOM, not the search: the counter shows the real total.
 const RENDER_LIMIT = 20
+
+// The palette moves a highlight through a list its input never leaves, so the
+// active result is a CSS class and nothing else — a screen reader hears silence
+// while arrowing, and Enter then opens something never named. The ARIA 1.2
+// combobox pattern is what closes that: `aria-activedescendant` is a reference,
+// so both ends need a stable id.
+const LIST_ID = 'apidoc-search-results'
+const optionId = (index) => `${LIST_ID}-${index}`
 
 // Which kinds wear a word instead of a method badge. Listed rather than
 // derived by excluding the operation kinds: a kind added later gets no badge
@@ -97,6 +105,10 @@ class SearchPalette extends HTMLElement {
     this.#input.type = 'search'
     this.#input.placeholder = t('search.placeholder')
     this.#input.autofocus = true
+    this.#input.setAttribute('role', 'combobox')
+    this.#input.setAttribute('aria-autocomplete', 'list')
+    this.#input.setAttribute('aria-expanded', 'false')
+    this.#input.setAttribute('aria-controls', LIST_ID)
     this.#input.addEventListener('input', () => {
       this.#active = 0
       this.#renderResults()
@@ -222,21 +234,28 @@ class SearchPalette extends HTMLElement {
       this.#resultsBox.replaceChildren(
         el('p', 'px-3 py-6 text-sm text-subtle', text(t('search.hint'))),
       )
+      this.#collapse()
       return
     }
     if (!all.length) {
       this.#resultsBox.replaceChildren(
         el('p', 'px-3 py-6 text-sm text-subtle', text(t('search.noResults'))),
       )
+      this.#collapse()
+      // The count and the empty state are rebuilt whole on every keystroke,
+      // and an inserted node is not a mutation: without the shared region,
+      // typing into the palette is silent.
+      announce(t('search.noResults'))
       return
     }
+    const countText = t('search.count', { n: all.length })
+    announce(countText)
     const tokens = query.toLowerCase().split(/\s+/).filter(Boolean)
-    const count = el(
-      'p',
-      'px-3 pt-2 text-xs text-subtle',
-      text(t('search.count', { n: all.length })),
-    )
+    const count = el('p', 'px-3 pt-2 text-xs text-subtle', text(countText))
     const list = el('ul', 'menu w-full p-0')
+    list.id = LIST_ID
+    list.setAttribute('role', 'listbox')
+    list.setAttribute('aria-label', t('search.results'))
     // Group headers ride the RANKED order: a header opens whenever the label
     // changes, it never re-sorts. Clustering by group would trade the ranking
     // for tidiness — and the top result must stay the top result.
@@ -245,7 +264,11 @@ class SearchPalette extends HTMLElement {
       const groupLabel = resultGroupLabel(result)
       if (groupLabel !== lastGroup) {
         lastGroup = groupLabel
-        list.append(el('li', 'menu-title text-label uppercase', text(groupLabel)))
+        // A listbox owns options and nothing else: the header is a sighted
+        // reader's landmark, and every option already names its own kind.
+        const header = el('li', 'menu-title text-label uppercase', text(groupLabel))
+        header.setAttribute('role', 'presentation')
+        list.append(header)
       }
       const badge = RESULT_BADGE[result.type]
         ? el('span', 'badge badge-ghost badge-sm shrink-0 w-16', text(t(RESULT_BADGE[result.type])))
@@ -280,6 +303,8 @@ class SearchPalette extends HTMLElement {
         el('span', 'flex flex-col min-w-0 grow', ...lines),
       )
       link.href = resultHash(result)
+      link.id = optionId(i)
+      link.setAttribute('role', 'option')
       link.dataset.resultId = result.id
       link.dataset.index = String(i)
       // Navigation is carried by the href; only the dialog is closed.
@@ -288,7 +313,9 @@ class SearchPalette extends HTMLElement {
         this.#active = i
         this.#highlight()
       })
-      list.append(el('li', 'w-full', link))
+      const row = el('li', 'w-full', link)
+      row.setAttribute('role', 'presentation')
+      list.append(row)
     })
     this.#resultsBox.replaceChildren(count, list)
     // A fresh list starts at the top with the top result active — but not
@@ -305,11 +332,22 @@ class SearchPalette extends HTMLElement {
   // `scroll` is the arrow-key case: moving the highlight through a list that
   // overflows must chase it, and a single keydown can afford the reflow.
   #highlight({ scroll = true } = {}) {
+    this.#input.setAttribute('aria-expanded', 'true')
     for (const link of this.#resultsBox.querySelectorAll('a[data-index]')) {
       const active = Number(link.dataset.index) === this.#active
       link.classList.toggle('menu-active', active)
-      if (active && scroll) link.scrollIntoView({ block: 'nearest' })
+      link.setAttribute('aria-selected', String(active))
+      if (!active) continue
+      this.#input.setAttribute('aria-activedescendant', link.id)
+      if (scroll) link.scrollIntoView({ block: 'nearest' })
     }
+  }
+
+  // No list, no active option: a stale reference would have the reader hear a
+  // result that is no longer on screen.
+  #collapse() {
+    this.#input.setAttribute('aria-expanded', 'false')
+    this.#input.removeAttribute('aria-activedescendant')
   }
 }
 

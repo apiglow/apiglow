@@ -32,6 +32,7 @@
   "search.hint": "Recherche les opérations, les pages et les champs des schémas.",
   "search.noResults": "Aucun résultat.",
   "search.count": "{n} résultat(s)",
+  "search.results": "Résultats de recherche",
   "search.page": "Page",
   "search.fields": "Champs : {names}",
   "search.scopeLabel": "Périmètre de recherche",

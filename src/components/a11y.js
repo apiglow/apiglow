@@ -44,6 +44,17 @@ export function announce(message) {
   }, ANNOUNCE_DELAY_MS)
 }
 
+// A modal `<dialog>` makes the rest of the document inert, and an inert subtree
+// is not announced: a region parked on `<body>` goes silent for exactly the
+// surfaces that talk the most — the settings clearing a dataset, an import
+// landing, the palette counting its results. It rides into the top layer with
+// the dialog and comes back out with it. Stacked dialogs: the last one opened
+// is the one that speaks, and closing it hands the region back to the one below.
+function parkLiveRegion() {
+  const open = [...document.querySelectorAll('dialog[open]')]
+  ;(open.at(-1) ?? document.body).append(liveRegion())
+}
+
 // --- modal dialogs ------------------------------------------------------
 
 // Opens a modal and returns focus where it came from on close. Browsers do
@@ -59,6 +70,7 @@ export function openModal(dialog, { focus = null } = {}) {
     () => {
       const target = invoker?.isConnected ? invoker : null
       target?.focus?.()
+      parkLiveRegion()
     },
     { once: true },
   )
@@ -74,6 +86,7 @@ export function openModal(dialog, { focus = null } = {}) {
     focus.autofocus = true
   }
   dialog.showModal()
+  parkLiveRegion()
   focus?.focus?.()
 }
 
