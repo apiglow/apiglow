@@ -180,6 +180,18 @@ describe('bake', () => {
     )
   })
 
+  // llms.txt v2 discovery: a page names the map covering it, so an agent
+  // landing on a snapshot finds the rest of the documentation without
+  // guessing an address.
+  it('declares the covering llms.txt on every page it writes', async () => {
+    const { files } = await run(PETSTORE)
+    const link = `<link rel="describedby" href="${SITE}llms.txt">`
+    for (const [path, content] of files) {
+      if (!path.endsWith('.html')) continue
+      expect(content, `${path} names no covering llms.txt`).toContain(link)
+    }
+  })
+
   it('nests every spec under its route prefix, root files excepted', async () => {
     const { files } = await run({
       openapi: {
@@ -204,6 +216,10 @@ describe('bake', () => {
     // the prefix the router builds.
     expect(files.get('llms.txt')).toContain(`${SITE}s/other/op/listInvoices.md`)
     expect(files.get('s/main/op/listPets.html')).toContain(`href="${SITE}#/s/main/op/listPets"`)
+    // A nested page is covered by that one root map, not by a per-spec one.
+    expect(files.get('s/other/op/listInvoices.html')).toContain(
+      `<link rel="describedby" href="${SITE}llms.txt">`,
+    )
   })
 
   it('refuses to publish a documentation that asks not to be indexed', async () => {

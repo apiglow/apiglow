@@ -32,6 +32,7 @@ const options = {
   canonical: 'https://docs.example.com/api/op/listPets.html',
   appUrl: 'https://docs.example.com/api/index.html#/op/listPets',
   markdownUrl: 'https://docs.example.com/api/op/listPets.md',
+  llmsUrl: 'https://docs.example.com/api/llms.txt',
 }
 
 describe('baked HTML snapshot', () => {
@@ -93,12 +94,13 @@ describe('baked HTML snapshot', () => {
     expect(html).toContain('\\u003c/script>')
   })
 
-  it('declares the language and the Markdown mirror', () => {
+  it('declares the language, the Markdown mirror and the covering llms.txt', () => {
     const html = toSnapshotHtml({ ...options, lang: 'fr' })
     expect(html).toContain('<html lang="fr">')
     expect(html).toContain(
       '<link rel="alternate" type="text/markdown" href="https://docs.example.com/api/op/listPets.md">',
     )
+    expect(html).toContain('<link rel="describedby" href="https://docs.example.com/api/llms.txt">')
   })
 
   // The bake resolves the chrome from the bundle `--language` selected; the
@@ -112,6 +114,7 @@ describe('baked HTML snapshot', () => {
   it('omits what the caller did not give it', () => {
     const html = toSnapshotHtml({ markdown: '# Bare' })
     expect(html).not.toContain('rel="canonical"')
+    expect(html).not.toContain('rel="describedby"')
     expect(html).not.toContain('name="description"')
     expect(html).not.toContain('ld+json')
     expect(html).not.toContain('<p class="snapshot-open">')

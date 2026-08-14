@@ -10,6 +10,7 @@ exports[`baked HTML snapshot > wraps the mirror in the head a crawler reads 1`] 
 <meta name="description" content="Returns every pet.">
 <link rel="canonical" href="https://docs.example.com/api/op/listPets.html">
 <link rel="alternate" type="text/markdown" href="https://docs.example.com/api/op/listPets.md">
+<link rel="describedby" href="https://docs.example.com/api/llms.txt">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"APIReference","name":"List pets","identifier":"listPets"}</script>
 <style>:root{color-scheme:light dark}
 body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,sans-serif}

@@ -182,7 +182,10 @@ it shares the `#/op/…` route.
 - **HTML snapshots** wrap the Markdown mirror rendered through `marked`
   in a minimal static template: `<title>`, meta description, JSON-LD,
   `rel=canonical` pointing at the snapshot itself, a
-  `rel=alternate type="text/markdown"` link to the `.md` mirror,
+  `rel=alternate type="text/markdown"` link to the `.md` mirror, a
+  `rel=describedby` link to the root `llms.txt` covering the page
+  (llmstxt.org v2 discovery — the specification's other lane, an HTTP
+  `Link` header, is not a static tree's to set),
   `<html lang>`, a small inline `<style>` for legibility, and a
   prominent link into the interactive doc (`{site-url}#/op/{id}`). No
   script, no redirect — the snapshot is honest static content, not a

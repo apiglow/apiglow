@@ -103,6 +103,7 @@ export function toSnapshotHtml({
   canonical = '',
   appUrl = '',
   markdownUrl = '',
+  llmsUrl = '',
   lang = 'en',
   labels = {},
 } = {}) {
@@ -120,6 +121,11 @@ export function toSnapshotHtml({
     markdownUrl
       ? `<link rel="alternate" type="text/markdown" href="${escapeHtml(markdownUrl)}">`
       : '',
+    // The `llms.txt` covering this page (llmstxt.org v2 discovery). The
+    // specification allows an HTTP `Link` header instead; a tree of static
+    // files served by whatever the author points at it sets no headers, so the
+    // element is the only lane we own.
+    llmsUrl ? `<link rel="describedby" href="${escapeHtml(llmsUrl)}">` : '',
     ...jsonLdBlock(jsonLd),
     `<style>${STYLE}</style>`,
   ].filter(Boolean)

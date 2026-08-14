@@ -41,7 +41,14 @@ import { toEndpointMarkdown } from '../src/export/endpoint-markdown.js'
 import { toLlmsFullText } from '../src/export/llms-full.js'
 import { toLlmsText } from '../src/export/llms.js'
 import { toScenarioMarkdown } from '../src/export/scenario-markdown.js'
-import { RECIPE_EXT, bakedPath, bakedUrl, bakedUrls, siteBase } from '../src/export/site-layout.js'
+import {
+  RECIPE_EXT,
+  bakedPath,
+  bakedUrl,
+  bakedUrls,
+  siteBase,
+  siteRoot,
+} from '../src/export/site-layout.js'
 import { toSitemap } from '../src/export/sitemap.js'
 import { SNAPSHOT_LABEL_KEYS, toSnapshotHtml } from '../src/export/snapshot-html.js'
 import { t, useDictionary } from '../src/i18n/index.js'
@@ -254,6 +261,9 @@ function emitSpec(source, { files, siteUrl, language, labels }) {
   setRouteSpecId(specId || null)
   const home = siteBase(siteUrl)
   const mdUrls = bakedUrls(siteUrl, { specId, ext: 'md' })
+  // The map covering this page, at the root every spec of the install shares:
+  // one `llms.txt` for the whole site, as the sitemap is one.
+  const llmsUrl = `${siteRoot(siteUrl)}llms.txt`
 
   const emit = (target, { head, markdown, content = markdown, appHash }) => {
     const hasMirror = typeof markdown === 'string'
@@ -268,6 +278,7 @@ function emitSpec(source, { files, siteUrl, language, labels }) {
         canonical: bakedUrl(siteUrl, target, 'html'),
         appUrl: `${home}${appHash}`,
         markdownUrl: hasMirror ? bakedUrl(siteUrl, target, 'md') : '',
+        llmsUrl,
         lang: language,
         labels,
       }),

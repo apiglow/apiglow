@@ -28,6 +28,7 @@ exports[`bake > emits a snapshot, a mirror and a sitemap entry per route 2`] = `
 <meta name="description" content="Returns the pets, optionally filtered by status.">
 <link rel="canonical" href="https://docs.example.com/op/listPets.html">
 <link rel="alternate" type="text/markdown" href="https://docs.example.com/op/listPets.md">
+<link rel="describedby" href="https://docs.example.com/llms.txt">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"APIReference","name":"List all pets","description":"Returns the pets, optionally filtered by status.","identifier":"listPets","assemblyVersion":"1.0.0","isPartOf":{"@type":"WebAPI","name":"E2E Test API"}}</script>
 <style>:root{color-scheme:light dark}
 body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,sans-serif}
