@@ -32,6 +32,7 @@ class ApiWebhookSimulator extends HTMLElement {
   #envStore = null
   #state = null
   #ui = {}
+  #sending = false
 
   set context({ proxyUrl, requestCredentials, envStore }) {
     this.#proxyUrl = proxyUrl ?? null
@@ -265,7 +266,6 @@ class ApiWebhookSimulator extends HTMLElement {
     const send = el('button', 'btn btn-primary btn-sm', text(t('webhook.send')))
     send.type = 'button'
     send.addEventListener('click', () => this.#send())
-    this.#ui.sendBtn = send
     this.#ui.status = el('span', 'text-xs text-subtle')
     return el('div', 'flex items-center gap-3', send, this.#ui.status)
   }
@@ -303,6 +303,12 @@ class ApiWebhookSimulator extends HTMLElement {
   }
 
   async #send() {
+    // The Send button is never disabled during the flight, unlike the try-it's:
+    // there is no Cancel here to hand the keyboard to, and a disabled button
+    // cannot hold focus — the reader would be dropped on <body> for the whole
+    // send, and that document-level focus change swallows the polite
+    // announcement of the outcome. This guard is what `disabled` was buying.
+    if (this.#sending) return
     const state = this.#state
     this.#ui.alerts.replaceChildren()
     this.#ui.response.replaceChildren()
@@ -341,7 +347,7 @@ class ApiWebhookSimulator extends HTMLElement {
       state.proxyOn && this.#proxyUrl ? applyProxy(this.#proxyUrl, target.href) : target.href
     const body = !['GET', 'HEAD'].includes(method) && resolved.body ? resolved.body : undefined
 
-    this.#ui.sendBtn.disabled = true
+    this.#sending = true
     this.#ui.status.replaceChildren(
       el('span', 'loading loading-spinner loading-xs'),
       text(` ${t('tryit.sending')}`),
@@ -386,7 +392,7 @@ class ApiWebhookSimulator extends HTMLElement {
       )
       announce(t('tryit.networkFail'))
     } finally {
-      this.#ui.sendBtn.disabled = false
+      this.#sending = false
       this.#ui.status.replaceChildren()
     }
   }

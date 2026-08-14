@@ -2047,7 +2047,10 @@ silence that only listening could hear.
   for the flight and hands it back to Send. The hand-back was already written,
   and had never once run: nothing ever gave Cancel the focus it tested for. It
   also needs Send re-enabled *first* — `focus()` on a disabled button is a
-  no-op, and re-enabling at the end of the method is too late.
+  no-op, and re-enabling at the end of the method is too late. The webhook
+  simulator's own Send has no Cancel to lend the keyboard to, so it is never
+  disabled at all: it stays put for the flight behind the same re-entry guard
+  the scenario run uses below.
 - **A scenario run did the same through the other door**: the view rebuilds
   itself when the run starts, and a disabled button cannot be handed focus back.
   The run button stays enabled, carries `data-keep-focus` so `keepPlace()`

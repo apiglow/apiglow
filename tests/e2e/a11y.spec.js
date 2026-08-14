@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import {
+  API_BASE,
   THEMES_PAGE,
   clickNavOp,
   closeMobilePanels,
@@ -447,6 +448,22 @@ test('a send leaves the keyboard on Send, and says how it went', async ({ page }
   await sendBtn.focus()
   await page.keyboard.press('Enter')
   await expectResponded(page)
+  await expect(sendBtn).toBeFocused()
+  await expect(page.locator('[data-live-region]')).toContainText(/Response 200\b/)
+})
+
+// The same drop through the third door. The simulator has no Cancel to lend the
+// keyboard to for the flight, so its Send never disables itself at all.
+test('a webhook send leaves the keyboard on Send, and says how it went', async ({ page }) => {
+  await mockApi(page, { status: 200, body: { ok: true } })
+  await gotoApp(page, '#/op/webhook-post-petadopted')
+  await openTryItIfMobile(page)
+  const sim = page.locator('api-webhook-simulator')
+  await sim.locator('input[type="url"]').fill(`${API_BASE}/hooks/receiver`)
+  const sendBtn = sim.locator('button', { hasText: 'Send event' })
+  await sendBtn.focus()
+  await page.keyboard.press('Enter')
+  await expect(sim).toContainText('200')
   await expect(sendBtn).toBeFocused()
   await expect(page.locator('[data-live-region]')).toContainText(/Response 200\b/)
 })
