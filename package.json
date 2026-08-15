@@ -45,6 +45,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --config vite.bake.config.js",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:all": "playwright test --workers=4",
@@ -53,6 +54,8 @@
     "lint:fix": "biome check --write",
     "format": "biome format --write",
     "preview:cdn": "node scripts/preview-cdn.mjs",
+    "release": "node scripts/release.mjs",
+    "sync:version": "node scripts/sync-version.mjs",
     "brand:social": "node scripts/render-social.mjs",
     "report:contrast": "node scripts/report-theme-contrast.mjs",
     "report:speech": "python3 scripts/report-screen-reader.py",
@@ -68,7 +71,8 @@
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:dist": "node scripts/check-dist.mjs",
     "check:surface": "node scripts/check-public-surface.mjs",
-    "check:syntax": "es-check checkBrowser dist/app.js --module --checkFeatures"
+    "check:syntax": "es-check checkBrowser dist/app.js --module --checkFeatures",
+    "check:version": "node scripts/sync-version.mjs --check"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "16.0.0",

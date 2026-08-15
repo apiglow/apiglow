@@ -31,6 +31,8 @@ jobs:
         run: npm run check:invariants
       - name: Frozen public surface
         run: npm run check:surface
+      - name: Version pins
+        run: npm run check:version
       - name: Unit tests with coverage
         # Informational: no threshold gate, the summary is read in the log.
         run: npm run test:coverage

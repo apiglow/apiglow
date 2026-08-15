@@ -74,7 +74,7 @@ One HTML page, one inline config, one script — the whole installation:
       "language": { "default": "en", "available": ["en", "fr"] }
     }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/apiglow@<version>/dist/app.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
   </body>
 </html>
 ```
@@ -209,4 +209,5 @@ submitter answers for the change.
 ## Contributing · Security · License
 
 Dev setup, rules and the feature→test map: [CONTRIBUTING.md](CONTRIBUTING.md).
+What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 Vulnerabilities: [SECURITY.md](SECURITY.md). License: [MIT](LICENSE).

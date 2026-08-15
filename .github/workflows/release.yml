@@ -1,0 +1,166 @@
+name: Release
+
+# A tag is the only publish trigger: `npm run release <version>` builds the
+# commit, tags it and pushes. docs/release.md.
+on:
+  push:
+    tags: ['v*']
+
+# Never cancelled: a run that may already have published has to finish and say
+# so, and two tags are never in flight at once anyway.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Gates
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      dist_tag: ${{ steps.version.outputs.dist_tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The tag states the intent, package.json is what npm would actually
+      # publish. Disagreement means the tag sits on the wrong commit — the one
+      # failure that would otherwise publish something nobody asked for.
+      - name: Tag and package.json agree
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          [ "$version" = "${GITHUB_REF_NAME#v}" ] || {
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json ($version)"; exit 1; }
+          case "$version" in
+            *-*) echo "dist_tag=next"   >> "$GITHUB_OUTPUT"; echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)   echo "dist_tag=latest" >> "$GITHUB_OUTPUT"; echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Biome (format + lint)
+        run: npx biome ci
+      - name: Cross-cutting invariants
+        run: npm run check:invariants
+      - name: Frozen public surface
+        run: npm run check:surface
+      - name: Version pins
+        run: npm run check:version
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Distribution invariants
+        run: npm run check:dist
+      - name: Baseline syntax (es-check)
+        run: npm run check:syntax
+      # The release body comes from the changelog, so an empty section is a
+      # release that would ship without notes — caught before anything is
+      # published, not after.
+      - name: Release notes
+        run: |
+          node scripts/changelog.mjs section "${{ steps.version.outputs.version }}" > release-notes.md
+          [ -s release-notes.md ] || { echo "::error::no changelog section"; exit 1; }
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+  # Every engine, unlike a push: a release is where the cost of the full matrix
+  # is obviously worth it (docs/cross-browser.md §3.3).
+  e2e:
+    name: End-to-end (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            projects: --project=chromium --project=mobile-chrome
+          - browser: firefox
+            projects: --project=firefox
+          - browser: webkit
+            projects: --project=webkit --project=mobile-safari
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run Playwright
+        run: npx playwright test ${{ matrix.projects }}
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: [gate, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm trusted publishing: the OIDC token replaces the access token, and
+      # the provenance attestation is signed from it. No secret exists to leak.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # Trusted publishing needs npm 11.5.1+, newer than what the Node image
+      # bundles. Deliberately no `registry-url`: it would write an .npmrc
+      # expecting a token that must not exist.
+      - run: npm install -g npm@latest
+      - run: npm ci
+      # `prepublishOnly` builds dist/ — the tarball is never assembled from a
+      # stale one.
+      - run: npm publish --tag ${{ needs.gate.outputs.dist_tag }} --provenance
+
+  verify:
+    name: Install it like a reader
+    needs: [gate, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-release.mjs ${{ needs.gate.outputs.version }}
+
+  announce:
+    name: GitHub Release
+    needs: [gate, publish, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag \
+            ${{ needs.gate.outputs.prerelease == 'true' && '--prerelease' || '--latest' }}

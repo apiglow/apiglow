@@ -69,9 +69,13 @@ load nothing under `tests/`, and the e2e fixture pages load nothing under
 `demo/`, `docs-pages/` and `tests/e2e/fixtures/` — so `docs/` and the rest of
 the repo are not fetchable from the demo origin.
 
-`demo/cdn-install.html` hardcodes `/npm/apiglow@<version>/` the way a real
+`demo/cdn-install.html` hardcodes `/npm/apiglow@0.1.0/` the way a real
 installation would; `preview:cdn` refuses to start when that version drifts
-from `package.json`.
+from `package.json`, and `npm run sync:version` is what keeps it — and every
+other pin a reader could copy — in step. The e2e fixtures load the same
+tarball through `/npm/apiglow@current/`, an alias that never moves: they
+exercise the app, not the install, and a version bump must not turn thirty
+host pages into 404s.
 
 ## Project structure
 
@@ -197,8 +201,26 @@ every push to `main`, in two parallel jobs:
   tarball; on failure the HTML report (traces included) is uploaded as an
   artifact
 
-Coverage is informational: reported, never a gate. There is deliberately no
-publish or release job.
+Coverage is informational: reported, never a gate.
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs on a
+`v*` tag and on nothing else: the same gates plus the full browser matrix,
+then the npm publish, then a check that installs the published version from
+jsDelivr in a real browser, then the GitHub Release. A red gate publishes
+nothing, so a failed tag costs a `git tag -d` and no version.
+[`docs/release.md`](docs/release.md) is the whole procedure.
+
+## Changelog
+
+A change a user could notice — a feature, a fix, a behavior that moved, a
+config key added or renamed — adds its line under `## [Unreleased]` in
+[`CHANGELOG.md`](CHANGELOG.md), **in the same commit**. Written then, while
+the context is fresh, it says what a reader gains; written at release time
+from the git log, it says what a developer did.
+
+Nothing else goes in: no refactors, no test-only changes, no dependency bumps
+without a user-visible effect. `npm run release` refuses to run on an empty
+`Unreleased` section, and promotes it into the numbered one.
 
 ## Documentation: state, never history
 
@@ -208,6 +230,11 @@ only history. Concretely, in every tracked file:
 - **No calendar dates** on decisions, statuses, audits or measurements. A
   date is allowed only when it is product data (a `sunset` header in a
   fixture, an upstream release note quoted as such).
+- **One exception, and only one: `CHANGELOG.md`.** A changelog is history by
+  definition, and the date on a version is what tells a reader whether the
+  project shipped last month or three years ago — the first thing anyone
+  checks before installing. It carries dated version sections and nothing
+  else; no other tracked file may follow its example.
 - **No process narration**: no session/phase tables with progress columns,
   no "supersedes / was previously / moved from X", no embedded commit
   hashes, no named runs of internal tooling.
