@@ -1,4 +1,12 @@
+import { readFileSync } from 'node:fs'
 import { expect } from '@playwright/test'
+
+// The bundle names itself in the footer, the About dialog and the diagnostics.
+// Read here rather than spelled out in the specs: a literal turns every version
+// bump into a handful of red tests that have nothing to say.
+const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+export const APP_NAME = pkg.name
+export const APP_VERSION = pkg.version
 
 export const APP_PAGE = '/tests/e2e/fixtures/app.html'
 export const THEMES_PAGE = '/tests/e2e/fixtures/app-themes.html'

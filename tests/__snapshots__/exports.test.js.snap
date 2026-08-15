@@ -80,10 +80,6 @@ host = api.example.com
 exports[`HAR 1.2 export > full entry 1`] = `
 {
   "log": {
-    "creator": {
-      "name": "apiglow",
-      "version": "0.1.0",
-    },
     "entries": [
       {
         "cache": {},

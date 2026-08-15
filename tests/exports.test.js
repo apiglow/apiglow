@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { curlFromEntry, toCurl } from '../src/export/curl.js'
 import { toDebugReport } from '../src/export/debug.js'
@@ -201,7 +202,14 @@ describe('HAR 1.2 export', () => {
   const timeOf = (entry) => toHar(entry).log.entries[0].time
 
   it('full entry', () => {
-    expect(toHar(getEntry)).toMatchSnapshot()
+    const { creator, ...log } = toHar(getEntry).log
+    // Kept out of the snapshot and checked against package.json instead: the
+    // creator block names the running build, so freezing it would turn every
+    // version bump into a snapshot diff — and a stale literal here is exactly
+    // how the export came to claim a version it was not.
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    expect(creator).toEqual({ name: pkg.name, version: pkg.version })
+    expect({ log }).toMatchSnapshot()
   })
 
   it('separates the wait for headers from the receipt of the body', () => {

@@ -4,7 +4,7 @@
 // empty, or a version that reads "undefined", is a compliance defect, not a
 // cosmetic one.
 import { expect, test } from '@playwright/test'
-import { APP_PAGE, gotoApp } from './helpers.js'
+import { APP_NAME, APP_PAGE, APP_VERSION, gotoApp } from './helpers.js'
 
 const footer = (page) => page.locator('footer')
 const dialog = (page) => page.locator('about-dialog .modal-box')
@@ -17,14 +17,14 @@ async function openAbout(page) {
 test('the footer names the tool and its version', async ({ page }) => {
   await gotoApp(page)
   // The tool's own name, not the host's product name, which stays in the header.
-  await expect(footer(page)).toContainText('Powered by apiglow v0.1.0')
+  await expect(footer(page)).toContainText(`Powered by ${APP_NAME} v${APP_VERSION}`)
   await expect(page.locator('header')).toContainText('E2E Docs')
 })
 
 test('About states the license, what it reads, and what it bundles', async ({ page }) => {
   await gotoApp(page)
   await openAbout(page)
-  await expect(dialog(page)).toContainText('v0.1.0')
+  await expect(dialog(page)).toContainText(`v${APP_VERSION}`)
   await expect(dialog(page)).toContainText('MIT — Copyright (c) 2026 Jeremy Perret')
   await expect(dialog(page)).toContainText('OpenAPI 3.0.x · 3.1.x · 3.2.x')
   await expect(dialog(page)).toContainText('Overlay 1.1')
@@ -86,7 +86,7 @@ test('the footer speaks the active language', async ({ page }) => {
   await page.locator('lang-switcher summary').click()
   await page.locator('lang-switcher li button', { hasText: 'fr' }).first().click()
   await page.waitForLoadState()
-  await expect(footer(page)).toContainText('Propulsé par apiglow v0.1.0')
+  await expect(footer(page)).toContainText(`Propulsé par ${APP_NAME} v${APP_VERSION}`)
   await footer(page).getByRole('button', { name: 'À propos' }).click()
   await expect(dialog(page)).toContainText('Composants open source')
   await expect(dialog(page)).toContainText('coloration syntaxique')

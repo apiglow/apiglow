@@ -1,7 +1,7 @@
 // End-to-end CDN simulation (docs/architecture.md §3):
 // 1. build dist/, 2. `npm pack` (the exact tarball that would go to npm),
-// 3. extract, 4. serve the package content under /npm/{name}@{version}/
-//    the way jsDelivr would, plus an allowlist of the repo: demo/,
+// 3. extract, 4. serve the package content under /npm/{name}@{version}/ and
+//    /npm/{name}@current/ the way jsDelivr would, plus an allowlist: demo/,
 //    docs-pages/ and tests/e2e/fixtures/ (the e2e suite runs against this
 //    server). Nothing else is fetchable.
 // Zero npm dependencies: node:http + the system tar.
@@ -16,11 +16,14 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const port = Number(process.env.PORT ?? 4173)
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const cdnPrefix = `/npm/${pkg.name}@${pkg.version}/`
+// Same tarball under a version that never moves. The e2e fixtures pin this one:
+// they exercise the app, not the install, and a bump must not turn thirty host
+// pages into 404s at once. demo/cdn-install.html keeps the real number — being
+// the copy-pasteable install is its whole job.
+const cdnAlias = `/npm/${pkg.name}@current/`
 
-// demo/cdn-install.html hardcodes the versioned CDN URL, the way a real
-// installation would: a version bump silently turns the demo (and every e2e
-// run, which is served this very page) into a 404 unless the page is bumped
-// too. Cheaper to fail here, with the fix spelled out.
+// A version bump silently turns the demo page into a 404 unless its <script> is
+// bumped too. Cheaper to fail here, with the fix spelled out.
 function checkDemoVersion() {
   const page = join(root, 'demo/cdn-install.html')
   const html = readFileSync(page, 'utf8')
@@ -95,8 +98,8 @@ const SERVED_PREFIXES = ['demo/', 'docs-pages/', 'tests/e2e/fixtures/', 'tests/e
 function resolveFile(pathname) {
   // "CDN" URLs are served from the extracted tarball, everything else from the
   // repo allowlist.
-  if (pathname.startsWith(cdnPrefix)) {
-    return { base: packageDir, rel: pathname.slice(cdnPrefix.length) }
+  for (const prefix of [cdnPrefix, cdnAlias]) {
+    if (pathname.startsWith(prefix)) return { base: packageDir, rel: pathname.slice(prefix.length) }
   }
   // Normalized before the allowlist check, so `demo/../docs/x` is judged as
   // `docs/x`, not by its spelling.

@@ -1,8 +1,18 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vitest/config'
+
+const pkg = JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8'))
 
 // Config kept separate from vite.config.js: tests only target the pure core
 // (docs/architecture.md) and don't need the Tailwind pipeline or lib mode.
 export default defineConfig({
+  // Mirrors vite.config.js: a pure-core module that names the build (the HAR
+  // export's `creator`) must read the same constants under test as in the
+  // bundle, or the test proves nothing about what ships.
+  define: {
+    __APP_NAME__: JSON.stringify(pkg.name),
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   test: {
     include: ['tests/**/*.test.js'],
     // `fake-indexeddb/auto` installs the IndexedDB globals once for every test

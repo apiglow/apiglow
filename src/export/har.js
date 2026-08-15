@@ -29,7 +29,7 @@ export function toHar(entry, { redact = true } = {}) {
   return {
     log: {
       version: '1.2',
-      creator: { name: 'apiglow', version: '0.1.0' },
+      creator: { name: __APP_NAME__, version: __APP_VERSION__ },
       entries: [
         {
           startedDateTime: new Date(entry.timestamp).toISOString(),

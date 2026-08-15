@@ -4,6 +4,7 @@
 // untouched database is worse than no panel.
 import { expect, test } from '@playwright/test'
 import {
+  APP_VERSION,
   clickNavOp,
   closeMobilePanels,
   expectResponded,
@@ -185,7 +186,7 @@ test('diagnostics name the bundle and the schema behind the page', async ({ page
   await gotoApp(page)
   await openSettings(page)
   const diagnostics = panel(page).locator('dl')
-  await expect(diagnostics).toContainText('0.1.0')
+  await expect(diagnostics).toContainText(APP_VERSION)
   await expect(diagnostics).toContainText('e2e-api.json')
   // Single-spec install: no spec line to leave empty.
   await expect(diagnostics).not.toContainText('Spec')
