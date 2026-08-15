@@ -5,6 +5,12 @@
 // Two spellings are deliberately left alone:
 // - `@current`, the unmoving alias the e2e fixtures load (scripts/preview-cdn.mjs);
 // - CHANGELOG.md, where a URL under an old heading documents that old version.
+//
+// Prose (`.md`) only ever names a released version: a `-rc` is a rehearsal
+// nobody should be told to install, and the README is a shop window. The host
+// pages follow `package.json` whatever it says — `preview:cdn` serves exactly
+// that version and refuses to start when the demo page disagrees, so an
+// unsynced prerelease there would take the whole e2e suite down with it.
 import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -27,8 +33,11 @@ if (tracked.status !== 0) {
 const drifted = []
 const rewritten = []
 
+const prerelease = pkg.version.includes('-')
+
 for (const file of tracked.stdout.split('\n').filter(Boolean)) {
   if (EXCLUDED.includes(file) || !EXTENSIONS.some((ext) => file.endsWith(ext))) continue
+  if (prerelease && file.endsWith('.md')) continue
   const path = join(root, file)
   const before = readFileSync(path, 'utf8')
   const after = before.replace(pin, (match, head, version, tail) =>

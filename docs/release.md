@@ -74,11 +74,18 @@ section — it rehearses the notes of the version it precedes, and quotes them.
 
 `package.json` is the only place a version is written by hand.
 [`sync-version.mjs`](../scripts/sync-version.mjs) rewrites every
-`/npm/apiglow@…/` pin in every tracked file from it — the README snippet, the
+`/npm/apiglow@` pin in every tracked file from it — the README snippet, the
 demo install page, the docs — and `npm run check:version` fails CI when one
 has drifted. Two spellings are left alone on purpose: `@current`, the unmoving
 alias the e2e fixtures load from the CDN simulation, and `CHANGELOG.md`, where
 a URL under an old heading documents that old version.
+
+Prose and host pages part company on prereleases. A `.md` file only ever names
+a released version — the README is a shop window, and nobody should be told to
+install a rehearsal. The host pages follow `package.json` whatever it says,
+because `preview:cdn` serves exactly that version and refuses to start when
+`demo/cdn-install.html` disagrees: leaving them behind during an `-rc` would
+take the whole e2e suite down with it.
 
 Inside the bundle the version comes from the same source: Vite defines
 `__APP_VERSION__` from `package.json`, which is what the footer, the About
