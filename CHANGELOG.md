@@ -10,6 +10,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-08-15
+
 ### Added
 
 - Interactive API documentation generated in the reader's browser from an
@@ -47,4 +49,5 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 - Keyboard-operable interface throughout, with focus management, live regions
   and an automated accessibility sweep in continuous integration.
 
-[Unreleased]: https://github.com/apiglow/apiglow/commits/main
+[Unreleased]: https://github.com/apiglow/apiglow/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/apiglow/apiglow/releases/tag/v0.1.0

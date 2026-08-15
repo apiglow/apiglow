@@ -1,6 +1,6 @@
 {
   "name": "apiglow",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0",
   "description": "Interactive API documentation generated at runtime from an OpenAPI schema — single-script CDN install.",
   "homepage": "https://apiglow.dev",
   "type": "module",
