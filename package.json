@@ -5,7 +5,7 @@
   "homepage": "https://apiglow.dev",
   "type": "module",
   "license": "MIT",
-  "author": "jeje",
+  "author": "Jeremy Perret <jeremy@devster.org>",
   "keywords": [
     "openapi",
     "api-documentation",
