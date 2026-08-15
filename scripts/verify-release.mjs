@@ -43,17 +43,23 @@ async function waitFor(url, what, timeoutMs = 300_000) {
 await waitFor(`https://registry.npmjs.org/${pkg.name}/${version}`, 'the npm registry')
 await waitFor(`${cdn}/dist/app.js`, 'jsDelivr')
 
-// The published bin, run the way a reader would reach it.
+// Host page and schema served from a directory of their own: the app is the
+// only thing coming from the CDN, so anything that breaks is the package's.
+const dir = mkdtempSync(join(tmpdir(), 'apiglow-verify-'))
+
+// The published bin, run the way a reader would reach it — from a directory
+// that is not this repository. Run from the checkout, npx reads a package.json
+// named `apiglow`, believes the project is already at hand, looks for a binary
+// in its node_modules and gives up without ever fetching the published one.
 console.log(`→ npx ${pkg.name}@${version} --help`)
-const cli = spawnSync('npx', ['--yes', `${pkg.name}@${version}`, '--help'], { encoding: 'utf8' })
+const cli = spawnSync('npx', ['--yes', `${pkg.name}@${version}`, '--help'], {
+  cwd: dir,
+  encoding: 'utf8',
+})
 if (cli.status !== 0) {
   console.error(`✖ npx ${pkg.name}@${version} failed:\n${cli.stderr}`)
   process.exit(1)
 }
-
-// Host page and schema served from a directory of their own: the app is the
-// only thing coming from the CDN, so anything that breaks is the package's.
-const dir = mkdtempSync(join(tmpdir(), 'apiglow-verify-'))
 writeFileSync(
   join(dir, 'index.html'),
   `<!doctype html>
