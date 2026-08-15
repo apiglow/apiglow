@@ -77,17 +77,23 @@ if (git('rev-parse', 'HEAD') !== git('rev-parse', 'origin/main')) {
 }
 if (git('tag', '--list', tag)) die(`tag ${tag} already exists`)
 
-if (version !== pkg.version && !isNewer(version, pkg.version)) {
-  die(`${version} is not newer than the current ${pkg.version}`)
-}
-
-console.log(`→ npm view ${pkg.name}@${version}`)
-const published = run('npm', ['view', `${pkg.name}@${version}`, 'version'], {
+// The floor is what the registry holds, never package.json: a number prepared
+// locally and never shipped commits nobody, and stepping back from it to
+// rehearse it as an `-rc` is exactly the intended move — `0.1.0-rc.1` precedes
+// `0.1.0` in semver, so a floor read from the working tree would forbid its own
+// rehearsal.
+console.log(`→ npm view ${pkg.name} versions`)
+const registry = run('npm', ['view', pkg.name, 'versions', '--json'], {
   capture: true,
   allowFailure: true,
 })
-if (published.ok && published.out) {
+const published = registry.ok && registry.out ? [JSON.parse(registry.out)].flat() : []
+if (published.includes(version)) {
   die(`${pkg.name}@${version} is already on npm`, 'npm versions are immutable — pick the next one')
+}
+const highest = published.reduce((max, v) => (isNewer(v, max) ? v : max), published[0])
+if (highest && !isNewer(version, highest)) {
+  die(`${version} is not newer than ${highest}, the highest version on npm`)
 }
 
 // --- the release commit -----------------------------------------------------

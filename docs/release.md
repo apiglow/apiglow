@@ -17,9 +17,12 @@ happen before a tag exists, and refuses to continue at the first thing that is
 not right:
 
 1. **Preconditions** — on `main`, clean working tree, in step with
-   `origin/main`, no such tag yet, the version newer than the current one and
-   absent from the registry (npm versions are immutable; a number is spent the
-   moment it is published).
+   `origin/main`, no such tag yet, and the version both absent from the registry
+   and newer than the highest version published there (npm versions are
+   immutable; a number is spent the moment it is published). The floor is the
+   registry, never `package.json`: a number prepared locally and never shipped
+   commits nobody, and since `0.1.0-rc.1` precedes `0.1.0` in semver, a floor
+   read from the working tree would forbid the very rehearsal it exists for.
 2. **Changelog** — the `Unreleased` section becomes `## [x.y.z] — <date>`, a
    fresh empty `Unreleased` takes its place, and the comparison links at the
    bottom of the file are rebuilt. An empty section stops the release: a
