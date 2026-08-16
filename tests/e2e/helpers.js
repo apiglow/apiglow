@@ -429,10 +429,7 @@ export async function expectFeatureUnreachable(page, checklist) {
 
   await open(page)
   for (const query of checklist.search) {
-    // One visible opener per viewport: the header's field from lg up, the
-    // drawer's trigger below — the role query finds whichever is live.
-    await openDrawerIfMobile(page)
-    await page.getByRole('button', { name: /Search the docs/ }).click()
+    await openSearch(page)
     const input = page.locator('search-palette input[type="search"]')
     await input.fill(query)
     await expect(page.locator('search-palette')).not.toContainText(query)

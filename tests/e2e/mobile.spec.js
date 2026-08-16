@@ -71,8 +71,11 @@ test('a scroll the page did on its own leaves the FAB alone', async ({ page }) =
 // from the emulated phone, not from the viewport.
 test('the keyboard hints stay off a touch device', async ({ page }) => {
   await page.goto(`${APP_PAGE}#/op/listPets`)
-  await menuBtn(page).click()
-  const chip = drawer(page).locator('.api-kbd-hint')
+  // The bar holds both search triggers at all times and shows one: below md
+  // the icon, above it the field carrying the chip. Counted first: `toBeHidden`
+  // is also true of an element that is not there, and the point is that the
+  // chip exists and is withheld.
+  const chip = page.locator('header .api-kbd-hint')
   await expect(chip).toHaveCount(1)
   await expect(chip).toBeHidden()
 

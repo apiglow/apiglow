@@ -10,14 +10,44 @@
 // published through `changesFor()`; the current operation id is written by the
 // router, so it stays there and arrives as a callback, read on each use.
 import { appMenu } from '../components/app-menu.js'
-import { el, iconButton, text } from '../components/dom.js'
-import { IMPORT_SVG } from '../components/icons.js'
+import { el, icon, iconButton, text } from '../components/dom.js'
+import { CLOCK_SVG, IMPORT_SVG, WARNING_SVG_SM } from '../components/icons.js'
 import { resolveLanguageChoice } from '../components/lang-switcher.js'
 import { resolveThemeChoice } from '../components/theme-switcher.js'
 import { t } from '../i18n/index.js'
 import { diffOperations, FINGERPRINT_FORMAT, fingerprintRun } from '../openapi/diff.js'
 import { readSchemaSnapshot, writeSchemaSnapshot } from '../storage/schema-snapshot.js'
-import { historyIcon } from './header.js'
+
+// What the two document-status badges are made of (§5.16). Amber, next to the
+// brand, and permanent for as long as what is on screen diverges from what the
+// API published — that divergence is exactly what a reader forgets.
+//
+// The label is painted only from xl, where the naming zone has the ~165 px it
+// costs; below that the glyph carries it alone. That threshold is measured, not
+// chosen: the zone splits the bar's leftover space with the acting zone, so a
+// labelled badge next to a brand and a spec selector only fits past 1280 px —
+// and two of them (schema changed AND patched locally) only past 1500. Painting
+// them sooner does not make them readable, it squeezes the brand out.
+//
+// The name stays whole in the accessible name and the tooltip at every width,
+// so the badge is never silent — only quiet (user-overlay.md decision 3).
+// `min-w-0` with a truncating label is the floor under all of it: the zone is
+// the one that yields, and a button that cannot shrink would paint over its
+// neighbour instead.
+function statusBadge(label) {
+  const text_ = el('span', 'hidden truncate xl:inline', text(label))
+  text_.dataset.statusLabel = ''
+  const button = el(
+    'button',
+    'btn btn-sm btn-warning btn-soft gap-1.5 min-w-0 shrink-[3] max-xl:btn-square hidden',
+    icon(WARNING_SVG_SM, 'shrink-0'),
+    text_,
+  )
+  button.type = 'button'
+  button.setAttribute('aria-label', label)
+  button.title = label
+  return button
+}
 
 // Local schema diff (Bump.sh-changelog style, no backend): "Schema
 // changed" badge when the loaded schema differs from the last snapshot seen
@@ -29,8 +59,7 @@ import { historyIcon } from './header.js'
 function createChangelog({ model, nav, doc, byId, snapshotKey, currentOpId, whenIdle }) {
   let schemaChanges = null
   const node = document.createElement('schema-changelog')
-  const button = el('button', 'btn btn-sm btn-warning btn-soft hidden', text(t('changelog.badge')))
-  button.type = 'button'
+  const button = statusBadge(t('changelog.badge'))
   button.addEventListener('click', () => node.open())
   // Fingerprints computed off the critical path: the IndexedDB read is
   // asynchronous, but it can resolve before the first paint — without the
@@ -130,15 +159,10 @@ export function createToolbar({
   historyList.envStore = envStore
   historyList.model = model
   historyList.requestCredentials = requestCredentials
-  // Labels collapsed below sm: the header already carries 5 tools + the hamburger.
-  const historyBtn = el(
-    'button',
-    'btn btn-sm btn-ghost gap-1.5 max-sm:btn-square',
-    historyIcon(),
-    el('span', 'hidden sm:inline', text(t('history.open'))),
-  )
-  historyBtn.setAttribute('aria-label', t('history.open'))
-  historyBtn.type = 'button'
+  // A square like every other tool in the acting zone: it was the only labelled
+  // one, and one word of text among five glyphs reads as an accident rather
+  // than as emphasis (§5.16).
+  const historyBtn = iconButton('btn btn-sm btn-ghost btn-square', CLOCK_SVG, t('history.open'))
   historyBtn.addEventListener('click', () => historyList.open())
 
   // A single offered theme or language is not a choice: the section is left out
@@ -182,14 +206,14 @@ export function createToolbar({
   settingsPanel.audit = auditEnabled
 
   // "Schema patched locally" (docs/user-overlay.md decision 3): permanent while
-  // a user overlay is applied, and labelled at every breakpoint unlike the
-  // tools around it. The failure mode this feature creates is forgetting that
-  // what you are reading diverges from what the API published — a badge you
-  // have to go looking for would be that same forgetting, one click away.
+  // a user overlay is applied. The failure mode this feature creates is
+  // forgetting that what you are reading diverges from what the API published —
+  // a badge you have to go looking for would be that same forgetting, one click
+  // away.
   let userOverlayBtn = null
   if (diagnostics?.overlays?.user) {
-    userOverlayBtn = el('button', 'btn btn-sm btn-warning btn-soft', text(t('userOverlay.badge')))
-    userOverlayBtn.type = 'button'
+    userOverlayBtn = statusBadge(t('userOverlay.badge'))
+    userOverlayBtn.classList.remove('hidden')
     userOverlayBtn.dataset.userOverlayBadge = ''
     userOverlayBtn.addEventListener('click', () => settingsPanel.open({ focus: 'user-overlay' }))
   }

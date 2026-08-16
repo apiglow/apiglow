@@ -12,6 +12,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- The header holds one line at every screen size, phones included, where it
+  used to take up to three. Theme, language, settings and About moved into one
+  preferences menu at the end of the bar; the environment selector, the
+  history and the request importer stay in reach.
+- Search is now in the header at every width — an icon on a phone, a field
+  from a tablet up. It used to appear only on wide screens, and reaching it on
+  a phone meant opening the navigation drawer first.
 - On a phone the "Try it" button steps out of the way while you scroll down —
   it no longer sits on top of the line you are reading — and comes back as soon
   as you scroll up.

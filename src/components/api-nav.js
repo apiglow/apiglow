@@ -16,7 +16,6 @@ import {
   SPEC_DOC_SVG,
 } from './icons.js'
 import { methodBadgeClass } from './method-colors.js'
-import { searchTrigger } from './search-palette.js'
 
 // Side navigation, two zones (docs-pages.md §1.2): the docs zone — pages,
 // one level of collapsible groups, external links, in declaration order —
@@ -24,8 +23,9 @@ import { searchTrigger } from './search-palette.js'
 // with a fallback group for untagged operations. A top-level docs entry may
 // instead declare `nav: 'bottom'` and join the trailing zone that closes the
 // list below the reference (§2.7). Each entry is a real copyable link
-// (deep-linking). Search is delegated to the Cmd+K palette: the field at the
-// top of the nav is only a trigger (Scalar/Algolia style).
+// (deep-linking). Search is delegated to the Cmd+K palette, and its trigger
+// belongs to the header at every width (§5.16) — this column only holds the
+// collapse-all above its list.
 class ApiNav extends HTMLElement {
   #model = null
   #docs = []
@@ -61,8 +61,6 @@ class ApiNav extends HTMLElement {
     if (this.isConnected) this.#renderList()
   }
 
-  // Wired by the shell: opens the search palette.
-  onOpenSearch = null
   // Wired by the shell: creates an empty local scenario and navigates to it.
   onNewScenario = null
 
@@ -209,12 +207,6 @@ class ApiNav extends HTMLElement {
 
   connectedCallback() {
     this.classList.add('block')
-    // lg:hidden: from lg up the header centers its own trigger — one visible
-    // "Search the docs" button at a time keeps the accessible name unique.
-    const trigger = searchTrigger(
-      () => this.onOpenSearch?.(),
-      'input input-sm w-full cursor-pointer gap-2 text-subtle lg:hidden',
-    )
     this.#collapseBtn = el(
       'button',
       'btn btn-ghost btn-sm btn-square shrink-0 opacity-50 hover:opacity-100',
@@ -227,13 +219,14 @@ class ApiNav extends HTMLElement {
     this.#collapseBtn.addEventListener('click', () => this.#collapseAll())
     this.#listBox = el('div', 'px-3 pb-3')
     // Sticky within the scrollable aside (which carries no padding for this):
-    // the trigger stays visible at the top of the column, the list scrolls below.
-    // From lg up the row holds only the collapse-all button, end-aligned.
+    // the row stays visible at the top of the column, the list scrolls below.
+    // No search trigger of its own — the header carries one at every width
+    // now (§5.16), and one visible "Search the docs" button at a time keeps
+    // the accessible name unique.
     this.replaceChildren(
       el(
         'div',
-        'sticky top-0 z-10 bg-base-100 p-3 flex items-center gap-1 lg:justify-end lg:py-2',
-        trigger,
+        'sticky top-0 z-10 bg-base-100 px-3 py-2 flex items-center justify-end',
         this.#collapseBtn,
       ),
       this.#listBox,

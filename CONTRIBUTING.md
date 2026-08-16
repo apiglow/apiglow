@@ -376,6 +376,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Schema audit strings (one `message` / `why` / `label` per rule, en + fr) | `audit-strings.test.js` | — |
 | Schema audit page: identity, jumps, help, folding by rule | — | `audit.spec.js`, `perf.spec.js` |
 | Host feature switches (`features.audit`, `features.scenarios`, `features.ci`, `features.onboarding`): every entry point closed | — | `audit-disabled.spec.js`, `scenarios-disabled.spec.js`, `first-touch.spec.js` |
+| Header bar: the four zones, one line from 320 px, the search trigger at every width, what the status badges drop and keep (`docs/architecture.md` §5.16) | — | `header.spec.js`, `reflow.spec.js`, `mobile.spec.js` |
 | Themes, languages, lazy i18n | `i18n.test.js`, `i18n-sync.test.js` | `theme-lang.spec.js` |
 | Custom themes (config JSON + host CSS) | `custom-themes.test.js` | `custom-themes.spec.js` |
 | Markdown pages, sanitization (rule 5, one hostile payload per external-HTML path) | — | `sanitize.spec.js`, `navigation.spec.js`, `bootstrap.spec.js` |

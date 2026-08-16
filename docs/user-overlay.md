@@ -35,7 +35,14 @@ browser.
    overlay. The user's fix wins over the host's declarations, which is the
    point: the host published the defect.
 3. **Never silent.** While a user overlay is active, a permanent badge in
-   the header — "schema locally patched", i18n'd — links to the editor.
+   the header — "schema locally patched", i18n'd — links to the editor. It
+   sits with the brand, because what it qualifies is the document the bar
+   names, and it is amber at every width; its label is painted from xl,
+   below which the glyph carries it and the words stay in the accessible
+   name and the tooltip (`architecture.md` §5.16). Permanent is the promise,
+   not painted: a three-word amber button costs a naming zone that a phone
+   does not have, and a badge that pushed the API's own name off the bar
+   would be paid for on every page for a state most sessions never enter.
    The diagnostics block (§5.11) lists the user overlay exactly as it
    lists host overlays: actions applied, `info.description`, every
    warning. The badge is the guard against the failure mode this feature

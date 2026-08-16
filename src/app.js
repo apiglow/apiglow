@@ -97,7 +97,7 @@ import { createSetupLinks } from './shell/setup-links.js'
 import { createSpecExports } from './shell/spec-exports.js'
 import { createSearchPalette } from './shell/search.js'
 import { createToaster } from './shell/toasts.js'
-import { header, headerSearchField } from './shell/header.js'
+import { header, headerSearchButton, headerSearchField } from './shell/header.js'
 import {
   MAIN_ID,
   errorView,
@@ -599,7 +599,6 @@ function appLayout(
       })),
     ],
   })
-  nav.onOpenSearch = () => openSearchPalette()
 
   // Local metrics (docs/architecture.md §5.6): the endpoint's recent-calls
   // strip and the overview's most-used card both read THIS list, so the two
@@ -747,18 +746,14 @@ function appLayout(
       apiVersion: model.info.version,
       navToggle,
       specSwitcher,
-      search: headerSearchField(() => openSearchPalette()),
-      tools: [
-        // Next to the changelog badge: both say something about the schema
-        // itself rather than offering a tool, and they are the two things that
-        // qualify what the page below is showing.
-        changelogBtn,
-        userOverlayBtn,
-        envSwitcher,
-        historyBtn,
-        importBtn,
-        menu,
-      ],
+      // Both say something about the schema itself rather than offering a
+      // tool: they qualify what the page below is showing, so they travel
+      // with the brand that names it.
+      status: [changelogBtn, userOverlayBtn],
+      searchField: headerSearchField(() => openSearchPalette()),
+      searchButton: headerSearchButton(() => openSearchPalette()),
+      tools: [envSwitcher, historyBtn, importBtn],
+      appMenu: menu,
     }),
     el(
       'div',

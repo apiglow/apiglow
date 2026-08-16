@@ -67,7 +67,12 @@ class EnvSwitcher extends HTMLElement {
     const selected = this.#store.selected()
 
     const labelText = selected ? envLabel(selected) : t('env.none')
-    const label = el('span', 'truncate max-w-28 font-normal', text(labelText))
+    // The name goes below sm and the colour carries the environment alone —
+    // which is what it is for, and what the button was already built around
+    // ("red = prod", read without opening the list). Below 640 px the bar has
+    // no 150 px to give a word that a dot already says, and the name stays in
+    // the accessible name and the tooltip either way.
+    const label = el('span', 'max-sm:hidden truncate max-w-28 font-normal', text(labelText))
     label.dataset.envName = ''
     const chevron = icon(CHEVRON_SVG_SM, 'shrink-0')
     const summary = el(
@@ -77,9 +82,10 @@ class EnvSwitcher extends HTMLElement {
       `btn btn-sm gap-2 ${ENV_GRADIENT[selected?.color] ?? ''}`,
       colorDot(selected?.color),
       label,
-      // The base URL only appears from lg onward: the button is capped by
-      // the max-w but the rest of the toolbar (5 non-collapsible
-      // elements) doesn't leave room for it at ~340px below.
+      // The base URL only appears from lg onward, one step after the name
+      // itself: the acting zone shares the bar with a brand and a search
+      // field, and none of the three glyphs beside this button can shrink to
+      // pay for a second line of text (architecture.md §5.16).
       selected?.baseUrl
         ? el(
             'span',
@@ -89,7 +95,10 @@ class EnvSwitcher extends HTMLElement {
         : null,
       chevron,
     )
-    summary.setAttribute('aria-label', t('env.select'))
+    // The selection belongs in the accessible name, not only in the visible
+    // label: below sm the label is gone and the colour that replaces it says
+    // nothing to a screen reader.
+    summary.setAttribute('aria-label', `${t('env.select')} — ${labelText}`)
     // Everything is truncated: hover remains the only way to read a long value.
     summary.title =
       selected?.baseUrl && selected.baseUrl !== labelText

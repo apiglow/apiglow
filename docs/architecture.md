@@ -1552,6 +1552,31 @@ standard size fields (§5.7).
 `src/shell/header.js` composes the bar from parts it is handed already
 resolved — `app.js` stays the only module reading the host config (rule 10).
 
+**Four zones, and the order is the reading**: which document (burger, brand,
+version, spec selector, status badges) · how to find something in it (the
+search trigger) · what to act on it with (environment, history, import) · the
+app itself. A 1 px rule stands between them, and the acting zone is where the
+one coloured control lives — the environment selector, deliberately the only
+pill in the bar, because it is the only control here with consequences (it
+decides where a send goes). Everything else is a square glyph of one size,
+labelled through its tooltip and its accessible name.
+
+**One line, from 320 px to 2560 px** (`header.spec.js`, which is the contract —
+without it "one line" is an opinion). The two flanks split the leftover space
+so the search stays centred, but they yield differently: the naming side may be
+squeezed, the acting side may not, because a glyph has one size and a word does
+not. What goes, in order, as the bar narrows: the API version at lg, the
+status-badge labels at xl, the shortcut chip at lg, the API name at sm — but
+only when a logo can stand in for it — and the environment's name at sm, where
+the colour that identifies it is already doing the work. Nothing that goes is
+lost: each survives in an accessible name, a tooltip, or the home page.
+
+**The search trigger exists at every width**: a field from md up, an icon
+below. It used to start at lg, which left the phone with no search in the bar
+at all and a two-tap path through the navigation drawer — on a documentation
+site, for the control reached for first. Exactly one is rendered at a time; the
+drawer carries none, so the palette's accessible name stays unambiguous.
+
 **The preferences menu** is the one thing in the bar that is about the app
 rather than about the API: the theme section (§5.9), the language section
 (§5.10), then the settings drawer (§5.11) and About (§5.13) as items. A theme

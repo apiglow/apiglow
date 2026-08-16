@@ -7,6 +7,7 @@ import {
   clipboardText,
   gotoApp,
   openDrawerIfMobile,
+  openSearch,
   panelField,
   panelParam,
   tryIt,
@@ -82,9 +83,7 @@ test('Escape closes the palette on the first press, query typed or not', async (
 
 test('palette searches schema property names and markdown page titles', async ({ page }) => {
   await gotoApp(page)
-  await openDrawerIfMobile(page)
-  // One visible trigger per viewport: the header's from lg up, the drawer's below.
-  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await openSearch(page)
   const input = page.locator('search-palette input[type="search"]')
   // "quantity" only appears in the Order schema, the listOrders and createOrder responses
   await input.fill('quantity')

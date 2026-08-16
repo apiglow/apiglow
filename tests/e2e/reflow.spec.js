@@ -8,6 +8,7 @@ import {
   openDrawerIfMobile,
   openEnvManager,
   openHistory,
+  openSearch,
   openSettings,
   openTryItIfMobile,
   panelField,
@@ -234,10 +235,7 @@ test.describe('reflow at 320 px', () => {
 
   test('the search palette holds 320 px', async ({ page }) => {
     await gotoApp(page)
-    // Not `openSearch()`: it reaches for the header's field, which only exists
-    // from lg up — below, the drawer's trigger is the single opener.
-    await openDrawerIfMobile(page)
-    await page.getByRole('button', { name: /Search the docs/ }).click()
+    await openSearch(page)
     const palette = page.locator('search-palette input[type="search"]')
     await palette.fill('pet')
     await expect(page.locator('search-palette a[data-index]').first()).toBeVisible()

@@ -14,6 +14,7 @@ import {
   openDrawerIfMobile,
   openEnvManager,
   openHistory,
+  openSearch,
   openSettings,
   openThemeList,
   openTryItIfMobile,
@@ -474,7 +475,8 @@ test('a webhook send leaves the keyboard on Send, and says how it went', async (
 
 test('the search palette is reachable by keyboard and returns focus on close', async ({ page }) => {
   await gotoApp(page)
-  await openDrawerIfMobile(page)
+  // The bar carries the opener at every width now (§5.16) — a field from md
+  // up, an icon below — so there is no drawer to go through first.
   const opener = page.getByRole('button', { name: /Search the docs/ })
   await opener.focus()
   await page.keyboard.press('Enter')
@@ -497,8 +499,7 @@ test('the search palette is reachable by keyboard and returns focus on close', a
 // dialog has to say to nobody at all.
 test('the live region follows a dialog into the top layer', async ({ page }) => {
   await gotoApp(page)
-  await openDrawerIfMobile(page)
-  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await openSearch(page)
   const dialog = page.locator('search-palette dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.locator('[data-live-region]')).toHaveCount(1)
@@ -511,8 +512,7 @@ test('the live region follows a dialog into the top layer', async ({ page }) => 
 // silence and then opens something that was never named.
 test('the palette names the result the arrows land on', async ({ page }) => {
   await gotoApp(page)
-  await openDrawerIfMobile(page)
-  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await openSearch(page)
   const input = page.locator('search-palette input[type="search"]')
   await input.fill('pet')
   await expect(page.locator('[data-live-region]')).toContainText(/result/)
@@ -537,8 +537,7 @@ test('the palette names the result the arrows land on', async ({ page }) => {
 test('a reader who asked for less motion gets the state without the movement', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await gotoApp(page)
-  await openDrawerIfMobile(page)
-  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await openSearch(page)
   const box = page.locator('search-palette dialog .modal-box')
   await expect(box).toBeVisible()
   const motion = await box.evaluate((el) => {
@@ -709,8 +708,7 @@ test('the scenario step editor has no accessibility violations', async ({ page }
 
 test('the search palette results have no accessibility violations', async ({ page }) => {
   await gotoApp(page)
-  await openDrawerIfMobile(page)
-  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await openSearch(page)
   await page.locator('search-palette input[type="search"]').fill('pet')
   // The empty palette is already swept above; what matters here is the list it
   // builds from the query — options, active descendant, and the keyboard
