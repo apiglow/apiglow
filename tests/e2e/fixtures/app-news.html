@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- The file form of `announcements` (docs/architecture.md §5.17): the host page
+     names a file, and the operator publishes by editing it alone. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E news file — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Docs" },
+      "language": { "default": "browser", "available": ["en", "fr"] },
+      "announcements": "/tests/e2e/fixtures/e2e-announcements.json"
+    }
+    </script>
+    <script src="/npm/apiglow@current/dist/app.js" type="module"></script>
+  </body>
+</html>

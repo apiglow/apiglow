@@ -23,6 +23,7 @@ const SPEC_KEYS = new Set([
   'url',
   'spec',
   'docsPages',
+  'announcements',
   'environments',
   'scenarios',
   'hide',
@@ -135,6 +136,7 @@ function emptySpec(id, { title = null, url = null, spec = null } = {}) {
     url,
     spec,
     docsPages: [],
+    announcements: [],
     environments: [],
     scenarios: [],
     hide: [],
@@ -212,6 +214,12 @@ export function normalizeSpecsConfig(openapi = {}) {
       // the shell turns a string into entries before anything reads it.
       docsPages:
         Array.isArray(raw.docsPages) || typeof raw.docsPages === 'string' ? raw.docsPages : [],
+      // Same two carriers as the pages above, carried as declared for the same
+      // reason: the shell resolves a URL into entries before anything reads it.
+      announcements:
+        Array.isArray(raw.announcements) || typeof raw.announcements === 'string'
+          ? raw.announcements
+          : [],
       environments: Array.isArray(raw.environments) ? raw.environments : [],
       scenarios: Array.isArray(raw.scenarios) ? raw.scenarios : [],
       hide: Array.isArray(raw.hide) ? raw.hide : [],
@@ -358,6 +366,14 @@ export function resolveSpecConfig(config, spec, { multi = false } = {}) {
     // The manifest form (docs-pages.md §2.2) is resolved upstream by the shell
     // — by the time we get here both sides are plain arrays of raw entries.
     docsPages: mergeDocsPages(config.docsPages, spec.docsPages, warnings),
+    // Announcements accumulate, root first, like the overlays below: a
+    // platform-wide maintenance window and "this API is deprecated" are both
+    // true at once, and neither is a version of the other. The URL form is
+    // resolved by the shell, which replaces this list once its files are in.
+    announcements: [
+      ...(Array.isArray(config.announcements) ? config.announcements : []),
+      ...(Array.isArray(spec.announcements) ? spec.announcements : []),
+    ],
     environments: mergeEnvironments(config.environments, spec),
     scenarios: resolveScenarios(config.scenarios, spec, multi, warnings),
     tryIt: { ...config.tryIt, ...spec.tryIt },

@@ -83,6 +83,9 @@ import {
   resolveSpecConfig,
   SpecConfigError,
 } from './specs.js'
+import { normalizeAnnouncements, rememberDismissed, visibleAnnouncements } from './announcements.js'
+import { announcementBar } from './components/announcement-bar.js'
+import { loadAnnouncementSources } from './shell/announcements.js'
 import { buildOperationIndex, setOperationIndex } from './docs/operations.js'
 import { flattenDocsOutline, mergeDocsPages, resolveDocsOutline } from './docs/pages.js'
 import { loadDocsPageSource } from './components/docs-source.js'
@@ -173,6 +176,11 @@ function loadErrorMessage(err) {
       return t('error.load.invalidSchema')
   }
 }
+
+// Announcements the reader has closed (architecture §6.2). Global rather than
+// per spec: the same notice is usually declared once at the root and shown on
+// every spec's page, and re-opening it on a spec switch would be nagging.
+const ANNOUNCEMENTS_DISMISSED = 'announcements.dismissed'
 
 // App layout: header + side nav + content + try-it, each with its own scroll.
 // specsConfig/activeSpec: output of
@@ -747,11 +755,31 @@ function appLayout(
     tryItAside,
   )
 
+  // Operator announcements (§5.17). The schedule is read once, here: no timer
+  // re-checks it, so an entry whose window opens while the tab is left open
+  // waits for the next load — which is what a banner is worth on a tab that
+  // lives for days.
+  const announcementWarnings = []
+  const announcements = normalizeAnnouncements(config.announcements, announcementWarnings)
+  for (const warning of announcementWarnings) console.warn('[api-doc]', warning)
+
   const layout = el(
     'div',
     'h-screen flex flex-col bg-base-100 text-base-content',
-    // First tab stop of the document, by tree order.
+    // First tab stop of the document, by tree order — ahead of the
+    // announcements, whose close button must not stand between a keyboard
+    // reader and the skip link.
     skipToContentLink(),
+    announcementBar(
+      visibleAnnouncements(announcements, { dismissed: readPref(ANNOUNCEMENTS_DISMISSED, []) }),
+      {
+        onDismiss: (key) =>
+          writePref(
+            ANNOUNCEMENTS_DISMISSED,
+            rememberDismissed(readPref(ANNOUNCEMENTS_DISMISSED, []), key),
+          ),
+      },
+    ),
     header({
       branding,
       apiVersion: model.info.version,
@@ -1821,6 +1849,16 @@ async function boot() {
     spec: activeSpec?.docsPages,
   })
 
+  // The file form of `announcements` (§5.17), started here and awaited with the
+  // schema for the same reason: a strip inserted after the first paint would
+  // push the whole app down under the reader's eyes. It is a small file next to
+  // the page against a schema round trip that has already started, so in
+  // practice it costs nothing — and its failure costs nothing either.
+  const announcementSources = loadAnnouncementSources({
+    root: rootConfig.announcements,
+    spec: activeSpec?.announcements,
+  })
+
   // Effective config of the active spec. Broken specs config: fall back to
   // the root, solely so the error message displays in the installation's theme
   // and language rather than defaulting to English.
@@ -1898,7 +1936,7 @@ async function boot() {
   }
   root.replaceChildren(loadingView())
   try {
-    const [loaded, docs] = await Promise.all([loadPromise, docsSources])
+    const [loaded, docs, news] = await Promise.all([loadPromise, docsSources, announcementSources])
     // A manifest was named: its entries replace the string the first merge saw
     // and go through the same rule. `null` means the inline form, already
     // merged above.
@@ -1907,6 +1945,9 @@ async function boot() {
       config = { ...config, docsPages: mergeDocsPages(docs.root, docs.spec, warnings) }
       for (const warning of warnings) console.warn('[api-doc]', warning)
     }
+    // A file was named on either side: what it holds replaces the string the
+    // first merge saw, and the two sides accumulate as declared entries do.
+    if (news) config = { ...config, announcements: [...news.root, ...news.spec] }
     root.replaceChildren(
       appLayout(loaded, config, specsConfig, activeSpec, {
         docsError: docs?.error ?? null,

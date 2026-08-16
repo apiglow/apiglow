@@ -270,6 +270,26 @@ test('the host-credentials cartouche has no accessibility violations', async ({ 
   await expectNoViolations(page)
 })
 
+// The announcement strip (§5.17) paints its own text on four alert colors and
+// carries the one control the reader meets before anything else — and it only
+// exists on a page that declares an announcement.
+test('the announcement strip has no accessibility violations', async ({ page }) => {
+  await gotoFixture(page, '/tests/e2e/fixtures/app-announcements.html')
+  const strip = page.locator('[data-announcements]')
+  await expect(strip).toBeVisible()
+  await expectNoViolations(page)
+  // The sweep comes back `incomplete` on every ratio of this page (the theme
+  // paints a background image), so the floor is measured rather than swept —
+  // and measured on the two things the strip adds to a stock alert: a link in
+  // the message, and a code span whose background is a tint of the level's own
+  // text color.
+  for (const inside of ['a', 'code']) {
+    expect(await contrastRatio(strip.locator(inside).first())).toBeGreaterThanOrEqual(
+      CONTRAST_FLOOR,
+    )
+  }
+})
+
 test('history dialog has no accessibility violations', async ({ page }) => {
   await mockApi(page)
   await gotoApp(page)

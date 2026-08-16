@@ -407,6 +407,13 @@ api-nav .menu li > button {
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
+/* The announcement strip (docs/architecture.md §5.17): its message is inline
+   Markdown painted over a solid alert color, where a code span's own base-200
+   background is both foreign and barely readable. currentColor tints it with
+   the level's own text color instead, so one rule covers all four. */
+.api-announcement .md-content code {
+  background: color-mix(in oklab, currentColor 15%, transparent);
+}
 /* API references in prose (docs/docs-pages.md §4.4). An enriched link stays a
    sentence-level link — the badge rides inline with the text, it does not
    turn the phrase into a card. A broken reference is struck through and

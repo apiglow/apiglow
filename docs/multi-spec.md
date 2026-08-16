@@ -55,7 +55,10 @@ comments reference the numbered sections below; renumber with care.
   - **lists of patterns** (`hide`): accumulate — hiding cannot be
     "unhidden". Same rule for `overlays`, where the accumulation order is
     also the application order: the root's overlays run first, the spec's
-    own edit what they produced;
+    own edit what they produced. Same rule again for `announcements`
+    (architecture.md §5.17), where the order is the reading order: a
+    platform-wide maintenance window and "this API is deprecated" are both
+    true at once, and neither is a version of the other;
   - **lone scalars and documents** (`environmentsLocked`,
     `openapi.userOverlay`): replaced if the spec declares them — the
     starting patch is one document per spec (user-overlay.md decision 1),

@@ -156,6 +156,7 @@ Config keys (all optional except one of `openapi.url` / `openapi.spec`):
 | `environments[]` | Default environments: `{ name, baseUrl, color, variables: { key: { value, sensitive } }, defaultHeaders }`. |
 | `environmentsLocked` | `true` freezes the declared environments: no CRUD entry point in the UI, only the selector remains. |
 | `docsPages` | Prose documentation, ordered array **or** a string URL pointing at a JSON manifest `{ "pages": [ … ] }` whose relative `url`s resolve against itself. Three entry kinds: a page `{ slug, url \| content \| contentId, format?, title?, home? }`, a group `{ group, id?, collapsed?, pages[] }` (one level), an external link `{ href, title? }`. A top-level entry of any kind may declare `nav: 'top' \| 'bottom'` (default `top`) to sit above or below the API reference. A page's body is a file (`url`), the text itself (`content`) or the `id` of an element of the host page holding it (`contentId`, typically a `<script type="text/markdown">`) — what the page carries wins over what it would fetch, as `openapi.spec` wins over `openapi.url`. `title` (all kinds) and the three body fields (pages) also accept a per-language map. `home: true` on at most one page makes it the landing view. Array order is nav order. Full contract: [docs-pages.md](docs-pages.md). |
+| `announcements` | Operator announcements shown as a strip above the header: an array of `{ text, level?, dismissible?, startsAt?, endsAt?, id? }` **or** a string URL pointing at a file holding `{ "announcements": [ … ] }` — the form that publishes news without redeploying the host page. `text` is inline Markdown and accepts a per-language map. Overridable per spec by accumulation (§5.17). |
 | `scenarios[]` | Scenarios shipped with the docs — see [scenarios.md](scenarios.md). |
 | `features` | Feature switches: `scenarios` / `audit` / `ci` (on by default, `false` removes the feature entirely — `ci` being the "Automate this scenario" panel of `docs/scenario-handoff.md` §4, and that panel alone: what a declared scenario publishes never depends on it), `onboarding` (off by default, `true` adds the generated "First call" page — §5.5.7). |
 | `branding` | `{ productName, logoUrl }` — the name and the logo the header carries (§7). |
@@ -1589,6 +1590,62 @@ available theme, one available language — is not rendered, and its separator
 goes with it. What a section defers building, the menu triggers on its first
 open: it is the only part that knows it is about to be looked at.
 
+### 5.17 Operator announcements
+
+The strip across the top of the page through which the documentation's
+operator says what the schema cannot: a maintenance window, a deprecation
+date, a version that just shipped. `announcements` in the config, rendered by
+`src/components/announcement-bar.js` from the entries
+`src/announcements.js` normalizes.
+
+**Two carriers, and the second is the feature.** An array in the config covers
+the notice that never changes. A string URL — `announcements:
+'/news.json'`, a file holding `{ "announcements": [ … ] }` — covers the one
+that does: the operator publishes by editing one small file, with no redeploy
+of the host page and no rebuild. Both sides of a multi-spec install may name
+one; the file replaces what the config declared, and the two sides accumulate
+the same way inline entries do.
+
+**An entry**: `text` (inline Markdown, string or per-language map, sanitized
+like every other external content — rule 5), `level` (`info` · `success` ·
+`warning` · `error`, mapped to the daisyUI alert of the same name),
+`dismissible` (true unless declared false), `startsAt` / `endsAt` (ISO
+instants), and an optional `id`.
+
+**The schedule is what makes it an operations tool** rather than a config key:
+a maintenance window declared a week ahead publishes and retires itself, so
+nobody has to remember to take the banner down at 6am on a Sunday. The window
+is read at render and no timer re-checks it: an entry whose window opens while
+the tab is left open waits for the next load, which is what a banner is worth
+on a tab that lives for days. An unreadable date widens the window instead of
+closing it: a notice nobody can see is the one failure the operator cannot
+notice either.
+
+**Dismissal is remembered per announcement**, under the declared `id` or,
+without one, a fingerprint of the declared text — so editing the message shows
+it again to everyone (which is what an edit usually means) and declaring an
+`id` buys the opposite, a typo fix that re-opens nothing. The key is the same
+in every language, because it is the declared field that is fingerprinted, not
+the sentence the reader saw. `dismissible: false` is how a notice that must
+stay on screen ignores what a reader has already waved away. The stored set is
+bounded like every other (§6.2).
+
+**Where it sits, and why**: first in the layout, above the header, outside the
+three scrolling columns — so it is read before the API and does not scroll out
+from under a reader who is deep in an endpoint. Second in the tree, though:
+the skip link stays the first tab stop, because a keyboard reader must not
+have to walk past a close button to reach it. The strip is a named landmark
+(`aria-label`), its close button carries an i18n'd name, and closing one hands
+focus to the next notice still offering a button — or, with none left, drops
+the strip and lets focus fall to the top of the document it was already at.
+
+**Nothing about it is allowed to cost the reader.** A named file is fetched
+alongside the schema, never after the first paint (a strip inserted late would
+push the whole app down), and a file that does not load is logged and dropped:
+unlike a docs manifest, whose failure leaves a visible hole in the navigation,
+an announcement nobody receives is invisible by nature, and an error banner
+about the missing banner would be worse than silence.
+
 ## 6. Storage model
 
 Two mechanisms, no dual paths (§14.4):
@@ -1655,6 +1712,7 @@ nothing about them is persisted: only a name and a size ever reach storage
 | `code-lang` | global | selected language of the docs-page code tabs (§5.8) | single value |
 | `spec.selected` | global | active spec id (multi-spec) | single value |
 | `layout.navWidth` / `layout.tryItWidth` | global | resized column widths | single value each |
+| `announcements.dismissed` | global | keys of the announcements the reader has closed (§5.17) | 50 keys, oldest dropped |
 | `environments` | per spec | environments (name, baseUrl, variables, default headers) | user-authored or link-authored; the link is capped (below) |
 | `environment.selected` | per spec | active environment id | single value |
 | `tryit.headers` | per spec | remembered header values | 50 names (FIFO), 8 KB per value |
@@ -1751,6 +1809,7 @@ imports the shell and never sees the host config directly.
 │   ├── search/             # Cmd+K index
 │   ├── docs/               # docs-pages model: manifest, markdown extensions, sections, vars
 │   ├── theming/            # custom theme validation/generation (§5.9, pure)
+│   ├── announcements.js    # operator announcements: normalization, schedule (§5.17, pure)
 │   ├── credits.js          # third-party components shipped in the bundle (§5.13)
 │   ├── router.js           # hash routing
 │   ├── specs.js            # multi-spec config normalization

@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Operator announcements declared inline (docs/architecture.md §5.17): the
+     four cases that differ in behaviour — a dismissible notice carrying a link,
+     a pinned one, and the two ends of the schedule window. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E announcements — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "branding": { "productName": "E2E Docs" },
+      "announcements": [
+        {
+          "id": "v2-launch",
+          "text": "**v2 is live** — read the [migration guide](https://example.test/migrate) before `2026-12-01`.",
+          "level": "info"
+        },
+        {
+          "id": "outage",
+          "text": "Payments are degraded.",
+          "level": "warning",
+          "dismissible": false
+        },
+        { "id": "over", "text": "Last year's maintenance.", "endsAt": "2020-01-01T00:00:00Z" },
+        { "id": "later", "text": "Next decade's maintenance.", "startsAt": "2099-01-01T00:00:00Z" }
+      ]
+    }
+    </script>
+    <script src="/npm/apiglow@current/dist/app.js" type="module"></script>
+  </body>
+</html>

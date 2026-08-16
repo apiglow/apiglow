@@ -11,6 +11,7 @@ import {
 // when the host config declares nothing.
 const NO_OVERRIDES = {
   docsPages: [],
+  announcements: [],
   environments: [],
   scenarios: [],
   hide: [],
@@ -300,6 +301,24 @@ describe('resolveSpecConfig — effective config of the active spec', () => {
     const out = resolve({ environments: [{ name: 'Sandbox', baseUrl: 'https://spec.test' }] })
     expect(out.environments.map((e) => e.name)).toEqual(['Prod', 'Sandbox'])
     expect(out.environments[1].baseUrl).toBe('https://spec.test')
+  })
+
+  // A platform-wide notice and an API-specific one are both true at once:
+  // neither side replaces the other, and the root's comes first.
+  it('accumulates announcements, root first', () => {
+    const root = { ...ROOT, announcements: [{ text: 'Migration on Sunday' }] }
+    const out = resolveSpecConfig(root, spec({ announcements: [{ text: 'v1 is deprecated' }] }))
+    expect(out.config.announcements).toEqual([
+      { text: 'Migration on Sunday' },
+      { text: 'v1 is deprecated' },
+    ])
+  })
+
+  // The file form reaches here as the string it was declared as: it is the
+  // shell that turns it into entries, once fetched.
+  it('leaves the file form to the shell rather than merging a URL', () => {
+    const root = { ...ROOT, announcements: '/news.json' }
+    expect(resolveSpecConfig(root, spec({})).config.announcements).toEqual([])
   })
 
   it('accumulates hiding patterns: a pattern cannot "unhide"', () => {

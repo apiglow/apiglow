@@ -1,0 +1,9 @@
+{
+  "announcements": [
+    {
+      "id": "release-notes",
+      "text": { "en": "Release 2.4 shipped today.", "fr": "La version 2.4 est sortie." },
+      "level": "success"
+    }
+  ]
+}

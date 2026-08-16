@@ -38,8 +38,9 @@ window.API_DOC_CONFIG = {
     //     `null` (so a spec can disable the root proxy).
     //   • lists of named entities (`docsPages` by slug, `environments` by
     //     name, `scenarios`): merge by identifier, the spec wins.
-    //   • `hide` and `overlays`: root + spec ACCUMULATE (hiding cannot be
-    //     "unhidden"; overlays apply in that order, root first).
+    //   • `hide`, `overlays` and `announcements`: root + spec ACCUMULATE
+    //     (hiding cannot be "unhidden"; overlays apply in that order, root
+    //     first; announcements read in that order).
     //   • `environmentsLocked` and `userOverlay`: replaced if declared.
     // `scenarios` is the exception: in multi-spec, ONLY the entry's own
     // declarations count (a scenario references operations from one specific
@@ -264,6 +265,48 @@ window.API_DOC_CONFIG = {
     // A group travels whole, so `nav` inside one is ignored.
     { slug: 'support', title: 'Support', url: '/docs/support.md', nav: 'bottom' },
     { title: 'Status page', href: 'https://status.example.com', nav: 'bottom' },
+  ],
+
+  // The strip across the top of the page: what YOU have to say, above what the
+  // schema says — a maintenance window, a deprecation date, a version that just
+  // shipped (docs/architecture.md §5.17). Overridable per spec, by accumulation.
+  //
+  // `text` is the message, as inline Markdown: bold, code and above all the
+  // link to the incident page or the migration guide, sanitized like every
+  // other external content. It also accepts a per-language map,
+  // { en: '…', fr: '…' }, like a docs page title.
+  // `level`   — 'info' (default) | 'success' | 'warning' | 'error'.
+  // `dismissible` — false pins the notice: no close button, and it comes back
+  //             for readers who had already closed it. Default true, and a
+  //             dismissal is remembered.
+  // `startsAt` / `endsAt` — ISO instants. THE POINT of declaring them: a
+  //             maintenance window written a week ahead publishes and retires
+  //             itself, so nobody has to take the banner down at 6am on a
+  //             Sunday. Read at page load, in the reader's own clock.
+  // `id`      — optional, and it decides what an edit does. Without one, the
+  //             dismissal follows the text: change the message and every reader
+  //             sees it again (usually what you want). With one, the message is
+  //             free to change under a stable identity — fix a typo without
+  //             re-opening the banner on everybody's screen.
+  //
+  // — OR — a string URL, and this is the form that makes it a news channel:
+  //   announcements: '/news.json',
+  // pointing at a file holding { "announcements": [ …same entries… ] }. Your
+  // ops team publishes by editing that one file, with no redeploy of this page.
+  // A file that fails to load costs the reader nothing: no strip, no error.
+  announcements: [
+    {
+      id: 'v2-launch',
+      text: '**v2 is live** — see the [migration guide](https://example.com/migrate).',
+      level: 'info',
+    },
+    {
+      text: 'Scheduled maintenance Sunday, 02:00–06:00 UTC.',
+      level: 'warning',
+      dismissible: false,
+      startsAt: '2026-09-01T00:00:00Z',
+      endsAt: '2026-09-07T06:00:00Z',
+    },
   ],
 
   // "Was this page helpful?" on every docs page, posting the reader's verdict

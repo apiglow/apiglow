@@ -30,6 +30,10 @@ const CONFIG_DEFAULTS = {
   // (create/edit/delete), the selector stays available.
   environmentsLocked: false,
   docsPages: [],
+  // Operator announcements (§5.17): the strip at the top of the page. An array
+  // of entries, or a string URL pointing at the file holding them — the form
+  // that lets news ship without redeploying the host page.
+  announcements: [],
   // `feedback.url`: host endpoint receiving a `{ page, verdict }` POST from
   // the "was this page helpful?" row on docs pages. Null — the default — means
   // the row does not exist: no backend of ours, so no widget without one of

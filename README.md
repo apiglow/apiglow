@@ -45,6 +45,9 @@
 - **Grade your schema** — a [38-rule audit](#schema-audit) with a letter grade, in the browser
 - **Prose woven in** — Markdown guides in the same nav, search and AI
   exports as the reference ([docs pages](#docs-pages))
+- **Say something to your readers** — a banner your ops team publishes by
+  editing one file, that schedules and retires itself
+  ([announcements](docs/architecture.md#517-operator-announcements))
 - **Any OpenAPI since 2.0** — 3.0 / 3.1 / 3.2 rendered natively, Swagger 2.0
   converted at load ([spec support](#spec-support))
 - **Local by construction** — no backend anywhere: history, environments and
