@@ -10,6 +10,17 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Added
+
+- Announcements: a strip across the top of the documentation where you say
+  what the schema cannot — a maintenance window, a deprecation date, a version
+  that just shipped. Declare them inline in the config, or point
+  `announcements` at a file your ops team edits on its own, with no redeploy of
+  the host page. Each entry takes inline Markdown (one language or several), a
+  level, an optional `startsAt` / `endsAt` window that publishes and retires it
+  without anyone remembering to, and a dismissal the reader's browser
+  remembers — unless you pin the notice.
+
 ### Removed
 
 - The bottom credit bar is gone, and with it the `branding.footerLinks`
