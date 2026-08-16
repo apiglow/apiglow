@@ -10,6 +10,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-16
+
 ### Added
 
 - Announcements: a strip across the top of the documentation where you say
@@ -103,5 +105,6 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 - Keyboard-operable interface throughout, with focus management, live regions
   and an automated accessibility sweep in continuous integration.
 
-[Unreleased]: https://github.com/apiglow/apiglow/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/apiglow/apiglow/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/apiglow/apiglow/releases/tag/v0.2.0
 [0.1.0]: https://github.com/apiglow/apiglow/releases/tag/v0.1.0

@@ -69,7 +69,7 @@ load nothing under `tests/`, and the e2e fixture pages load nothing under
 `demo/`, `docs-pages/` and `tests/e2e/fixtures/` — so `docs/` and the rest of
 the repo are not fetchable from the demo origin.
 
-`demo/cdn-install.html` hardcodes `/npm/apiglow@0.1.0/` the way a real
+`demo/cdn-install.html` hardcodes `/npm/apiglow@0.2.0/` the way a real
 installation would; `preview:cdn` refuses to start when that version drifts
 from `package.json`, and `npm run sync:version` is what keeps it — and every
 other pin a reader could copy — in step. The e2e fixtures load the same

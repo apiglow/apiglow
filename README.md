@@ -77,7 +77,7 @@ One HTML page, one inline config, one script — the whole installation:
       "language": { "default": "en", "available": ["en", "fr"] }
     }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/apiglow@0.1.0/dist/app.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apiglow@0.2.0/dist/app.js" type="module"></script>
   </body>
 </html>
 ```
