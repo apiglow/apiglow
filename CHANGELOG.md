@@ -41,6 +41,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   environment named for a real deployment no longer pushes the authentication
   badge out of its card, and the environment editor shows the whole of a
   variable's name.
+- On a phone, following a link in the navigation now opens the new page at its
+  top. The right page arrived, but scrolled to wherever the previous one had
+  been left.
 - Selected rows in the spec, environment and search menus: the second line (a
   spec's id, an environment's base URL, a result's path) was dark ink on the
   dark fill.
