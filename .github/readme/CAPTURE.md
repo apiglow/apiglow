@@ -42,5 +42,6 @@ Three things a shot gets wrong silently:
 `scenario-step-by-step.gif` — same scenario page, `apiglow-dark`, viewport
 **1280×800** at 1×: open Step by step, then Send / Next step through the
 three steps, one frame per stage (8 frames, 1.6–2.6 s each), assembled with
-`gifenc` (256-color palette per frame, `sharp` for the raw pixels). Budget:
-< 5 MB; it does not theme-switch (GIFs can't).
+`gifenc` (256-color palette per frame, `sharp` for the raw pixels) — both
+installed for the shoot, neither is a repo dependency. Budget: < 5 MB; it
+does not theme-switch (GIFs can't).
