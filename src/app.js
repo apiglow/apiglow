@@ -97,13 +97,12 @@ import { createSetupLinks } from './shell/setup-links.js'
 import { createSpecExports } from './shell/spec-exports.js'
 import { createSearchPalette } from './shell/search.js'
 import { createToaster } from './shell/toasts.js'
+import { header, headerSearchField } from './shell/header.js'
 import {
   MAIN_ID,
   errorView,
   firstCallIntro,
   footer,
-  header,
-  headerSearchField,
   loadingView,
   notFoundView,
   skipToContentLink,
@@ -745,9 +744,13 @@ function appLayout(
     'h-screen flex flex-col bg-base-100 text-base-content',
     // First tab stop of the document, by tree order.
     skipToContentLink(),
-    header(
+    header({
       branding,
-      [
+      apiVersion: model.info.version,
+      navToggle,
+      specSwitcher,
+      search: headerSearchField(() => openSearchPalette()),
+      tools: [
         // Next to the changelog badge: both say something about the schema
         // itself rather than offering a tool, and they are the two things that
         // qualify what the page below is showing.
@@ -760,11 +763,7 @@ function appLayout(
         langSwitcher,
         settingsBtn,
       ],
-      model.info.version,
-      navToggle,
-      specSwitcher,
-      headerSearchField(() => openSearchPalette()),
-    ),
+    }),
     el(
       'div',
       'flex flex-1 min-h-0 flex-col lg:flex-row overflow-y-auto lg:overflow-visible',

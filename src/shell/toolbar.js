@@ -16,7 +16,7 @@ import { resolveThemeChoice } from '../components/theme-switcher.js'
 import { t } from '../i18n/index.js'
 import { diffOperations, FINGERPRINT_FORMAT, fingerprintRun } from '../openapi/diff.js'
 import { readSchemaSnapshot, writeSchemaSnapshot } from '../storage/schema-snapshot.js'
-import { historyIcon } from './views.js'
+import { historyIcon } from './header.js'
 
 // Local schema diff (Bump.sh-changelog style, no backend): "Schema
 // changed" badge when the loaded schema differs from the last snapshot seen
