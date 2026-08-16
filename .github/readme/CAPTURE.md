@@ -14,6 +14,17 @@ Captured with Playwright Chromium against the packed-tarball demo
 (the demo's host-defined `daisybrand` is a custom-theme showcase, not what the
 product looks like out of the box).
 
+Three things a shot gets wrong silently:
+
+- Preferences are JSON-encoded, so the stored theme is `"apiglow-dark"` with
+  its quotes. A bare string is unparseable and the app falls back to its
+  default — a light screenshot named `-dark`.
+- Pin the context `locale` to `en-US`. The UI follows `navigator.languages`
+  by default, so a French machine shoots French screenshots.
+- Let the animations finish before shooting (`document.getAnimations()`), or
+  the response's arrival pulse is baked into a still meant to show the
+  settled state.
+
 - `hero-{light,dark}.png` — `#/s/petstore/op/findPetsByStatus`, select
   `status = available`, Send, wait for the response, shoot. Shows the
   three columns mid-try-it with the insight chips (rate limit, page links,
