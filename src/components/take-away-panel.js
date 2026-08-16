@@ -87,5 +87,8 @@ export function warningList() {
 }
 
 export function setWarnings(list, messages) {
-  list.replaceChildren(...messages.map((message) => el('li', '', text(`⚠ ${message}`))))
+  // U+FE0E for the same reason as the external-docs arrow: bare, U+26A0 comes
+  // out of the colour-emoji font on Android — a full-size pictogram in a line
+  // of 12 px dimmed text, and one that ignores `text-subtle`.
+  list.replaceChildren(...messages.map((message) => el('li', '', text(`⚠︎ ${message}`))))
 }

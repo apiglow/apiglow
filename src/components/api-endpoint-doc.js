@@ -413,7 +413,11 @@ function authSection(security, credentialsResolver, authRows = {}) {
     'group collapse collapse-arrow border border-base-300 bg-base-200/40 mb-block',
     el(
       'summary',
-      'collapse-title p-4 pe-10 min-h-0 flex items-center gap-2',
+      // Wrapping, because the badge cannot shrink: an environment named for a
+      // real deployment made the row longer than the card, and it came out
+      // over the collapse arrow and past the border. Its own line first,
+      // ellipsis only past that.
+      'collapse-title p-4 pe-10 min-h-0 flex flex-wrap items-center gap-2',
       el('h2', 'text-label uppercase text-subtle', text(t('auth.title'))),
       security.optional ? el('span', 'badge badge-ghost badge-sm', text(t('auth.optional'))) : null,
       // Expanded, each scheme already carries its own badge: the summary's
@@ -426,12 +430,15 @@ function authSection(security, credentialsResolver, authRows = {}) {
   return details
 }
 
+// daisyUI's badge is a fixed-height pill, so the environment name cannot wrap
+// inside it: it takes the ellipsis instead, and only once the wrapping row
+// above has already given it a line of its own.
 function configuredBadge(configured, extra = '') {
   return el(
     'span',
-    `badge badge-success badge-soft badge-sm gap-1.5 whitespace-nowrap ${extra}`.trim(),
-    el('span', 'status status-success'),
-    text(t('auth.configured', { env: configured.envName })),
+    `badge badge-success badge-soft badge-sm gap-1.5 min-w-0 max-w-full ${extra}`.trim(),
+    el('span', 'status status-success shrink-0'),
+    el('span', 'truncate', text(t('auth.configured', { env: configured.envName }))),
   )
 }
 
@@ -473,8 +480,11 @@ function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeS
     'mb-block',
     el(
       'div',
-      'flex items-start justify-between gap-3',
-      el('h1', 'font-display text-display', text(heading)),
+      // Stacked on a phone: the menu keeps its full 8 rem whatever the width,
+      // and beside a title that leaves a third of the line to a heading which
+      // then wraps three times. Below it, right-aligned as everywhere else.
+      'flex max-sm:flex-col max-sm:items-end items-start justify-between gap-3',
+      el('h1', 'font-display text-display max-sm:self-start', text(heading)),
       // The MCP context carries the environment's base URL, never `base`: an
       // operation-level server override belongs to that operation, and what is
       // being registered is the API.

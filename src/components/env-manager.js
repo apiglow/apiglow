@@ -317,10 +317,13 @@ class EnvManager extends HTMLElement {
       else store.update(env.id, { variables })
     }
 
+    // Full width on a phone (the row wraps anyway): at 11 rem a name like
+    // `auth.basicAuth.username` scrolls inside its own box, so the row could
+    // not be read back.
     const nameInput = textInput(
       variable.name,
       (v) => patchVar({ name: v }),
-      'input input-sm font-mono w-44',
+      'input input-sm font-mono w-full sm:w-44',
     )
     nameInput.placeholder = t('env.varName')
 
@@ -355,7 +358,7 @@ class EnvManager extends HTMLElement {
     const nameInput = textInput(
       header.name,
       (v) => patchHeader({ name: v }),
-      'input input-sm font-mono w-44',
+      'input input-sm font-mono w-full sm:w-44',
     )
     nameInput.placeholder = 'X-Header'
     // Same squeeze as the variable row, same answer.

@@ -14,7 +14,9 @@ export function specStats(entries) {
   if (!stats.length) return null
   return el(
     'div',
-    'stats stats-vertical sm:stats-horizontal shadow-sm border border-base-300',
+    // `.stats` is an inline grid: stacked on a phone it sized itself to its
+    // widest label and left the rest of the column empty beside it.
+    'stats stats-vertical sm:stats-horizontal w-full sm:w-auto shadow-sm border border-base-300',
     ...stats.map(([key, value]) =>
       el(
         'div',

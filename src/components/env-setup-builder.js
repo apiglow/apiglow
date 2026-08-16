@@ -179,7 +179,7 @@ class EnvSetupBuilder extends HTMLElement {
   }
 
   #variableRow(rows, row) {
-    const nameInput = this.#field(row, 'name', 'input input-sm font-mono w-44')
+    const nameInput = this.#field(row, 'name', 'input input-sm font-mono w-full sm:w-44')
     nameInput.placeholder = t('env.varName')
     nameInput.setAttribute('aria-label', t('env.varName'))
     nameInput.dataset.setupField = 'name'
@@ -219,7 +219,7 @@ class EnvSetupBuilder extends HTMLElement {
   }
 
   #headerRow(rows, row) {
-    const nameInput = this.#field(row, 'name', 'input input-sm font-mono w-44')
+    const nameInput = this.#field(row, 'name', 'input input-sm font-mono w-full sm:w-44')
     nameInput.placeholder = 'X-Header'
     nameInput.setAttribute('aria-label', t('env.varName'))
     nameInput.dataset.setupField = 'name'

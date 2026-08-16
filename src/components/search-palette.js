@@ -170,6 +170,12 @@ class SearchPalette extends HTMLElement {
       event.preventDefault()
       const result = this.#results[this.#active]
       if (result) this.#go(result)
+    } else if (event.key === 'Escape') {
+      // `type=search`: Chrome and Safari spend the first Escape emptying the
+      // field, so a reader who typed anything had to press it twice — while
+      // the palette's own legend, and the About dialog, promise one.
+      event.preventDefault()
+      this.#dialog.close()
     }
   }
 

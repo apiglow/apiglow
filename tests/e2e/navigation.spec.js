@@ -64,6 +64,22 @@ test('Ctrl+K opens the search palette; Enter navigates to the selected result', 
   await expect(navLink).toBeInViewport()
 })
 
+// The palette's own legend, and the About dialog, promise one Escape. The
+// field is an `input[type=search]`, and Chrome and Safari spend the first
+// Escape emptying it — so the close is handled rather than left to the
+// browser, and a typed query is what the regression needs.
+test('Escape closes the palette on the first press, query typed or not', async ({ page }) => {
+  await gotoApp(page)
+  await openDrawerIfMobile(page)
+  await page.keyboard.press('Control+k')
+  const box = page.locator('search-palette .modal-box')
+  await expect(box).toBeVisible()
+  await page.locator('search-palette input[type="search"]').fill('orders')
+  await expect(page.locator('search-palette a[data-result-id="listOrders"]')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(box).not.toBeVisible()
+})
+
 test('palette searches schema property names and markdown page titles', async ({ page }) => {
   await gotoApp(page)
   await openDrawerIfMobile(page)

@@ -10,7 +10,13 @@ import { el, externalLink, text } from './dom.js'
 // twice. That wording is the fallback for a bare URL, nothing else.
 export function externalDocsLink(docs, className) {
   if (!docs?.url) return null
-  const arrow = el('span', 'text-subtle', text('↗'))
+  // U+FE0E: bare, U+2197 picks the colour-emoji font on Android and the arrow
+  // comes out as a blue tile that ignores `text-subtle`. The variation selector
+  // pins it to the text glyph, which is the only one that reads as punctuation.
+  // `ms-1` and not the callers' `gap-1`: the link is inline so it can wrap over
+  // two lines, and gap does nothing on an inline box — the emoji glyph's own
+  // side bearing was standing in for the space until the selector removed it.
+  const arrow = el('span', 'text-subtle ms-1', text('↗︎'))
   arrow.setAttribute('aria-hidden', 'true')
   const link = externalLink(
     className,

@@ -250,6 +250,18 @@
     opacity: 1;
     visibility: visible;
   }
+  /* The spec selector sits mid-header, between the brand and the tools, so
+     daisyUI's start-aligned list starts around 250 px and its fixed 18 rem run
+     off the right edge of a phone — the page gained a horizontal scroll. Below
+     lg it drops to a header-wide sheet instead: `fixed` with only the inline
+     axis pinned keeps the static block position, i.e. straight under the
+     trigger. End-alignment would not have helped, the trigger is too far left
+     for an 18 rem list to hang from its right edge either. */
+  spec-switcher .dropdown-content {
+    position: fixed;
+    inset-inline: 0.5rem;
+    width: auto;
+  }
 }
 
 /* Nav active entry: a primary rail and a tint instead of daisyUI's filled
@@ -274,6 +286,24 @@ api-nav .menu li > button {
     box-shadow 0.15s ease,
     background-color 0.15s ease,
     color 0.15s ease;
+}
+
+/* Everywhere else the stock filled block stands, and it paints its own ink —
+   but only on itself. The secondary lines inside a selected row (a spec's id,
+   an environment's base URL, a search result's path) carry `text-subtle` /
+   `text-faint`, which resolve against the theme's base-content and land dark
+   ink on the dark fill. Inside the fill they take `currentColor`, which is
+   exactly what `text-quiet` exists for. */
+.menu-active :is(.text-subtle, .text-faint) {
+  color: color-mix(in oklab, currentColor 75%, transparent);
+}
+
+/* An empty `.divider` is a plain rule: daisyUI zeroes its gap for that case,
+   but the menu it sits in sets a 0.5rem gap on its items, and the divider is
+   a flex box whose two halves take it — the separator came out drawn as two
+   segments with a notch in the middle. */
+.menu .divider {
+  gap: 0;
 }
 
 /* daisyUI answers `:focus-visible` on a menu entry with a 10 % tint of
@@ -911,6 +941,17 @@ details.collapse::details-content {
   transition:
     border-color 0.15s ease,
     color 0.15s ease;
+}
+
+/* daisyUI caps the modal box at `100vh`. On a phone that unit is the *large*
+   viewport — the one with the browser's toolbar retracted — so a tall dialog
+   (settings, the environment manager) is laid out under a toolbar that is
+   showing, and its last rows cannot be scrolled into view. `dvh` follows the
+   toolbar, and the inset keeps the box's rounded corners off the screen edges
+   instead of running it flush top and bottom. The dialogs that set their own
+   height keep it: this is a cap, and theirs is lower. */
+.modal-box {
+  max-height: calc(100dvh - 2rem);
 }
 
 /* The reduced-motion contract, for everything the design layer moves and for

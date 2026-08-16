@@ -188,3 +188,41 @@ test('single spec: bare routes, unprefixed keys, no selector (criterion 3)', asy
   expect(keys).toContain('apidoc:environments')
   expect(keys.filter((k) => k.includes(':pets:'))).toEqual([])
 })
+
+// The selector sits mid-header, between the brand and the tools, so its list
+// starts around 250 px in — and daisyUI aligns it to that start. An 18 rem list
+// therefore ran off the right edge and gave the whole page a horizontal scroll,
+// which nothing else here would notice: the reflow suite measures the
+// single-spec fixture, where there is no selector at all.
+//
+// A phone width and not 320 px: narrower, the header's first row runs out of
+// room, the trigger wraps back to the left and the list fits by accident — the
+// defect needs the brand, the version badge and the trigger to share a line.
+test.describe('the spec list on a phone', () => {
+  test.use({ viewport: { width: 412, height: 800 } })
+
+  test('opens inside the viewport, and over the header rather than under it', async ({ page }) => {
+    await gotoMulti(page)
+    await specTrigger(page).click()
+    const menu = page.locator('spec-switcher .dropdown-content')
+    await expect(menu).toBeVisible()
+    const geometry = await page.evaluate(() => {
+      const box = document.querySelector('spec-switcher .dropdown-content').getBoundingClientRect()
+      const option = document.querySelector('spec-switcher [data-spec-option]')
+      const middle = { x: box.left + box.width / 2, y: option.getBoundingClientRect().top + 4 }
+      return {
+        left: box.left,
+        right: box.right,
+        width: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        // Below lg the header wraps: level with the environment pill, that pill
+        // came later in the DOM and painted over the list's first entry.
+        onTop: document.elementFromPoint(middle.x, middle.y)?.closest('spec-switcher') !== null,
+      }
+    })
+    expect(geometry.left).toBeGreaterThanOrEqual(0)
+    expect(geometry.right).toBeLessThanOrEqual(geometry.width)
+    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.width)
+    expect(geometry.onTop).toBe(true)
+  })
+})

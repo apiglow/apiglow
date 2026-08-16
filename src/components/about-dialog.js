@@ -177,7 +177,15 @@ class AboutDialog extends HTMLElement {
           link,
           el('span', 'text-subtle', text(` — ${t(`about.credit.${credit.id}`)}`)),
         ),
-        el('span', 'font-mono text-subtle shrink-0', text(`${credit.version} · ${credit.license}`)),
+        // `ms-auto` and not `justify-between` alone: on a narrow dialog the
+        // longer names push this to a line of its own, where `justify-between`
+        // has nothing to space it against and drops it back to the left — the
+        // column of versions came out ragged, half right, half left.
+        el(
+          'span',
+          'font-mono text-subtle shrink-0 ms-auto',
+          text(`${credit.version} · ${credit.license}`),
+        ),
       )
     })
     return el(

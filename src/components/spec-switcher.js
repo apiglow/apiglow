@@ -57,10 +57,13 @@ class SpecSwitcher extends HTMLElement {
     // aligned to the right would run off the screen.
     const dropdown = detailsDropdown('dropdown-start', summary, menu)
     this.#close = dropdown.close
-    // relative z-20: same stacking context as the env-switcher — the list
-    // (z-50) would otherwise pass under the content, while still staying under the
-    // mobile overlay (z-30) and the drawer (z-40).
-    this.replaceChildren(el('div', 'relative z-20', dropdown.details))
+    // relative: the wrapper's stacking context is what keeps the list (z-50)
+    // above the page's content. One notch over the env-switcher's z-20 rather
+    // than level with it: below lg the header wraps, this trigger stays on the
+    // first row and its list opens across the second — level, the env pill
+    // came later in the DOM and painted over the list's first entry. Still
+    // under the mobile overlay (z-30) and the drawer (z-40).
+    this.replaceChildren(el('div', 'relative z-25', dropdown.details))
   }
 
   #specItem(spec, isSelected) {

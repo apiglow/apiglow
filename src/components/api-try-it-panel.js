@@ -668,18 +668,25 @@ class ApiTryItPanel extends HTMLElement {
         'div',
         'group flex flex-wrap items-center gap-2',
         el('span', methodBadgeClass(op.method, 'badge-sm'), text(op.method)),
-        // Same hierarchy as the central doc (base URL as a dimmed reminder,
-        // path emphasized) but in inline flow: the panel is too narrow to
-        // truncate the base URL without reducing it to "htt…".
+        // The URL and its copy button travel together: on a phone the URL
+        // takes the whole line by itself, and left in the outer row the button
+        // wrapped away from it, stranded beside the scenario menu.
         el(
-          'code',
-          'text-xs font-mono min-w-0 grow break-all',
-          base ? el('span', 'text-faint', text(base)) : null,
-          el('span', 'font-semibold', text(op.path)),
+          'span',
+          'flex items-center gap-2 min-w-0 grow',
+          // Same hierarchy as the central doc (base URL as a dimmed reminder,
+          // path emphasized) but in inline flow: the panel is too narrow to
+          // truncate the base URL without reducing it to "htt…".
+          el(
+            'code',
+            'text-xs font-mono min-w-0 grow break-all',
+            base ? el('span', 'text-faint', text(base)) : null,
+            el('span', 'font-semibold', text(op.path)),
+          ),
+          // Copies the URL actually sent: interpolated path params and query
+          // string of the current state, not the displayed template.
+          hoverCopyButton(() => this.#build().url),
         ),
-        // Copies the URL actually sent: interpolated path params and query
-        // string of the current state, not the displayed template.
-        hoverCopyButton(() => this.#build().url),
         // "Add to a scenario" at the top of the column: at the bottom of
         // the panel, buried in the export bar, it was only visible after
         // scrolling through the whole response — i.e. after giving up

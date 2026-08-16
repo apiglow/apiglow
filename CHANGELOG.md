@@ -10,6 +10,23 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Fixed
+
+- Phone layout: the spec selector's list no longer runs off the screen and
+  gives the page a sideways scroll, dialogs no longer sit flush against the top
+  and bottom edges (and stay reachable under a browser toolbar), an
+  environment named for a real deployment no longer pushes the authentication
+  badge out of its card, and the environment editor shows the whole of a
+  variable's name.
+- Selected rows in the spec, environment and search menus: the second line (a
+  spec's id, an environment's base URL, a result's path) was dark ink on the
+  dark fill.
+- Menu separators were drawn as two segments with a notch in the middle.
+- Escape closes the search palette on the first press when a query has been
+  typed, as its own legend says.
+- The external-documentation and warning symbols came out of the colour-emoji
+  font on Android.
+
 ## [0.1.0] — 2026-08-15
 
 ### Added
