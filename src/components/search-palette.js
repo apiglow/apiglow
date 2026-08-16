@@ -52,7 +52,7 @@ export function searchTrigger(onOpen, className) {
     className,
     icon(SEARCH_SVG, 'text-faint'),
     el('span', 'grow truncate text-left', text(t('search.placeholder'))),
-    el('kbd', 'kbd kbd-sm', text(searchShortcutLabel())),
+    el('kbd', 'kbd kbd-sm api-kbd-hint', text(searchShortcutLabel())),
   )
   trigger.type = 'button'
   trigger.addEventListener('click', onOpen)
@@ -131,7 +131,7 @@ class SearchPalette extends HTMLElement {
     this.#resultsBox = el('div', 'max-h-96 overflow-y-auto border-t border-base-300 p-2')
     const footer = el(
       'div',
-      'flex items-center gap-4 border-t border-base-300 px-4 py-2 text-xs text-subtle',
+      'api-kbd-hint flex items-center gap-4 border-t border-base-300 px-4 py-2 text-xs text-subtle',
       kbdHint(['↑', '↓'], t('search.kbd.navigate')),
       kbdHint(['⏎'], t('search.kbd.open')),
       kbdHint(['esc'], t('search.kbd.close')),

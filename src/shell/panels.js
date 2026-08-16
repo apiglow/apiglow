@@ -200,7 +200,11 @@ export function createPanels({
   // daisyUI's .fab lives at z-index 999, above the scrim: any open
   // panel (drawer included) must hide it, not just the sheet.
   function syncFab() {
-    tryItFab.classList.toggle('hidden', !tryItAvailable || openPanel !== null)
+    const gone = !tryItAvailable || openPanel !== null
+    tryItFab.classList.toggle('hidden', gone)
+    // A FAB that comes back after a panel or a route change comes back in
+    // reach, wherever the scroll-away below had left it.
+    if (!gone) showFab()
   }
 
   // The marked nodes are held rather than re-derived on close: unwinding has to
@@ -225,6 +229,56 @@ export function createPanels({
     for (const node of inertNodes) node.inert = true
   }
   desktop.addEventListener('change', syncInert)
+
+  // Below lg the FAB floats over the doc column, so whatever line of body text
+  // sits under it stays covered for as long as the reader stops there — and at
+  // the end of an operation, that line is the prev/next pager. It steps out of
+  // the way going down and comes back going up, which is the gesture that means
+  // "I am looking for the control".
+  //
+  // The scroll happens on the row below the header (the shell is an `h-screen`
+  // column, the document itself never scrolls), and `scroll` does not bubble —
+  // hence the capture listener, which also lets the row be found after the
+  // layout is assembled rather than during it. The sheet's own scrolling is a
+  // different target and is ignored.
+  const FAB_KEEP_PX = 96
+  const FAB_STEP_PX = 12
+  // "The reader scrolled", not "the page scrolled": a section anchor, a deep
+  // link and focus moving all scroll the row without anyone asking for it, and
+  // the button has no reason to leave then — it would also be sliding out from
+  // under the finger that is reaching for it. An input event is the honest
+  // signal for the difference; `scrollIntoView` produces none.
+  const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '])
+  let readerScrolling = false
+  let lastScrollTop = 0
+  const scrollRow = () => navAside.parentElement
+  function showFab() {
+    tryItFab.classList.remove('api-fab-away')
+    readerScrolling = false
+    lastScrollTop = scrollRow()?.scrollTop ?? 0
+  }
+  const readerScrolls = (event) => {
+    if (event.type !== 'keydown' || SCROLL_KEYS.has(event.key)) readerScrolling = true
+  }
+  for (const type of ['wheel', 'touchstart', 'keydown']) {
+    document.addEventListener(type, readerScrolls, { passive: true, capture: true })
+  }
+  document.addEventListener(
+    'scroll',
+    (event) => {
+      const row = scrollRow()
+      if (desktop.matches || !readerScrolling || !row || event.target !== row) return
+      const top = row.scrollTop
+      const step = top - lastScrollTop
+      if (Math.abs(step) < FAB_STEP_PX) return
+      lastScrollTop = top
+      // Never while it holds the focus: away is `visibility: hidden`, and that
+      // would take the keyboard off-screen with it.
+      const away = step > 0 && top > FAB_KEEP_PX && !tryItFab.contains(document.activeElement)
+      tryItFab.classList.toggle('api-fab-away', away)
+    },
+    true,
+  )
 
   const setOpenPanel = (panel) => {
     openPanel = panel

@@ -1739,7 +1739,16 @@ imports the shell and never sees the host config directly.
   stack: the nav becomes a side drawer (header hamburger button) and the
   try-it a full-screen bottom sheet opened by a floating button. One panel
   open at a time; closes on veil click, Escape, route change, or swiping the
-  sheet down.
+  sheet down. The floating button steps out of the way while the reader
+  scrolls down — it sits over the doc column, and what is under it is covered
+  for as long as they stop there — and comes back on the way up, which is the
+  gesture that means "I am looking for the control". Never while it holds the
+  focus: away is `visibility: hidden`, and that would take the keyboard
+  off-screen with it.
+- Keyboard affordances are shown where a keyboard is. The search field's
+  shortcut chip and the palette's ↑↓/⏎/esc legend name gestures a finger
+  cannot make, so they are withheld from a device with no fine pointer — the
+  same predicate that decides whether the copy buttons hide until hover.
 - Accessibility: WCAG 2.2 AA on the interactive paths — the model, what is
   enforced and what is knowingly not, in §12.
 

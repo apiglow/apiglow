@@ -250,6 +250,18 @@
     opacity: 1;
     visibility: visible;
   }
+  /* The try-it FAB steps out of the way while the reader scrolls down and
+     comes back on the way up (`panels.js`). `visibility` rather than opacity
+     alone: away, it is off the screen, and a control the thumb cannot reach
+     has no business staying in the tab order. */
+  .fab {
+    transition: transform 0.2s ease, visibility 0.2s;
+  }
+  .fab.api-fab-away {
+    transform: translateY(calc(100% + 1rem));
+    visibility: hidden;
+  }
+
   /* The spec selector sits mid-header, between the brand and the tools, so
      daisyUI's start-aligned list starts around 250 px and its fixed 18 rem run
      off the right edge of a phone — the page gained a horizontal scroll. Below
@@ -655,6 +667,18 @@ details.collapse::details-content {
     padding 0.1s ease-out 20ms;
 }
 
+/* The mirror image of the rule below: a keyboard shortcut is advertised only
+   where there is a keyboard to press it with. The search field's `Ctrl K` chip
+   and the palette's ↑↓/⏎/esc legend name gestures a finger cannot make, and the
+   chip costs 90 px of a field that has 300 to work with. Same predicate as the
+   hover reveal — a fine pointer is what separates a workstation from a phone —
+   and stated as a removal, so nothing has to restore a display value. */
+@media (hover: none), (pointer: coarse) {
+  .api-kbd-hint {
+    display: none;
+  }
+}
+
 /* Action revealed on hover of its row (URL copy button): hover
    doesn't exist with touch, where the button must therefore stay permanently visible —
    hence fading it out conditioned on a fine pointer rather than a flat opacity-0. */
@@ -962,7 +986,10 @@ details.collapse::details-content {
 @media (prefers-reduced-motion: reduce) {
   api-nav .menu li > a,
   api-nav .menu li > button,
-  .tabs .tab {
+  .tabs .tab,
+  /* The FAB still leaves and comes back — that is the state, not the motion.
+     Only the slide goes; `visibility` is discrete and flips either way. */
+  .fab {
     transition: none;
   }
   .modal-box {

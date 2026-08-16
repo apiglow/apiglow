@@ -10,6 +10,15 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Changed
+
+- On a phone the "Try it" button steps out of the way while you scroll down —
+  it no longer sits on top of the line you are reading — and comes back as soon
+  as you scroll up.
+- Keyboard shortcuts are advertised only on devices that have a keyboard: the
+  search field's shortcut chip and the palette's key legend are withheld from a
+  touch-only device.
+
 ### Fixed
 
 - Phone layout: the spec selector's list no longer runs off the screen and

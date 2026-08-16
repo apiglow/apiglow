@@ -28,6 +28,63 @@ test('the nav is a drawer: closed by default, opened by the burger, closed by na
   await expect(drawer(page)).not.toBeVisible()
 })
 
+// The FAB floats over the doc column, so a line of body text sits under it for
+// as long as the reader stops there. Away is `visibility: hidden`, which is
+// also what keeps an off-screen control out of the tab order.
+test('the FAB steps out of the way going down and comes back going up', async ({ page }) => {
+  await page.goto(`${APP_PAGE}#/op/createPet`)
+  await expect(fab(page)).toBeVisible()
+
+  // The touch is what makes it the reader's scroll rather than the page's —
+  // a section anchor moves the same row and must leave the button alone.
+  const scrollTo = (top, { byHand = true } = {}) =>
+    page.evaluate(
+      ([y, hand]) => {
+        const row = document.querySelector('main').parentElement
+        if (hand) row.dispatchEvent(new TouchEvent('touchstart', { bubbles: true }))
+        row.scrollTop = y
+        return { at: row.scrollTop, scrollable: row.scrollHeight - row.clientHeight }
+      },
+      [top, byHand],
+    )
+
+  // The premise: this page is long enough to scroll past the threshold.
+  expect((await scrollTo(0)).scrollable).toBeGreaterThan(400)
+
+  await scrollTo(400)
+  await expect(fab(page)).not.toBeVisible()
+  await scrollTo(120)
+  await expect(fab(page)).toBeVisible()
+  // Back at the top it stays, whatever the last direction was.
+  await scrollTo(0)
+  await expect(fab(page)).toBeVisible()
+})
+
+test('a scroll the page did on its own leaves the FAB alone', async ({ page }) => {
+  await page.goto(`${APP_PAGE}#/op/listPets/responses`)
+  await expect(page.locator('section#responses')).toBeInViewport()
+  await expect(fab(page)).toBeVisible()
+})
+
+// A shortcut is advertised where there is a keyboard to press it with. The
+// device profile is what makes this a real question: `pointer: coarse` comes
+// from the emulated phone, not from the viewport.
+test('the keyboard hints stay off a touch device', async ({ page }) => {
+  await page.goto(`${APP_PAGE}#/op/listPets`)
+  await menuBtn(page).click()
+  const chip = drawer(page).locator('.api-kbd-hint')
+  await expect(chip).toHaveCount(1)
+  await expect(chip).toBeHidden()
+
+  await page.getByRole('button', { name: /Search the docs/ }).click()
+  await expect(page.locator('search-palette .modal-box')).toBeVisible()
+  // Counted first: `toBeHidden` is also true of an element that is not there,
+  // and the point is that the legend exists and is withheld.
+  const legend = page.locator('search-palette .api-kbd-hint')
+  await expect(legend).toHaveCount(1)
+  await expect(legend).toBeHidden()
+})
+
 test('the try-it FAB opens the bottom sheet, and only exists on an operation', async ({ page }) => {
   await page.goto(`${APP_PAGE}#/`)
   await expect(page.locator('main h1')).toBeVisible()
