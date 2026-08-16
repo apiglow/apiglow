@@ -28,6 +28,38 @@ test('the nav is a drawer: closed by default, opened by the burger, closed by na
   await expect(drawer(page)).not.toBeVisible()
 })
 
+// Below lg the doc column is not a scroller: the row holding the three columns
+// is, so that is where the reader's offset lives and where a navigation has to
+// put them back at the top. Resetting only the column scrolled nothing at all
+// here, and the next page opened wherever the previous one had been left.
+test('a navigation opens the new page at the top', async ({ page }) => {
+  await page.goto(`${APP_PAGE}#/op/createPet`)
+  await expect(page.locator('main h1')).toHaveText('Create a pet')
+
+  const row = () =>
+    page.evaluate(() => {
+      const box = document.querySelector('main').parentElement
+      return { top: box.scrollTop, scrollable: box.scrollHeight - box.clientHeight }
+    })
+  const scrollTo = (top) =>
+    page.evaluate((y) => {
+      document.querySelector('main').parentElement.scrollTop = y
+    }, top)
+
+  await scrollTo(500)
+  expect((await row()).top).toBeGreaterThan(400)
+
+  await menuBtn(page).click()
+  await page.locator('api-nav a[data-op-id="listPets"]').click()
+  await expect(page.locator('main h1')).toHaveText('List all pets')
+  const landed = await row()
+  // The premise: the arriving page is long enough to hold the offset, so a
+  // reset that did nothing would show as a scrolled page rather than be
+  // swallowed by the browser clamping to a shorter document.
+  expect(landed.scrollable).toBeGreaterThan(400)
+  expect(landed.top).toBe(0)
+})
+
 // The FAB floats over the doc column, so a line of body text sits under it for
 // as long as the reader stops there. Away is `visibility: hidden`, which is
 // also what keeps an off-screen control out of the tab order.

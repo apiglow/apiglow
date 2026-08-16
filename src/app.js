@@ -732,6 +732,21 @@ function appLayout(
     }
   }
 
+  // The row of three columns. Above lg each column scrolls on its own; below
+  // it they stack and the row is the one scroller (panels.js reads it the same
+  // way, to slide the FAB out of the reader's way). Held rather than inlined
+  // into the layout: a navigation has to put the reader back at the top, and on
+  // a phone `main` is not what carries the offset.
+  const columns = el(
+    'div',
+    'flex flex-1 min-h-0 flex-col lg:flex-row overflow-y-auto lg:overflow-visible',
+    navAside,
+    navResizer,
+    main,
+    tryItResizer,
+    tryItAside,
+  )
+
   const layout = el(
     'div',
     'h-screen flex flex-col bg-base-100 text-base-content',
@@ -751,15 +766,7 @@ function appLayout(
       tools: [envSwitcher, historyBtn, importBtn],
       appMenu: menu,
     }),
-    el(
-      'div',
-      'flex flex-1 min-h-0 flex-col lg:flex-row overflow-y-auto lg:overflow-visible',
-      navAside,
-      navResizer,
-      main,
-      tryItResizer,
-      tryItAside,
-    ),
+    columns,
     scrim,
     tryItFab,
     envManager,
@@ -1644,7 +1651,7 @@ function appLayout(
     if (editingStep && !(route.type === 'op' && route.id === editingStep.opId)) endStepEditing()
     // A navigation closes the mobile panels (typically: clicking a
     // drawer link) and scrolls the sheet back to the top — the panel is re-rendered
-    // for the new operation. Both scroll resets happen HERE, before the view
+    // for the new operation. Every scroll reset happens HERE, before the view
     // swap: a `scrollTop` write flushes layout, and flushing the outgoing
     // tree is free while flushing the one the swap just dirtied re-lays the
     // whole page out inside the navigation.
@@ -1653,7 +1660,13 @@ function appLayout(
     // A deep-link with an anchor sets its own scroll position during the
     // render below; the reset would be overwritten either way, but skipping
     // it keeps the anchor jump from racing a scroll that was never wanted.
-    if (!route.anchor) main.scrollTop = 0
+    // Both scrollers, unconditionally: whichever one the breakpoint has left
+    // flowing sits at 0 already, so the write it does not need costs nothing
+    // and no media query has to be re-stated in JS.
+    if (!route.anchor) {
+      main.scrollTop = 0
+      columns.scrollTop = 0
+    }
     currentOpId = null
     currentScenarioId = null
     auditVisible = route.type === 'audit'
