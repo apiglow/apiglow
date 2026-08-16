@@ -914,7 +914,6 @@
   "snapshot.openApp": "Open in the interactive documentation",
   "about.open": "About",
   "about.close": "Close",
-  "about.poweredBy": "Powered by {name} v{version}",
   "about.tagline": "Interactive API documentation, generated in your browser from an OpenAPI schema.",
   "about.project": "Project & source",
   "about.reportBug": "Report a bug",

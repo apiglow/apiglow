@@ -50,11 +50,7 @@ const CONFIG_DEFAULTS = {
   // not the reader's business. It gates that panel and nothing else: what a
   // declared scenario publishes stays governed by its declaration alone (§2).
   features: { scenarios: true, audit: true, onboarding: false, ci: true },
-  // `footerLinks`: [{ label, url }] appended to the footer bar, next to
-  // "About" — the host's own legal notice or contact page. The bar itself is
-  // not removable: it carries the license and credits notices the CDN
-  // distribution ships no file for.
-  branding: { productName: 'API Docs', logoUrl: null, footerLinks: [] },
+  branding: { productName: 'API Docs', logoUrl: null },
   tryIt: { proxyUrl: null, requestCredentials: 'same-origin' },
   // Per OAuth2 scheme: { "schemeName": { "clientId": "…" } }. clientId
   // can be overridden by the auth.X.clientId env variable; never a

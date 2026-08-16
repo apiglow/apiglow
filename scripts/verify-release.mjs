@@ -109,10 +109,12 @@ try {
   )
   if (!styled) problems.push('no stylesheet loaded from the CDN')
 
-  // The footer names the running build: the only check that the CDN is serving
-  // this version rather than a cached neighbour.
-  const footer = await page.locator('footer').first().innerText()
-  if (!footer.includes(`v${version}`)) problems.push(`the footer reads "${footer.trim()}"`)
+  // About names the running build: the only check that the CDN is serving this
+  // version rather than a cached neighbour.
+  await page.locator('[data-app-menu]').click()
+  await page.locator('[data-menu-about]').click()
+  const about = await page.locator('about-dialog .modal-box header').first().innerText()
+  if (!about.includes(`v${version}`)) problems.push(`the About dialog reads "${about.trim()}"`)
 } finally {
   await browser.close()
   server.close()

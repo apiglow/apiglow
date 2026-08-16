@@ -369,12 +369,6 @@ window.API_DOC_CONFIG = {
   branding: {
     productName: 'My API',
     logoUrl: null, // URL of a logo shown in the header (optional)
-    // Your own links in the footer bar, next to "About" (legal notice,
-    // contact, status page…). Opened in a new tab; an entry missing a label
-    // or a url is ignored. The bar itself cannot be removed: the "About"
-    // dialog carries the license and the third-party notices, which a
-    // single-<script> install ships no file for.
-    footerLinks: [], // e.g. [{ label: 'Legal notice', url: 'https://example.com/legal' }]
   },
 
   tryIt: {

@@ -36,14 +36,12 @@ import { encodeSetupLink } from '../../src/env/setup-link.js'
 // truncates on purpose and the question is how much is left.
 //
 // Half. Under it the ellipsis is most of what is shown and the string stops
-// being identifiable, and it is the ratio that separated the two real defects
-// from the two deliberate truncations. Found: the footer credit at 15 % of
-// "Powered by apiglow v0.1.0" and a step editor preview at 36 % of
-// `: "available" | "pending" | "sold"` — both fixed, in `views.js` and
-// `scenario-step-editor.js`. Kept: the doc's base-URL reminder at 74 %, which
-// shrinks first by design so the path beside it never does, and the send
-// meter's `aria-hidden` telemetry at 90 %, whose figures are spelled out in the
-// response header next to it.
+// being identifiable, and it is the ratio that separated the real defects from
+// the deliberate truncations. Found: a step editor preview at 36 % of
+// `: "available" | "pending" | "sold"` — fixed in `scenario-step-editor.js`.
+// Kept: the doc's base-URL reminder at 74 %, which shrinks first by design so
+// the path beside it never does, and the send meter's `aria-hidden` telemetry
+// at 90 %, whose figures are spelled out in the response header next to it.
 const MIN_SHOWN = 0.5
 
 // Losing a pixel is rounding, not clipping: a `border` on a percentage-sized

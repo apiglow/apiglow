@@ -11,6 +11,7 @@ import {
   gotoFixture,
   isMobileLayout,
   mockApi,
+  openAppMenu,
   openDrawerIfMobile,
   openEnvManager,
   openHistory,
@@ -342,7 +343,8 @@ test('the insight strip has no accessibility violations', async ({ page }) => {
 
 test('About dialog has no accessibility violations', async ({ page }) => {
   await gotoApp(page)
-  await page.locator('footer').getByRole('button', { name: 'About' }).click()
+  await openAppMenu(page)
+  await page.locator('[data-menu-about]').click()
   await expect(page.locator('about-dialog .modal-box')).toBeVisible()
   await expectNoViolations(page)
 })

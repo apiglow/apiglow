@@ -19,7 +19,7 @@ const SHEET_DISMISS_PX = 90
 // — the scrim, the FAB (the sheet's own trigger, and where focus returns), the
 // modal dialogs, and the toast stack, whose `role=status` would go silent
 // inside an inert subtree.
-const BACKDROP = ':scope > header, :scope > footer, :scope > [data-skip-link]'
+const BACKDROP = ':scope > header, :scope > [data-skip-link]'
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
 

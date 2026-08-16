@@ -67,7 +67,6 @@ const REGIONS = [
   ['aside.api-sheet', 'sheet'],
   ['main', 'main'],
   ['header', 'header'],
-  ['footer', 'footer'],
 ]
 
 function describe(node) {

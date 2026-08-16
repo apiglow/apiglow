@@ -914,7 +914,6 @@
   "snapshot.openApp": "Ouvrir dans la documentation interactive",
   "about.open": "À propos",
   "about.close": "Fermer",
-  "about.poweredBy": "Propulsé par {name} v{version}",
   "about.tagline": "Documentation d’API interactive, générée dans votre navigateur à partir d’un schéma OpenAPI.",
   "about.project": "Projet et sources",
   "about.reportBug": "Signaler un bug",

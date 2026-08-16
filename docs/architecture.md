@@ -158,7 +158,7 @@ Config keys (all optional except one of `openapi.url` / `openapi.spec`):
 | `docsPages` | Prose documentation, ordered array **or** a string URL pointing at a JSON manifest `{ "pages": [ … ] }` whose relative `url`s resolve against itself. Three entry kinds: a page `{ slug, url \| content \| contentId, format?, title?, home? }`, a group `{ group, id?, collapsed?, pages[] }` (one level), an external link `{ href, title? }`. A top-level entry of any kind may declare `nav: 'top' \| 'bottom'` (default `top`) to sit above or below the API reference. A page's body is a file (`url`), the text itself (`content`) or the `id` of an element of the host page holding it (`contentId`, typically a `<script type="text/markdown">`) — what the page carries wins over what it would fetch, as `openapi.spec` wins over `openapi.url`. `title` (all kinds) and the three body fields (pages) also accept a per-language map. `home: true` on at most one page makes it the landing view. Array order is nav order. Full contract: [docs-pages.md](docs-pages.md). |
 | `scenarios[]` | Scenarios shipped with the docs — see [scenarios.md](scenarios.md). |
 | `features` | Feature switches: `scenarios` / `audit` / `ci` (on by default, `false` removes the feature entirely — `ci` being the "Automate this scenario" panel of `docs/scenario-handoff.md` §4, and that panel alone: what a declared scenario publishes never depends on it), `onboarding` (off by default, `true` adds the generated "First call" page — §5.5.7). |
-| `branding` | `{ productName, logoUrl, footerLinks[] }` — `footerLinks` = `{ label, url }` entries added to the footer bar (§5.13). |
+| `branding` | `{ productName, logoUrl }` — the name and the logo the header carries (§7). |
 | `feedback.url` | Endpoint receiving the docs-page "Was this page helpful?" verdict (`POST { page, verdict }`). `null` by default: without it no feedback row renders and nothing ever leaves the browser (§5.8, [docs-pages.md](docs-pages.md)). |
 | `tryIt.proxyUrl` | Optional CORS proxy template, e.g. `"https://my-proxy.example.com/?url={{target}}"`. `null` by default. |
 | `tryIt.requestCredentials` | `credentials` mode of try-it requests (`"omit"` / `"same-origin"` / `"include"`). `"same-origin"` by default. `"include"` is required for session-cookie auth when the docs are not hosted on the API's origin (the server must then respond `Access-Control-Allow-Credentials: true` with an explicit origin, and the cookie must be `SameSite=None; Secure`). |
@@ -1307,31 +1307,29 @@ What matters at this level:
   i18n strings, so it travels in the language it was read in. Nothing to
   redact, no value the user typed ever enters a report.
 
-### 5.13 Footer and "About"
+### 5.13 "About"
 
-One thin line at the bottom of the app, on every route and every breakpoint:
-`Powered by <tool> v<version>`, the host's own `branding.footerLinks`, and an
-**About** link. It names the *tool*, never the documented API — the host's
+One item at the bottom of the preferences menu (§5.16), on every route and
+every breakpoint. It names the *tool*, never the documented API — the host's
 product name and logo stop at the header (§7).
 
-The dialog behind that link states, in this order: name and version, what the
-tool is, links to the project and to its issue tracker, the license with its
-copyright line, the OpenAPI versions read and the formats exported, a privacy
-statement, the keyboard shortcuts, and the third-party components bundled in
-the distribution with their version and license.
+The dialog behind it states, in this order: name and version, what the tool is,
+links to the project and to its issue tracker, the license with its copyright
+line, the OpenAPI versions read and the formats exported, a privacy statement,
+the keyboard shortcuts, and the third-party components bundled in the
+distribution with their version and license.
 
-It has a second way in, at the bottom of the preferences menu (§5.16). The
-footer is the conventional home for a credit and the natural gesture from the
-version it prints, but at the end of a long page it is also a scroll away, and
-a dialog carrying the shortcuts list has no business being hard to reach.
+The menu is its only door, and that is why it is in the menu rather than in a
+credit line at the bottom of the page: a footer is a scroll away at the end of
+a long route, and a dialog carrying the license and the shortcuts list has no
+business being hard to reach.
 
 Three properties worth stating, because they are what the design turns on:
 
-- **No switch hides the footer.** A CDN install is a single `<script>`: it
-  ships no `README`, no `LICENSE`, no `NOTICE`. This dialog is the only place
-  those notices reach the people running the code, so removing it would drop
-  an obligation rather than a decoration. A host with its own legal or
-  contact pages adds them next to "About" through `branding.footerLinks`.
+- **No switch hides it.** A CDN install is a single `<script>`: it ships no
+  `README`, no `LICENSE`, no `NOTICE`. This dialog is the only place those
+  notices reach the people running the code, so removing it would drop an
+  obligation rather than a decoration.
 - **Credits list what ships, and only that** — every runtime dependency,
   Tailwind and daisyUI (whose output is compiled into `app.css`), and the
   bundled Source Serif 4 face (§5.9). Build
@@ -1351,10 +1349,6 @@ Three properties worth stating, because they are what the design turns on:
   Imports and exports are two rows, not one: the formats a reader can bring in
   are not the ones they can take away. The dialog restates facts; it does not
   maintain its own.
-
-Below `lg`, the bar keeps its content left-aligned behind a reserved end
-padding: the "Try it" FAB floats over the bottom right, and a credit link the
-thumb cannot reach is not a credit.
 
 ### 5.14 AI surface
 
@@ -1843,9 +1837,9 @@ sheet are modal surfaces, and the scrim only settles the pointer: without more,
 Tab walks straight out of the panel into a page the reader cannot see, and a
 screen reader browses it just as freely. `shell/panels.js` therefore marks the
 rest of the layout `inert` while a panel is open — the other column, the
-resizers, the header, the footer and the skip link — and unwinds it on close,
-when one panel replaces the other, and when a resize crosses lg, which the
-off-canvas CSS handles by media query and `inert` cannot. What stays live is
+resizers, the header and the skip link — and unwinds it on close, when one
+panel replaces the other, and when a resize crosses lg, which the off-canvas
+CSS handles by media query and `inert` cannot. What stays live is
 what has to answer while a panel is open: the scrim, the FAB, the modal
 dialogs, and the toast stack, whose `role="status"` would go silent inside an
 inert subtree.
@@ -1986,12 +1980,9 @@ halves of the setup link, the audit and a docs page.
   `.api-scrollport` blocks above, whose declared tab stop is what makes the
   exemption honest, and only for their own overflow, never for a container's.
   The criterion also forbids *loss of information*, which is the half that found
-  something: two boxes threw their text away rather than widen. The footer
-  credit showed 15 % of "Powered by apiglow v0.1.0" — 160 px of the bar are
-  reserved for the "Try it" FAB, leaving 148 for a credit and a link list that
-  want 271 — and now truncates from lg up only, wrapping below. A step editor
-  preview showed 36 % of `: "available" | "pending" | "sold"`; previews are
-  capped at 60 characters upstream, so it wraps instead, at a cost of one line
+  something: a box threw its text away rather than widen. A step editor preview
+  showed 36 % of `: "available" | "pending" | "sold"`; previews are capped at
+  60 characters upstream, so it wraps instead, at a cost of one line
   at worst and never above 320 px. The floor is **half the string**, and the two
   truncations that stay are deliberate: the doc's base-URL reminder at 74 %,
   which carries `shrink-[9999]` precisely so the path beside it never

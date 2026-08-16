@@ -10,6 +10,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Removed
+
+- The bottom credit bar is gone, and with it the `branding.footerLinks`
+  option: About — with the license and the third-party notices — is reached
+  from the preferences menu in the header, and the page keeps the height the
+  bar was taking. A `footerLinks` left in a config is ignored.
+
 ### Changed
 
 - The header holds one line at every screen size, phones included, where it

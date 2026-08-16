@@ -49,7 +49,7 @@ Nothing is published locally. `prepublishOnly` rebuilds `dist/` on any
 | `gate` | The tag and `package.json` agree — the one failure that would otherwise publish a version nobody asked for. Then every `check:*`, the unit tests, the build, and the changelog section that will become the release body. |
 | `e2e` | The full browser matrix — Chromium, Firefox, WebKit, desktop and mobile projects — against the packed tarball. A release is where that cost is obviously worth paying. |
 | `publish` | `npm publish` through **trusted publishing** (§3): the OIDC token replaces the access token and signs the provenance attestation. |
-| `verify` | [`verify-release.mjs`](../scripts/verify-release.mjs) waits for the registry and for jsDelivr, runs the published `apiglow` binary through `npx`, then loads the CDN bundle in a real browser on a bare host page and checks the documentation renders, the stylesheet resolves, and the footer names *this* version. Every other suite runs against the local pack; only this one proves the published artifact. |
+| `verify` | [`verify-release.mjs`](../scripts/verify-release.mjs) waits for the registry and for jsDelivr, runs the published `apiglow` binary through `npx`, then loads the CDN bundle in a real browser on a bare host page and checks the documentation renders, the stylesheet resolves, and the About dialog names *this* version. Every other suite runs against the local pack; only this one proves the published artifact. |
 | `announce` | The GitHub Release, body taken from the changelog, flagged `--prerelease` for an `-rc`. |
 
 The dist-tag follows the number: anything with a `-` publishes under `next`,
@@ -91,8 +91,8 @@ because `preview:cdn` serves exactly that version and refuses to start when
 take the whole e2e suite down with it.
 
 Inside the bundle the version comes from the same source: Vite defines
-`__APP_VERSION__` from `package.json`, which is what the footer, the About
-dialog, the diagnostics and the HAR export report.
+`__APP_VERSION__` from `package.json`, which is what the About dialog, the
+diagnostics and the HAR export report.
 
 ## 5. When a step fails
 

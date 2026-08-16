@@ -102,7 +102,6 @@ import {
   MAIN_ID,
   errorView,
   firstCallIntro,
-  footer,
   loadingView,
   notFoundView,
   skipToContentLink,
@@ -700,9 +699,6 @@ function appLayout(
       bugs: __APP_BUGS__,
     },
   })
-  // A host entry is worth a footer slot only if it can be both labelled and
-  // followed — same rule as docsPages.
-  const footerLinks = (branding.footerLinks ?? []).filter((link) => link?.label && link?.url)
   // "Reload in try-it": navigate to the operation then inject
   // the values once the route has rendered (hashchange is asynchronous).
   let pendingHistoryEntry = null
@@ -764,7 +760,6 @@ function appLayout(
       tryItResizer,
       tryItAside,
     ),
-    footer(footerLinks, () => aboutDialog.open()),
     scrim,
     tryItFab,
     envManager,

@@ -392,7 +392,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | "Copy page" on a prose page: the page as authored, `{{var}}` as a template, MCP context following the environment | `docs-page-markdown.test.js` | `docs-pages.spec.js` |
 | Preferences, header memory (localStorage) | `prefs.test.js`, `header-memory.test.js` | — |
 | Settings panel: storage inventory, targeted purges, full reset | `maintenance.test.js` | `settings.spec.js` |
-| Footer, About dialog, license and third-party notices | `credits.test.js` | `about.spec.js` |
+| About dialog, license and third-party notices | `credits.test.js` | `about.spec.js` |
 | Parse/render performance budgets | — | `perf.spec.js` |
 | Accessibility: axe sweep, focus return, tablist keys, live regions, the keyboard a send or a run must not drop, the palette's combobox wiring | — | `a11y.spec.js` |
 | Keyboard sweep: every visible control reachable by Tab, a visible ring at every stop, skip link to `<main>`, scrolling blocks as declared tab stops, an open mobile panel the walk cannot leave | — | `keyboard.spec.js` |
