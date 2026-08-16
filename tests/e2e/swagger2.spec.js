@@ -9,6 +9,7 @@ import {
   gotoFixture,
   gotoOp,
   mockApi,
+  openSettings,
   panelParam,
   send,
   tryIt,
@@ -27,7 +28,7 @@ test('a 2.0 document renders, and the diagnostics say it was converted', async (
   // The security scheme survived `securityDefinitions`.
   await expect(page.locator('main')).toContainText('X-Api-Key')
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await openSettings(page)
   const panel = page.locator('settings-panel .modal-box')
   await expect(panel).toBeVisible()
   // The one place the original version is named — without it, "3.0.4" would be

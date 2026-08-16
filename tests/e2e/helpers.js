@@ -251,7 +251,7 @@ export async function gotoOp(page, fixture, opId, title = null) {
   await (title ? expect(heading).toHaveText(title) : expect(heading).toBeVisible())
 }
 
-// The settings panel has no nav entry by design: the header button is the
+// The settings panel has no nav entry by design: the preferences menu is the
 // only way in.
 // The header sits behind the sheet's scrim below lg, so every way into the
 // header closes the sheet first. Grouped here rather than repeated in seven
@@ -268,9 +268,25 @@ export async function openSearch(page) {
   await expect(page.locator('search-palette input[type="search"]')).toBeVisible()
 }
 
-export async function openSettings(page) {
+// The preferences menu, and the palette list folded inside it. Both are
+// disclosures that stay open once open, so both helpers state the condition
+// they need rather than clicking blind: a spec that flips three themes in a row
+// calls this before each one and only the first opens anything.
+export async function openAppMenu(page) {
   await closeMobilePanels(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  const trigger = page.locator('[data-app-menu]')
+  if (!(await trigger.evaluate((node) => node.parentElement.open))) await trigger.click()
+}
+
+export async function openThemeList(page) {
+  await openAppMenu(page)
+  const toggle = page.locator('[data-theme-palettes]')
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+}
+
+export async function openSettings(page) {
+  await openAppMenu(page)
+  await page.locator('[data-menu-settings]').click()
   await expect(page.locator('settings-panel .modal-box')).toBeVisible()
 }
 

@@ -4,7 +4,7 @@
 // empty, or a version that reads "undefined", is a compliance defect, not a
 // cosmetic one.
 import { expect, test } from '@playwright/test'
-import { APP_NAME, APP_PAGE, APP_VERSION, gotoApp } from './helpers.js'
+import { APP_NAME, APP_PAGE, APP_VERSION, gotoApp, openAppMenu } from './helpers.js'
 
 const footer = (page) => page.locator('footer')
 const dialog = (page) => page.locator('about-dialog .modal-box')
@@ -73,6 +73,22 @@ test('About closes on Escape and gives focus back to the footer link', async ({ 
   await expect(opener).toBeFocused()
 })
 
+// The second door (§5.13): the footer is a scroll away at the bottom of a long
+// page, and the dialog is where the keyboard shortcuts are listed. Closing
+// lands on the menu trigger, not on the item — the item folded away with the
+// menu, and focus must come back to something the reader can still see.
+test('the preferences menu opens About too, and hands focus back to its trigger', async ({
+  page,
+}) => {
+  await gotoApp(page)
+  await openAppMenu(page)
+  await page.locator('[data-menu-about]').click()
+  await expect(dialog(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog(page)).not.toBeVisible()
+  await expect(page.locator('[data-app-menu]')).toBeFocused()
+})
+
 test('host footer links sit next to About without replacing it', async ({ page }) => {
   await gotoApp(page)
   const legal = footer(page).getByRole('link', { name: 'Legal notice' })
@@ -83,8 +99,8 @@ test('host footer links sit next to About without replacing it', async ({ page }
 
 test('the footer speaks the active language', async ({ page }) => {
   await gotoApp(page)
-  await page.locator('lang-switcher summary').click()
-  await page.locator('lang-switcher li button', { hasText: 'fr' }).first().click()
+  await openAppMenu(page)
+  await page.locator('lang-switcher [data-lang-choice="fr"]').click()
   await page.waitForLoadState()
   await expect(footer(page)).toContainText(`Propulsé par ${APP_NAME} v${APP_VERSION}`)
   await footer(page).getByRole('button', { name: 'À propos' }).click()

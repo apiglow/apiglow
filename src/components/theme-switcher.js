@@ -1,8 +1,8 @@
 import { t } from '../i18n/index.js'
 import { readPref, writePref } from '../storage/prefs.js'
-import { detailsDropdown } from './dropdown.js'
+import { menuSectionHeading } from './app-menu.js'
 import { el, icon, text } from './dom.js'
-import { CHECK_MARK_SVG_SM, PALETTE_SVG } from './icons.js'
+import { CHECK_MARK_SVG_SM, CHEVRON_SVG_SM, PALETTE_SVG } from './icons.js'
 
 const THEME_KEY = 'theme'
 // Virtual choice following prefers-color-scheme; never a data-theme value.
@@ -24,6 +24,29 @@ const DISPLAY_NAMES = { apiglow: 'ApiGlow', 'apiglow-dark': 'ApiGlow Dark' }
 function systemPair(available) {
   const pair = THEME_PAIRS.find(([l, d]) => available.includes(l) && available.includes(d))
   return pair ? { light: pair[0], dark: pair[1] } : null
+}
+
+// The palette list and the control that unfolds it. `aria-expanded` on a button
+// immediately followed by what it reveals is the whole disclosure contract —
+// no id to mint, so nothing to keep unique against the rest of the page.
+function paletteDisclosure(menu, count) {
+  const caret = icon(CHEVRON_SVG_SM, 'shrink-0 transition-transform')
+  const toggle = el(
+    'button',
+    'flex w-full items-center gap-1 rounded-box px-2 py-1 text-xs text-subtle hover:bg-base-200',
+    caret,
+    el('span', 'grow text-start', text(t('theme.palettes', { n: count }))),
+  )
+  toggle.type = 'button'
+  toggle.dataset.themePalettes = ''
+  toggle.setAttribute('aria-expanded', 'false')
+  const box = el('div', 'hidden', menu)
+  toggle.addEventListener('click', () => {
+    const open = !box.classList.toggle('hidden')
+    toggle.setAttribute('aria-expanded', String(open))
+    caret.classList.toggle('rotate-180', open)
+  })
+  return [toggle, box]
 }
 
 // One MediaQueryList for the app's lifetime: both the read and the listener
@@ -81,8 +104,9 @@ function themePreview(theme) {
 
 // Selector limited to the themes in theme.available — the CSS embeds
 // all standard themes anyway, it's the host config that restricts the offering.
-// Rendered as an icon dropdown: the header already carries five tools, a wide
-// <select> would cost space there that the theme name doesn't justify.
+// A section of the header's preferences menu, not a control of its own: a theme
+// is picked once and never again, and a permanent slot in the bar is paid for
+// on every render of every page.
 class ThemeSwitcher extends HTMLElement {
   #available = []
   #current = null
@@ -128,8 +152,6 @@ class ThemeSwitcher extends HTMLElement {
       this.replaceChildren()
       return
     }
-    // Filled in by detailsDropdown further below; the items are built before that.
-    let closeMenu = () => {}
     const items = new Map()
     const modeButtons = new Map()
     const pick = (key, theme) => {
@@ -143,7 +165,7 @@ class ThemeSwitcher extends HTMLElement {
       'ul',
       // flex-nowrap: the DaisyUI menu is a wrappable flex-col — without this, a
       // list taller than max-h spreads into columns instead of scrolling.
-      'menu w-full flex-nowrap max-h-72 overflow-y-auto p-0',
+      'menu w-full flex-nowrap max-h-56 overflow-y-auto p-0',
     )
 
     const entry = ({ key, label, preview, apply }) => {
@@ -156,10 +178,9 @@ class ThemeSwitcher extends HTMLElement {
         check,
       )
       btn.type = 'button'
-      btn.addEventListener('click', () => {
-        pick(key, apply())
-        closeMenu()
-      })
+      // No closing here: comparing two palettes means picking them in a row,
+      // and the menu the section lives in stays open for the mode row anyway.
+      btn.addEventListener('click', () => pick(key, apply()))
       items.set(key, { btn, check })
       menu.append(el('li', '', btn))
     }
@@ -175,8 +196,7 @@ class ThemeSwitcher extends HTMLElement {
 
     // The quick mode toggle (docs/architecture.md §5.9), atop the theme list.
     // "System" lives here rather than among the themes: it is a mode, not one
-    // more palette. Picking a mode keeps the menu open — flipping light/dark
-    // to compare is exactly what the row is for.
+    // more palette.
     let modeRow = null
     const pair = systemPair(this.#available)
     if (pair) {
@@ -212,20 +232,20 @@ class ThemeSwitcher extends HTMLElement {
       this.#syncMode(modeButtons)
     }
 
-    const palette = icon(PALETTE_SVG, 'text-subtle')
-    const trigger = el('summary', 'btn btn-sm btn-ghost btn-square', palette)
-    trigger.title = t('theme.label')
-    trigger.setAttribute('aria-label', t('theme.label'))
-
-    const content = el(
-      'div',
-      'dropdown-content z-10 flex w-52 flex-col gap-1 rounded-box border border-base-300 bg-base-100 p-1 shadow-sm',
-      modeRow,
-      menu,
+    // The palette list behind a disclosure, but only when the mode row can
+    // stand in for it: three modes are what a reader actually changes, and
+    // thirty-odd swatches unfolded make the menu taller than a phone screen.
+    // Without a light/dark pair there is no mode row, so the list IS the
+    // control and hiding it would leave the section empty.
+    this.replaceChildren(
+      el(
+        'div',
+        'flex flex-col gap-1',
+        menuSectionHeading(PALETTE_SVG, t('theme.label')),
+        modeRow,
+        ...(modeRow ? paletteDisclosure(menu, this.#available.length) : [menu]),
+      ),
     )
-    const dropdown = detailsDropdown('dropdown-end', trigger, content)
-    closeMenu = dropdown.close
-    this.replaceChildren(dropdown.details)
   }
 
   #syncActive(items) {

@@ -4,7 +4,7 @@
 // visible unless the app actually applied them, which is what these assert.
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
-import { gotoApp, gotoFixture } from './helpers.js'
+import { gotoApp, gotoFixture, openSettings } from './helpers.js'
 
 const OVERLAY_PAGE = '/tests/e2e/fixtures/app-overlay.html'
 const ARAZZO_PAGE = '/tests/e2e/fixtures/app-arazzo.html'
@@ -32,7 +32,7 @@ test('overlays are applied before the schema is read', async ({ page }) => {
 
 test('the settings panel accounts for the overlays, applied and failed alike', async ({ page }) => {
   await gotoFixture(page, OVERLAY_PAGE)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await openSettings(page)
   const panel = page.locator('settings-panel .modal-box')
   await expect(panel).toBeVisible()
   await expect(panel).toContainText('Overlays')

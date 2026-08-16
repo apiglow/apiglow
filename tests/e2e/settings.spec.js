@@ -13,6 +13,7 @@ import {
   openDrawerIfMobile,
   openHistory,
   openSettings,
+  openThemeList,
   send,
 } from './helpers.js'
 
@@ -73,7 +74,7 @@ test('the inventory reports what the browser holds', async ({ page }) => {
   await expect(count(page, 'preferences')).toHaveText('0')
 
   await page.locator('settings-panel .modal-box button.btn-circle').click()
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher li button', { hasText: /^dark$/ }).click()
   await openSettings(page)
   await expect(count(page, 'preferences')).toHaveText('1')
@@ -152,7 +153,7 @@ test('erasing everything reloads on a first-visit state', async ({ page }) => {
   // A preference written by hand: it must not survive either. The switcher is
   // in the header, which the open sheet covers below lg.
   await closeMobilePanels(page)
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher li button', { hasText: /^dark$/ }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 

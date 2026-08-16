@@ -2,7 +2,7 @@
 // cascade outcome — which rule wins on the root element — so it can only be
 // checked in a real browser, against the built CSS the host actually gets.
 import { expect, test } from '@playwright/test'
-import { gotoFixture, THEMES_PAGE } from './helpers.js'
+import { gotoFixture, openThemeList, THEMES_PAGE } from './helpers.js'
 
 const rootToken = (page, token) =>
   page.evaluate(
@@ -19,14 +19,14 @@ function themeOption(page, name) {
 }
 
 async function selectTheme(page, name) {
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await themeOption(page, name).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', name)
 }
 
 test('custom themes join the switcher, swatches included', async ({ page }) => {
   await gotoFixture(page, THEMES_PAGE)
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   // The five themes of the fixture; System sits in the mode toggle above.
   await expect(page.locator('theme-switcher li button')).toHaveCount(5)
   // The preview repaints off its own local data-theme: the injected rule is

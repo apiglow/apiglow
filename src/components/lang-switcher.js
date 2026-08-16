@@ -1,6 +1,6 @@
 import { currentLanguage, t } from '../i18n/index.js'
 import { readPref, writePref } from '../storage/prefs.js'
-import { detailsDropdown } from './dropdown.js'
+import { menuSectionHeading } from './app-menu.js'
 import { el, icon, text } from './dom.js'
 import { CHECK_MARK_SVG_SM, GLOBE_SVG } from './icons.js'
 
@@ -57,12 +57,17 @@ function languageName(code) {
   return code.toUpperCase()
 }
 
-// Language selector. The change reloads the page: all components
-// then re-render in the new language, and only the active language's file
-// is downloaded.
+// How many offered languages still fit as one row of segments. Past that the
+// row would wrap into an unreadable grid and the list takes over.
+const JOIN_MAX = 3
+
+// Language selector, a section of the header's preferences menu. The change
+// reloads the page: all components then re-render in the new language, and only
+// the active language's file is downloaded.
 class LangSwitcher extends HTMLElement {
   #available = []
   #current = null
+  #build = null
 
   // `current` is the persisted CHOICE ('browser' included), not the loaded
   // language — under 'browser' the two differ, and the check mark must land on
@@ -78,18 +83,58 @@ class LangSwitcher extends HTMLElement {
     if (this.#available.length) this.#render()
   }
 
+  // Called by the menu holding this section when it first opens: the long-list
+  // form costs an `Intl.DisplayNames` per language and this element renders on
+  // the boot path of every page, for a list most sessions never unfold.
+  reveal() {
+    const build = this.#build
+    this.#build = null
+    build?.()
+  }
+
   #render() {
     if (this.#available.length < 2) {
       this.replaceChildren()
       return
     }
-    const menu = el(
-      'ul',
-      'dropdown-content menu flex-nowrap max-h-80 overflow-y-auto bg-base-100 rounded-box border border-base-300 shadow-sm z-10 w-48 p-1',
+    const body = this.#available.length <= JOIN_MAX ? this.#segments() : this.#list()
+    this.replaceChildren(
+      el('div', 'flex flex-col gap-1', menuSectionHeading(GLOBE_SVG, t('lang.label')), body),
     )
-    // The entries are built on the first open of the dropdown, not here: each
-    // `Intl.DisplayNames` costs real milliseconds, and this render is on the
-    // boot path of every page for a menu most sessions never unfold.
+  }
+
+  // Picking a language costs a reload, so the choice is one press away rather
+  // than one press plus a scan: with two or three offered, every option and the
+  // automatic mode fit on a single row of segments — same grammar as the
+  // theme's light/dark/system row, and no `Intl` call at all.
+  #segments() {
+    const row = el('div', 'join w-full')
+    const segment = (key, label, title) => {
+      const active = key === this.#current
+      const btn = el('button', 'btn btn-xs join-item grow', text(label))
+      btn.type = 'button'
+      btn.dataset.langChoice = key
+      btn.title = title
+      btn.classList.toggle('btn-active', active)
+      btn.setAttribute('aria-pressed', String(active))
+      btn.addEventListener('click', () => this.#pick(key))
+      row.append(btn)
+    }
+    // The automatic mode first, and named by its own label rather than by the
+    // code it resolved to: it is a mode, not one more language.
+    segment(BROWSER, t('lang.browser'), `${t('lang.browser')} — ${currentLanguage().toUpperCase()}`)
+    for (const code of this.#available) segment(code, code.toUpperCase(), code)
+    return row
+  }
+
+  #pick(key) {
+    if (key === this.#current) return
+    writePref(LANG_KEY, key)
+    window.location.reload()
+  }
+
+  #list() {
+    const menu = el('ul', 'menu w-full flex-nowrap max-h-56 overflow-y-auto p-0')
     const entry = (key, tag, label) => {
       const active = key === this.#current
       const check = icon(CHECK_MARK_SVG_SM, active ? 'shrink-0' : 'shrink-0 invisible')
@@ -103,18 +148,11 @@ class LangSwitcher extends HTMLElement {
       btn.type = 'button'
       btn.dataset.langChoice = key
       if (active) btn.setAttribute('aria-current', 'true')
-      btn.addEventListener('click', () => {
-        if (key === this.#current) return
-        writePref(LANG_KEY, key)
-        window.location.reload()
-      })
+      btn.addEventListener('click', () => this.#pick(key))
       menu.append(el('li', '', btn))
     }
 
-    let built = false
-    const buildMenu = () => {
-      if (built) return
-      built = true
+    this.#build = () => {
       // First, and separated: following the browser is a mode, not one more
       // language — and it is where an install starts, so it is also the way
       // back. Its code column shows what the browser actually resolved to,
@@ -123,28 +161,7 @@ class LangSwitcher extends HTMLElement {
       menu.append(el('li', 'pointer-events-none', el('div', 'divider my-0')))
       for (const code of this.#available) entry(code, code, languageName(code))
     }
-
-    const globe = icon(GLOBE_SVG, 'text-subtle')
-    // The active language's code stays readable next to the icon: the globe
-    // alone doesn't say which language we're in.
-    const trigger = el(
-      'summary',
-      'btn btn-sm btn-ghost gap-1 px-2 font-normal',
-      globe,
-      el('span', 'font-mono text-xs uppercase', text(currentLanguage())),
-    )
-    trigger.title = t('lang.label')
-    trigger.setAttribute('aria-label', t('lang.label'))
-
-    // Synchronous on the summary click — `toggle` is a queued task, and the
-    // menu must not paint open and empty. Keyboard activation fires the same
-    // click; `toggle` stays as the net under anything else that opens it.
-    trigger.addEventListener('click', buildMenu)
-    const dropdown = detailsDropdown('dropdown-end', trigger, menu)
-    dropdown.details.addEventListener('toggle', () => {
-      if (dropdown.details.open) buildMenu()
-    })
-    this.replaceChildren(dropdown.details)
+    return menu
   }
 }
 

@@ -1,14 +1,14 @@
 // Persisted daisyUI theme (docs/architecture.md §5.9) and lazy-loaded i18n
 // (§5.10: only the active language's file is downloaded).
 import { test, expect } from '@playwright/test'
-import { gotoApp } from './helpers.js'
+import { gotoApp, openAppMenu, openThemeList } from './helpers.js'
 
 test('theme switcher applies the theme and survives a reload', async ({ page }) => {
   await gotoApp(page)
   // default: 'system' resolves within the first pair of theme.available —
   // apiglow here, Playwright emulating a light-scheme OS.
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'apiglow')
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   // The five themes of theme.available; System lives in the mode toggle, not
   // in the list.
   await expect(page.locator('theme-switcher li button')).toHaveCount(5)
@@ -20,7 +20,7 @@ test('theme switcher applies the theme and survives a reload', async ({ page }) 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await expect(page.locator('theme-switcher li button[aria-current="true"]')).toHaveText('dark')
 })
 
@@ -35,12 +35,12 @@ test('system theme follows the OS scheme and an explicit pick detaches it', asyn
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'apiglow')
   // Explicit choice wins and stops following the OS.
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher li button', { hasText: /^corporate$/ }).click()
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'corporate')
   // Picking System again re-attaches, still without a reload.
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher [data-mode="system"]').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'apiglow-dark')
 })
@@ -50,7 +50,7 @@ test('system theme follows the OS scheme and an explicit pick detaches it', asyn
 // side, from an unpaired one it lands on the signature pair.
 test('the mode toggle flips within the current pair', async ({ page }) => {
   await gotoApp(page)
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher [data-mode="dark"]').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'apiglow-dark')
   await expect(page.locator('theme-switcher [data-mode="dark"]')).toHaveAttribute(
@@ -64,13 +64,13 @@ test('the mode toggle flips within the current pair', async ({ page }) => {
   // From the light/dark pair, the toggle flips that pair, not the signature's.
   await page.locator('theme-switcher li button', { hasText: /^light$/ }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher [data-mode="dark"]').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 
   // From an unpaired theme, no side is lit and "dark" lands on the signature pair.
   await page.locator('theme-switcher li button', { hasText: /^corporate$/ }).click()
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await expect(page.locator('theme-switcher [aria-pressed="true"]')).toHaveCount(0)
   await page.locator('theme-switcher [data-mode="dark"]').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'apiglow-dark')
@@ -100,7 +100,7 @@ test('a standard built-in theme repaints for real, not just the attribute', asyn
   const initialContent = await rootColor('--color-base-content')
   expect(initialPrimary).not.toBe('')
 
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   // The swatches carry a local data-theme, so each one already paints from its
   // own block: two identical swatches mean one of the blocks is missing.
   expect(await swatchPrimary('corporate')).not.toBe(await swatchPrimary('light'))
@@ -112,7 +112,7 @@ test('a standard built-in theme repaints for real, not just the attribute', asyn
   await expect.poll(() => rootColor('--color-primary')).not.toBe(initialPrimary)
   await expect.poll(() => rootColor('--color-base-content')).not.toBe(initialContent)
 
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await page.locator('theme-switcher li button', { hasText: /^ApiGlow$/ }).click()
   await expect.poll(() => rootColor('--color-primary')).toBe(initialPrimary)
 })
@@ -127,8 +127,8 @@ test('switching language downloads only that language file and translates the UI
   await gotoApp(page)
   // English = embedded in the bundle, no language file downloaded
   expect(i18nRequests).toHaveLength(0)
-  await page.locator('lang-switcher summary').click()
-  await page.locator('lang-switcher li button', { hasText: 'fr' }).first().click()
+  await openAppMenu(page)
+  await page.locator('lang-switcher [data-lang-choice="fr"]').click()
   // switching language reloads the page (docs/architecture.md §14.7)
   await page.waitForLoadState()
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
@@ -150,10 +150,10 @@ test.describe('a browser asking for French', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
     await expect(page.getByRole('button', { name: 'Historique' })).toBeVisible()
 
-    // The check mark lands on the mode, not on the language it resolved to.
-    await page.locator('lang-switcher summary').click()
+    // The pressed segment is the mode, not the language it resolved to.
+    await openAppMenu(page)
     await expect(page.locator('lang-switcher [data-lang-choice="browser"]')).toHaveAttribute(
-      'aria-current',
+      'aria-pressed',
       'true',
     )
 
@@ -165,7 +165,7 @@ test.describe('a browser asking for French', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 
     // And "Automatic" is the way back to following the browser.
-    await page.locator('lang-switcher summary').click()
+    await openAppMenu(page)
     await page.locator('lang-switcher [data-lang-choice="browser"]').click()
     await page.waitForLoadState()
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr')

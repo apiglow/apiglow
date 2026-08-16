@@ -1116,15 +1116,18 @@ Functional source of truth: [docs-pages.md](docs-pages.md). Summary:
 - **`theme.default: 'system'`** (the built-in default) follows the OS
   `prefers-color-scheme`, resolved within the first light/dark pair fully
   present in `available` (`apiglow`/`apiglow-dark`, else `light`/`dark`), and
-  keeps following it live. The selector shows it as a "System" entry above the
-  themes; without a complete pair the entry disappears and `'system'` degrades
-  to the first available theme.
+  keeps following it live. The selector shows it as a "System" segment in the
+  mode row above the palettes; without a complete pair the segment disappears
+  and `'system'` degrades to the first available theme.
 - **The built CSS includes ALL standard daisyUI themes** (cost: CSS
   variables only) so `theme.available` is genuinely free on the consumer
   side without a rebuild.
-- Header selector limited to `theme.available`; the persisted choice — a theme
-  name or `system` — takes priority over `theme.default` (an initial value
-  only).
+- Selector limited to `theme.available`, and a **section of the preferences
+  menu** (§5.16) rather than a control of its own: the light/dark/system row is
+  always shown, the palettes themselves sit behind a disclosure that a reader
+  with a working theme never opens. Below two available themes there is no
+  choice left and the section is absent. The persisted choice — a theme name or
+  `system` — takes priority over `theme.default` (an initial value only).
 - **Display serif**: titles render in Source Serif 4 Variable (OFL, credited
   in the About dialog), a 50 KB latin-subset woff2 shipped as
   `dist/fonts/…` and loaded relative to `app.css` like `i18n/*.json`;
@@ -1191,15 +1194,21 @@ additive.
   §14.7.
 - Shipped languages: `en` (bundled) + `fr`. Adding a language = one JSON
   file.
+- The selector is a **section of the preferences menu** (§5.16), next to the
+  theme's. Up to three offered languages it is one row of segments —
+  "Automatic" plus each code — because picking one costs a reload and the
+  choice should not also cost a scan; past that it becomes a list, built on
+  the menu's first open (one `Intl.DisplayNames` per language is not a boot
+  cost). One available language is not a choice: the section is absent.
 - Out of scope: OpenAPI schema content and `.md` pages are displayed as-is,
   whatever the UI language.
 
 ### 5.11 Settings panel
 
-Maintenance drawer behind a gear at the end of the header toolbar — the
-least prominent tool there, with no label at any breakpoint. Nothing in it
-serves reading the doc, and a discoverable "erase everything" would be a
-hazard rather than a feature.
+Maintenance drawer, reached as an item at the bottom of the preferences menu
+(§5.16) — the least prominent thing the bar can open, and never a control of
+its own. Nothing in it serves reading the doc, and a discoverable "erase
+everything" would be a hazard rather than a feature.
 
 - **Stored data**: one row per dataset group of the §6.2 inventory —
   history, scenarios, snapshots, environments, header memory, and one row
@@ -1310,6 +1319,11 @@ tool is, links to the project and to its issue tracker, the license with its
 copyright line, the OpenAPI versions read and the formats exported, a privacy
 statement, the keyboard shortcuts, and the third-party components bundled in
 the distribution with their version and license.
+
+It has a second way in, at the bottom of the preferences menu (§5.16). The
+footer is the conventional home for a credit and the natural gesture from the
+version it prints, but at the end of a long page it is also a scroll away, and
+a dialog carrying the shortcuts list has no business being hard to reach.
 
 Three properties worth stating, because they are what the design turns on:
 
@@ -1532,6 +1546,29 @@ can show what they send back. Storage impact: two nullable fields on the
 history entry (`diagnosis`, `transfer`), inside the existing history policy —
 no new dataset (§6.1). The HAR export maps the transfer snapshot onto its
 standard size fields (§5.7).
+
+### 5.16 The header bar
+
+`src/shell/header.js` composes the bar from parts it is handed already
+resolved — `app.js` stays the only module reading the host config (rule 10).
+
+**The preferences menu** is the one thing in the bar that is about the app
+rather than about the API: the theme section (§5.9), the language section
+(§5.10), then the settings drawer (§5.11) and About (§5.13) as items. A theme
+and a language are picked once and never again, and a permanent slot in the
+bar is paid for on every page; behind one trigger they cost a click on the day
+they are wanted and nothing on every other day.
+
+The trigger is a plain overflow glyph, never a gear. A gear opening a menu
+whose own first item is called *Settings* says one word for two different
+things — so the split is named where the meaning is: **preferences** change
+how the app looks, **settings** govern what it keeps.
+
+Each section builds its own controls and the menu supplies the grammar they
+are dressed in (`menuSectionHeading`). A section with nothing to choose — one
+available theme, one available language — is not rendered, and its separator
+goes with it. What a section defers building, the menu triggers on its first
+open: it is the only part that knows it is about to be looked at.
 
 ## 6. Storage model
 

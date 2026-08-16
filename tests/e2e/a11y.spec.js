@@ -14,6 +14,8 @@ import {
   openDrawerIfMobile,
   openEnvManager,
   openHistory,
+  openSettings,
+  openThemeList,
   openTryItIfMobile,
   panelField,
   send,
@@ -164,7 +166,7 @@ test('home view has no accessibility violations', async ({ page }) => {
 // place `color-contrast` is off, for that reason and no other.
 test('a custom-theme install has no accessibility violations', async ({ page }) => {
   await gotoFixture(page, THEMES_PAGE)
-  await page.locator('theme-switcher summary').click()
+  await openThemeList(page)
   await expectNoViolations(page, { contrast: false })
 })
 
@@ -279,8 +281,7 @@ test('history dialog has no accessibility violations', async ({ page }) => {
 
 test('settings panel has no accessibility violations', async ({ page }) => {
   await gotoApp(page)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await expect(page.locator('settings-panel .modal-box')).toBeVisible()
+  await openSettings(page)
   await expectNoViolations(page)
 })
 

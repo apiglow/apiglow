@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { clipboardText, gotoFixture, openDrawerIfMobile, selectEnv } from './helpers.js'
+import {
+  clipboardText,
+  gotoFixture,
+  openAppMenu,
+  openDrawerIfMobile,
+  selectEnv,
+} from './helpers.js'
 
 // docs/docs-pages.md — the prose side of the documentation, against the packed
 // bundle. The fixture host page declares every entry kind at once, which is
@@ -161,8 +167,8 @@ test.describe('i18n entries (§2.3)', () => {
     await expect(page.locator('api-nav a[data-page-slug="guide"]')).toHaveText('Localized guide')
     await expect(page.locator('md-page h1')).toContainText('Localized guide')
 
-    await page.locator('lang-switcher summary').click()
-    await page.locator('lang-switcher button', { hasText: 'Français' }).click()
+    await openAppMenu(page)
+    await page.locator('lang-switcher [data-lang-choice="fr"]').click()
     await expect(page.locator('api-nav a[data-page-slug="guide"]')).toHaveText('Guide localisé')
     await expect(page.locator('md-page h1')).toContainText('Guide localisé')
   })

@@ -1,6 +1,6 @@
 // The header's tools and the dialogs behind them: schema changelog, request
-// history, theme and language selectors, the maintenance drawer, the request
-// importer, and the About box.
+// history, the request importer, and the preferences menu — which holds the
+// theme and language sections, the maintenance drawer and the About box.
 //
 // Every value this module needs is passed in already resolved — it never sees
 // the host config object (rule 10); `app.js` reads it and hands over the parts.
@@ -9,8 +9,9 @@
 // the diff is written here and only read outside, so it stays here and is
 // published through `changesFor()`; the current operation id is written by the
 // router, so it stays there and arrives as a callback, read on each use.
+import { appMenu } from '../components/app-menu.js'
 import { el, iconButton, text } from '../components/dom.js'
-import { GEAR_SVG, IMPORT_SVG } from '../components/icons.js'
+import { IMPORT_SVG } from '../components/icons.js'
 import { resolveLanguageChoice } from '../components/lang-switcher.js'
 import { resolveThemeChoice } from '../components/theme-switcher.js'
 import { t } from '../i18n/index.js'
@@ -140,25 +141,35 @@ export function createToolbar({
   historyBtn.type = 'button'
   historyBtn.addEventListener('click', () => historyList.open())
 
-  const themeSwitcher = document.createElement('theme-switcher')
-  // The choice, not the applied data-theme: under 'system' the two differ, and
-  // the check mark must land on System.
-  themeSwitcher.themes = {
-    available: themes,
-    current: resolveThemeChoice({ available: themes, fallback: themeDefault }),
+  // A single offered theme or language is not a choice: the section is left out
+  // rather than rendered as one dead option, and the menu closes its own rule
+  // over the gap.
+  let themeSwitcher = null
+  if (themes.length > 1) {
+    themeSwitcher = document.createElement('theme-switcher')
+    // The choice, not the applied data-theme: under 'system' the two differ, and
+    // the check mark must land on System.
+    themeSwitcher.themes = {
+      available: themes,
+      current: resolveThemeChoice({ available: themes, fallback: themeDefault }),
+    }
   }
 
-  const langSwitcher = document.createElement('lang-switcher')
-  // The choice again, not the loaded language: 'browser' is a choice of its own
-  // and the check mark must land on it rather than on what it resolved to.
-  langSwitcher.languages = {
-    available: languages,
-    current: resolveLanguageChoice({ available: languages, fallback: languageDefault }),
+  let langSwitcher = null
+  if (languages.length > 1) {
+    langSwitcher = document.createElement('lang-switcher')
+    // The choice again, not the loaded language: 'browser' is a choice of its own
+    // and the check mark must land on it rather than on what it resolved to.
+    langSwitcher.languages = {
+      available: languages,
+      current: resolveLanguageChoice({ available: languages, fallback: languageDefault }),
+    }
   }
 
-  // Maintenance drawer: deliberately the least prominent tool in the toolbar —
-  // a square icon with no label at any breakpoint. Nothing here belongs to
-  // reading the doc, and a discoverable "erase everything" would be a hazard.
+  // Maintenance drawer: deliberately the least prominent thing the bar can
+  // reach — an item at the bottom of the preferences menu, never a control of
+  // its own. Nothing here belongs to reading the doc, and a discoverable
+  // "erase everything" would be a hazard.
   const settingsPanel = document.createElement('settings-panel')
   settingsPanel.stores = { history: historyStore, scenarios: scenarioStore }
   settingsPanel.diagnostics = diagnostics
@@ -169,8 +180,6 @@ export function createToolbar({
     console.warn('[api-doc] overlay:', warning.code, warning.target ?? warning.url ?? '')
   }
   settingsPanel.audit = auditEnabled
-  const settingsBtn = iconButton('btn btn-sm btn-ghost btn-square', GEAR_SVG, t('settings.open'))
-  settingsBtn.addEventListener('click', () => settingsPanel.open())
 
   // "Schema patched locally" (docs/user-overlay.md decision 3): permanent while
   // a user overlay is applied, and labelled at every breakpoint unlike the
@@ -197,16 +206,21 @@ export function createToolbar({
   const aboutDialog = document.createElement('about-dialog')
   aboutDialog.build = build
 
+  const menu = appMenu({
+    themeSwitcher,
+    langSwitcher,
+    onSettings: () => settingsPanel.open(),
+    onAbout: () => aboutDialog.open(),
+  })
+
   return {
     changelog: changelog.node,
     changelogBtn: changelog.button,
     changesFor: changelog.changesFor,
     historyList,
     historyBtn,
-    themeSwitcher,
-    langSwitcher,
+    menu,
     settingsPanel,
-    settingsBtn,
     userOverlayBtn,
     importDialog,
     importBtn,

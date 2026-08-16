@@ -151,7 +151,7 @@ test('each spec carries its own settings: theme, features, environment lock', as
     page.locator('api-nav').getByRole('button', { name: '+ New scenario' }),
   ).toBeVisible()
   // Two root themes available: the selector is there.
-  await expect(page.locator('theme-switcher summary')).toHaveCount(1)
+  await expect(page.locator('theme-switcher')).toHaveCount(1)
   await openEnvSwitcher(page)
   await expect(
     page.locator('env-switcher').getByText('Environments', { exact: true }),
@@ -161,7 +161,7 @@ test('each spec carries its own settings: theme, features, environment lock', as
   await switchSpec(page, 'billing')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   // Only one theme offered: nothing left to choose, the selector disappears.
-  await expect(page.locator('theme-switcher summary')).toHaveCount(0)
+  await expect(page.locator('theme-switcher')).toHaveCount(0)
   // Scenarios feature cut for this spec only.
   await openDrawerIfMobile(page)
   await expect(page.locator('api-nav').getByText('SCENARIOS')).toHaveCount(0)

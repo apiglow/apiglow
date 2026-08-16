@@ -392,9 +392,11 @@ export function skipToContentLink() {
 
 // Product footer: one thin line at the bottom of the app, always there. It
 // names the TOOL (never the documented API — that is the header's job) and
-// carries the only entry point to the license and third-party notices, which a
-// CDN install ships no file for. Hence no switch to hide it; a host that needs
-// its own legal links puts them here through `branding.footerLinks`.
+// carries the license and third-party notices, which a CDN install ships no
+// file for. Hence no switch to hide it; a host that needs its own legal links
+// puts them here through `branding.footerLinks`. The About box has a second
+// door in the preferences menu — this one is the gesture from the version
+// line, that one is the one a reader can reach without scrolling.
 //
 // Below lg, everything stays left-aligned behind a reserved end padding: the
 // "Try it" FAB floats at the bottom right, over this bar, and a credit link the
