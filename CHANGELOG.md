@@ -10,6 +10,19 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Added
+
+- Three components for your prose pages: `<Cards>` for a grid of links,
+  `<Steps>` for a numbered walkthrough, `<Tabs>` for "cloud or self-hosted".
+  You write them like MDX, but nothing is compiled and no framework ships —
+  they are Markdown syntax, and a renderer that does not know them (GitHub,
+  your editor) simply shows the prose inside. Full Markdown in every child:
+  fences, callouts, tables, `{{variables}}`.
+- `[Pagination](apidoc:page/pagination)` links one docs page to another by
+  slug. Like the operation references it joins, the link is built through the
+  router, so it keeps working under a multi-spec install where a hand-written
+  `#/page/…` would not.
+
 ## [0.2.0] — 2026-08-16
 
 ### Added
