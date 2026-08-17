@@ -301,11 +301,10 @@ function renderCards(token) {
     const title = escapeHtml(child.attrs.title)
     const body = `<div class="md-card-body">${this.parser.parse(child.tokens)}</div>`
     const href = child.attrs.href
-    if (!href.startsWith(APIDOC_SCHEME)) {
-      return `<a class="md-card" href="${escapeHtml(href)}"><span class="md-card-title">${title}</span>${body}</a>`
-    }
-    const ref = href.slice(APIDOC_SCHEME.length)
-    const target = resolveApidocRef(ref)
+    // A destination that is not a reference is already its own target: one
+    // card markup below, whichever of the two it came from.
+    const ref = href.startsWith(APIDOC_SCHEME) ? href.slice(APIDOC_SCHEME.length) : null
+    const target = ref === null ? { href } : resolveApidocRef(ref)
     // A reference that resolves to nothing is not a card the reader may
     // follow: same visible failure as a broken link in prose (§4.4).
     if (!target) {
