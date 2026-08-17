@@ -14,6 +14,8 @@ const DOCS_PAGE = '/tests/e2e/fixtures/app-docs.html'
 const MANIFEST_PAGE = '/tests/e2e/fixtures/app-docs-manifest.html'
 const MISSING_MANIFEST_PAGE = '/tests/e2e/fixtures/app-docs-missing.html'
 const INLINE_PAGE = '/tests/e2e/fixtures/app-docs-inline.html'
+// Two specs, so a prose reference has a prefix to carry (§4.4).
+const MULTI_PAGE = '/tests/e2e/fixtures/app-multi.html'
 
 test.describe('docs nav (§2.1)', () => {
   test('renders pages, groups and external links in declaration order', async ({ page }) => {
@@ -294,6 +296,106 @@ test.describe('API references in prose (§4.4)', () => {
     await expect(cards.nth(3)).toContainText('No operation matches')
     await cards.nth(1).click()
     await expect(page).toHaveURL(/#\/op\/createPet$/)
+  })
+})
+
+// §4.6 — MDX-shaped syntax, our own parser. The Vitest suite owns the parse
+// contract; here the subject is what the reader gets: real links, a real
+// tablist, and a container that never reaches the DOM as a tag.
+test.describe('prose components (§4.6)', () => {
+  const COMPONENTS = `${DOCS_PAGE}#/page/components`
+
+  test('a card grid links its cards, pages and operations alike', async ({ page }) => {
+    await gotoFixture(page, COMPONENTS)
+    const cards = page.locator('md-page .md-cards > *')
+    await expect(cards).toHaveCount(4)
+    await expect(cards.nth(0)).toHaveAttribute('href', '#/page/pagination')
+    await expect(cards.nth(1)).toHaveAttribute('href', '#/op/createPet')
+    await expect(cards.nth(3)).toHaveAttribute('href', 'https://status.e2e.test')
+    // The body under the title is the author's markdown, not an attribute.
+    await expect(cards.nth(0).locator('.md-card-body')).toContainText('one page at a time')
+    await cards.nth(0).click()
+    await expect(page.locator('md-page h1')).toContainText('Pagination')
+  })
+
+  test('a card whose reference resolves to nothing is broken, not followable', async ({ page }) => {
+    await gotoFixture(page, COMPONENTS)
+    const broken = page.locator('md-page .md-card-broken')
+    await expect(broken).toHaveCount(1)
+    await expect(broken.locator('.apidoc-op-broken')).toHaveAttribute(
+      'title',
+      /No page matches "nowhere"/,
+    )
+    await expect(broken).toHaveJSProperty('tagName', 'DIV')
+  })
+
+  test('a card keeps the multi-spec prefix, because the router builds the href', async ({
+    page,
+  }) => {
+    await gotoFixture(page, `${MULTI_PAGE}#/s/pets/page/components`)
+    const cards = page.locator('md-page .md-cards > *')
+    await expect(cards.nth(0)).toHaveAttribute('href', '#/s/pets/page/pagination')
+    await expect(cards.nth(1)).toHaveAttribute('href', '#/s/pets/op/createPet')
+    await cards.nth(0).click()
+    await expect(page).toHaveURL(/#\/s\/pets\/page\/pagination$/)
+  })
+
+  test('steps are an ordered list, the title a label and not a section', async ({ page }) => {
+    await gotoFixture(page, COMPONENTS)
+    const steps = page.locator('md-page ol.md-steps')
+    await expect(steps).toHaveCount(1)
+    await expect(steps.locator('> li')).toHaveCount(3)
+    await expect(steps.locator('.md-step-title').first()).toHaveText('Install')
+    // A step title is not a heading: it stays out of the table of contents.
+    await expect(
+      page.locator('md-page nav[aria-label="On this page"] a', { hasText: 'Install' }),
+    ).toHaveCount(0)
+    // Full markdown inside a step, interpolation included (§12).
+    await expect(steps.locator('> li').nth(0).locator('pre')).toContainText('npm i')
+    await expect(steps.locator('> li').nth(1)).toContainText('acme')
+  })
+
+  test('prose tabs are a tablist: one panel at a time, arrows moving within it', async ({
+    page,
+  }) => {
+    await gotoFixture(page, COMPONENTS)
+    const group = page.locator('md-page [data-prose-tabs]')
+    const tabs = group.locator('[role="tab"]')
+    await expect(tabs).toHaveCount(2)
+    await expect(tabs.first()).toHaveText('Cloud')
+    await expect(group.locator('section:visible')).toHaveCount(1)
+    await expect(group.locator('section:visible')).toContainText('Nothing to install')
+    await tabs.first().focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(tabs.nth(1)).toBeFocused()
+    await expect(group.locator('section:visible')).toContainText('docker run')
+    await page.keyboard.press('Home')
+    await expect(group.locator('section:visible')).toContainText('Nothing to install')
+  })
+
+  test('prose tabs follow nothing: the code-tab preference leaves them alone', async ({ page }) => {
+    await gotoFixture(page, `${DOCS_PAGE}#/page/pagination`)
+    await page
+      .locator('md-page [data-code-tabs]')
+      .first()
+      .locator('[role="tab"]', { hasText: 'Python' })
+      .click()
+    await page.goto(COMPONENTS)
+    const group = page.locator('md-page [data-prose-tabs]')
+    await expect(group.locator('section:visible')).toContainText('Nothing to install')
+  })
+
+  test('a container written inside a fence stays literal, and a malformed one degrades', async ({
+    page,
+  }) => {
+    await gotoFixture(page, COMPONENTS)
+    // The documented syntax, rendered as the text it is.
+    await expect(page.locator('md-page pre', { hasText: '<Steps>' })).toHaveCount(1)
+    // One grid only: the malformed one produced no token.
+    await expect(page.locator('md-page .md-cards')).toHaveCount(1)
+    // The custom tags never reach the DOM, decorated or dropped.
+    await expect(page.locator('md-page Cards, md-page Card, md-page Step')).toHaveCount(0)
+    await expect(page.locator('md-page')).toContainText('Prose that must survive.')
   })
 })
 

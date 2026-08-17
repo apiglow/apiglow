@@ -35,11 +35,22 @@ const ATX_HEADING = /^ {0,3}(#{1,4})\s+(.*?)\s*#*\s*$/
 const SETEXT_UNDERLINE = /^ {0,3}(=+|-{2,})[^\S\n]*$/
 const FENCE = /^ {0,3}(`{3,}|~{3,})/
 
+// Prose components (§4.6): the tags are syntax, not prose. A card title and a
+// tab label are words the reader sees and searches for, so they stay; the tag
+// itself and a destination are markup, and indexing a `href="apidoc:…"` would
+// answer a search with the page that happens to link somewhere.
+const COMPONENT_TAG =
+  /<\/?(?:Cards|Card|Steps|Step|Tabs|Tab)((?:[ \t]+[A-Za-z][\w-]*="[^"\n]*")*)[ \t]*>/g
+const LABEL_ATTRIBUTE = /\b(?:title|label)="([^"\n]*)"/g
+
 // Enough inline markdown removed for the text to read as prose. Not a parser:
 // this feeds a substring search, where a leftover asterisk costs nothing and a
 // missing word costs a result.
 function inlineText(line) {
   return line
+    .replace(COMPONENT_TAG, (_, attrs) =>
+      [...String(attrs).matchAll(LABEL_ATTRIBUTE)].map(([, value]) => value).join(' '),
+    )
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/^\s{0,3}>+\s?/, '')

@@ -70,6 +70,25 @@ describe('markdown splitting', () => {
     expect(sections[0].text).toContain('curl /pets')
   })
 
+  // §4.6 — the container tags are syntax. What the reader sees of them is a
+  // card title and a tab label, and that is what a search has to find.
+  it('indexes a prose component by its labels, never by its markup', () => {
+    const [only] = splitSections(
+      [
+        '# Guide',
+        '',
+        '<Cards>',
+        '',
+        '<Card title="Quickstart" href="apidoc:page/start">',
+        'Two minutes.',
+        '</Card>',
+        '',
+        '</Cards>',
+      ].join('\n'),
+    )
+    expect(only.text).toBe('Quickstart Two minutes.')
+  })
+
   it('ignores h5 and deeper, which the renderer gives no id to', () => {
     expect(splitSections('# A\n\n##### deep\n\ntext').map((s) => s.heading)).toEqual(['A'])
   })

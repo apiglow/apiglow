@@ -740,9 +740,9 @@ test('the search palette results have no accessibility violations', async ({ pag
 })
 
 // Docs pages (docs/docs-pages.md §8) bring their own surfaces: collapsible nav
-// groups, external links, a code tablist, operation cards, and two <nav>
-// landmarks per page. One fixture page exercises all of them at once, so the
-// sweep grows with the feature rather than beside it.
+// groups, external links, a code tablist, operation cards, prose components,
+// and two <nav> landmarks per page. One fixture page exercises all of them at
+// once, so the sweep grows with the feature rather than beside it.
 test('a docs page exercising every feature has no accessibility violations', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await gotoFixture(page, DOCS_PAGE)
@@ -758,6 +758,12 @@ test('a docs page exercising every feature has no accessibility violations', asy
   // The changelog timeline, with its code header and its ToC tracking.
   await page.goto(`${DOCS_PAGE}#/page/changelog`)
   await expect(page.locator('md-page .md-changelog h2').first()).toBeVisible()
+  await expectNoViolations(page)
+
+  // The prose components (§4.6): a card grid of links, a step list, and a
+  // second kind of tablist on the same page as the code one.
+  await page.goto(`${DOCS_PAGE}#/page/components`)
+  await expect(page.locator('md-page [data-prose-tabs] [role="tab"]').first()).toBeVisible()
   await expectNoViolations(page)
 
   // The three variable states at once (docs-pages §12.4): a resolved value is
