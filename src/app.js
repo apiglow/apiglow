@@ -87,7 +87,12 @@ import { normalizeAnnouncements, rememberDismissed, visibleAnnouncements } from 
 import { announcementBar } from './components/announcement-bar.js'
 import { loadAnnouncementSources } from './shell/announcements.js'
 import { buildOperationIndex, setOperationIndex } from './docs/operations.js'
-import { flattenDocsOutline, mergeDocsPages, resolveDocsOutline } from './docs/pages.js'
+import {
+  flattenDocsOutline,
+  mergeDocsPages,
+  resolveDocsOutline,
+  setDocsPageIndex,
+} from './docs/pages.js'
 import { loadDocsPageSource } from './components/docs-source.js'
 import { el } from './components/dom.js'
 import { envForWrite } from './components/env-write.js'
@@ -267,6 +272,9 @@ function appLayout(
   // the page's lifetime, like the router's spec prefix: no cross-spec
   // references, and switching spec reloads.
   setOperationIndex(buildOperationIndex(model))
+  // Same lock for `apidoc:page/{slug}` (§4.4): the routable slugs of the
+  // outline that is on screen.
+  setDocsPageIndex(pages)
   const tryItConfig = config.tryIt
   const branding = config.branding
 

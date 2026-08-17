@@ -566,6 +566,7 @@
   "page.callout.caution": "Caution",
   "page.codeTabs": "Code samples, one tab per language",
   "page.opRef.missing": "No operation matches \"{ref}\" in this API.",
+  "page.pageRef.missing": "No page matches \"{ref}\" in this documentation.",
   "page.toc": "On this page",
   "page.pager": "Previous and next page",
   "page.prev": "Previous",

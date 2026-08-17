@@ -9,8 +9,9 @@
 import { Marked } from 'marked'
 import { methodBadgeClass } from '../components/method-colors.js'
 import { t } from '../i18n/index.js'
-import { opHash } from '../router.js'
+import { opHash, pageHash } from '../router.js'
 import { lookupOperation } from './operations.js'
+import { hasDocsPage } from './pages.js'
 
 // A leading YAML block is stripped and ignored (§4.1): files authored for
 // another tool render cleanly here, and using its fields is a future track —
@@ -26,6 +27,10 @@ export function stripFrontmatter(source) {
 // language.
 const APIDOC_SCHEME = 'apidoc:'
 const OPERATION_FENCE = 'apidoc:operation'
+// The one sub-form of the scheme: everything else after `apidoc:` addresses an
+// operation. A docs page is named by its slug because that is its identity —
+// files and carried bodies move, the route does not.
+const PAGE_REF = 'page/'
 
 function escapeHtml(value) {
   return String(value)
@@ -140,14 +145,28 @@ function methodBadge(method) {
   return `<span class="${methodBadgeClass(method)}">${escapeHtml(method)}</span>`
 }
 
+// One reference → the route it names, or null. Built through the router, never
+// as a literal `#/op/…` or `#/page/…`: the multi-spec prefix is decided there,
+// and a hand-written hash would drop it.
+function resolveApidocRef(ref) {
+  if (ref.startsWith(PAGE_REF)) {
+    const slug = ref.slice(PAGE_REF.length)
+    return hasDocsPage(slug) ? { href: pageHash(slug) } : null
+  }
+  const op = lookupOperation(ref)
+  return op ? { href: opHash(op.id), method: op.method } : null
+}
+
 // An unresolvable reference renders as visibly broken, never as a dead link:
 // same philosophy as rule 11's missing variable — a mistake is signaled where
-// it was made, not silently shipped.
+// it was made, not silently shipped. The two kinds fail with their own
+// sentence: telling an author "no operation matches page/pricing" would send
+// them looking in the wrong place.
 function brokenRef(ref, label) {
-  return (
-    `<span class="apidoc-op-broken" title="${escapeHtml(t('page.opRef.missing', { ref }))}">` +
-    `${label}</span>`
-  )
+  const message = ref.startsWith(PAGE_REF)
+    ? t('page.pageRef.missing', { ref: ref.slice(PAGE_REF.length) })
+    : t('page.opRef.missing', { ref })
+  return `<span class="apidoc-op-broken" title="${escapeHtml(message)}">${label}</span>`
 }
 
 const apidocLinkRenderer = {
@@ -155,13 +174,14 @@ const apidocLinkRenderer = {
     if (!String(href ?? '').startsWith(APIDOC_SCHEME)) return false
     const ref = String(href).slice(APIDOC_SCHEME.length)
     const label = this.parser.parseInline(tokens)
-    const op = lookupOperation(ref)
-    if (!op) return brokenRef(ref, label)
-    // Built through the router, never as a literal `#/op/…`: the multi-spec
-    // prefix is decided there, and a hand-written hash would drop it.
+    const target = resolveApidocRef(ref)
+    if (!target) return brokenRef(ref, label)
+    // A page reference is an ordinary internal link: the destination is prose
+    // like the sentence around it, and there is no method to badge.
+    if (!target.method) return `<a href="${escapeHtml(target.href)}">${label}</a>`
     return (
-      `<a class="apidoc-op-link" href="${escapeHtml(opHash(op.id))}">` +
-      `${methodBadge(op.method)}${label}</a>`
+      `<a class="apidoc-op-link" href="${escapeHtml(target.href)}">` +
+      `${methodBadge(target.method)}${label}</a>`
     )
   },
 }

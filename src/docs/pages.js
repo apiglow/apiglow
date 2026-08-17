@@ -2,9 +2,9 @@
 // The host declares an ordered array — pages, one level of groups, external
 // links — or a URL pointing at a manifest holding the same array.
 //
-// Pure module: the shell fetches the manifest and hands the raw arrays over,
-// so everything below is normalization, merge and resolution — testable
-// without a network or a DOM.
+// Pure module, apart from the active-outline registry at the bottom: the shell
+// fetches the manifest and hands the raw arrays over, so everything below is
+// normalization, merge and resolution — testable without a network or a DOM.
 
 import { slugify } from '../openapi/model.js'
 
@@ -420,4 +420,21 @@ export function flattenDocsOutline(outline) {
     }
   }
   return pages
+}
+
+// --- Page references in prose (§4.4) ---------------------------------------
+
+// What `apidoc:page/{slug}` resolves against. Module state locked once at boot
+// by the shell, exactly like the operation index (`docs/operations.js`) and for
+// the same reason: a reference names a page of the docs being rendered, and
+// switching spec reloads. A slug nobody declared is a broken reference, not a
+// link into the void.
+let activeSlugs = new Set()
+
+export function setDocsPageIndex(pages) {
+  activeSlugs = new Set((pages ?? []).map((page) => page.slug))
+}
+
+export function hasDocsPage(slug) {
+  return activeSlugs.has(slug)
 }

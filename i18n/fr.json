@@ -566,6 +566,7 @@
   "page.callout.caution": "Danger",
   "page.codeTabs": "Exemples de code, un onglet par langage",
   "page.opRef.missing": "Aucune opération ne correspond à « {ref} » dans cette API.",
+  "page.pageRef.missing": "Aucune page ne correspond à « {ref} » dans cette documentation.",
   "page.toc": "Sur cette page",
   "page.pager": "Page précédente et suivante",
   "page.prev": "Précédent",

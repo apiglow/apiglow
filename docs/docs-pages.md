@@ -391,6 +391,21 @@ An unresolvable reference renders as visibly broken (struck-through span +
 i18n'd tooltip), never as a dead link — the rule 11 philosophy: a mistake is
 signaled, not silently shipped.
 
+**Page references** — the same scheme with one sub-form, `page/{slug}`,
+addressing another docs page instead of an operation:
+
+```markdown
+See [Pagination](apidoc:page/pagination).
+```
+
+Resolved against the routable slugs of the outline on screen
+(`flattenDocsOutline`) and built through the router, so the multi-spec prefix
+travels — which a hand-written `#/page/pagination` would drop. It renders as
+an ordinary internal link: the destination is prose like the sentence around
+it, and there is no method to badge. An unknown slug shows the same broken
+marker an unknown operation does, with its own sentence
+(`page.pageRef.missing`).
+
 **Operation cards** — a fenced block, one reference per line:
 
 ````markdown

@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { marked } from 'marked'
 import { docsMarkdownToHtml, stripFrontmatter } from '../src/docs/markdown.js'
+import { setDocsPageIndex } from '../src/docs/pages.js'
+import { setRouteSpecId } from '../src/router.js'
 
 // docs/docs-pages.md §4.1–4.3 — the markdown half of a docs page. What the
 // DOM does with the output (callout boxes, tablists) is e2e's job; what
@@ -74,6 +76,36 @@ describe('code tabs (§4.3)', () => {
     )
     expect(html).toContain('curl url')
     expect(html).toContain('{&quot;a&quot;:1}')
+  })
+})
+
+describe('page references (§4.4)', () => {
+  afterEach(() => {
+    setDocsPageIndex(null)
+    setRouteSpecId(null)
+  })
+
+  it('turns apidoc:page/{slug} into a route, with no badge', () => {
+    setDocsPageIndex([{ slug: 'pagination' }, { slug: 'errors' }])
+    const html = docsMarkdownToHtml('See [Pagination](apidoc:page/pagination).')
+    expect(html).toContain('<a href="#/page/pagination">Pagination</a>')
+    expect(html).not.toContain('badge')
+  })
+
+  it('carries the multi-spec prefix, because the router builds the href', () => {
+    setDocsPageIndex([{ slug: 'pagination' }])
+    setRouteSpecId('payments')
+    expect(docsMarkdownToHtml('[x](apidoc:page/pagination)')).toContain(
+      'href="#/s/payments/page/pagination"',
+    )
+  })
+
+  it('renders an unknown slug broken, and says it is a page that is missing', () => {
+    setDocsPageIndex([{ slug: 'pagination' }])
+    const html = docsMarkdownToHtml('[ghost](apidoc:page/nope)')
+    expect(html).toContain('apidoc-op-broken')
+    expect(html).toContain('No page matches &quot;nope&quot;')
+    expect(html).not.toContain('<a')
   })
 })
 
