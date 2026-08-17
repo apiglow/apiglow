@@ -35,10 +35,21 @@ requests.get('/demo-api/v3/pet/10', headers={'api_key': 'your-key-here'})
 
 ## Sending your first request
 
-1. Pick an environment in the header switcher.
-2. Open an operation in the left navigation — say
-   [get a pet by id](apidoc:getPetById).
-3. Fill the parameters and press **Send**.
+<Steps>
+
+<Step title="Pick an environment">
+Use the switcher in the header. The demo one is prefilled.
+</Step>
+
+<Step title="Open an operation">
+Anything in the left navigation — say [get a pet by id](apidoc:getPetById).
+</Step>
+
+<Step title="Fill and send">
+Complete the parameters and press **Send**.
+</Step>
+
+</Steps>
 
 The response is stored in the local history — nothing ever leaves your
 browser.
@@ -50,6 +61,26 @@ browser.
   "status": "available"
 }
 ```
+
+## Where the API lives
+
+<Tabs>
+
+<Tab label="This demo">
+Nothing to install: the Petstore answering you is a service worker running in
+your own browser. Pick **demo (mocked API)** and send.
+</Tab>
+
+<Tab label="Your own API">
+Point the environment at your base URL and the same page drives it. The only
+thing the browser needs from you is CORS.
+
+```bash
+Access-Control-Allow-Origin: https://docs.example.com
+```
+</Tab>
+
+</Tabs>
 
 ## Troubleshooting
 

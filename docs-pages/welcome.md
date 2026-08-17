@@ -18,15 +18,43 @@ GET /store/inventory
 
 ## In three steps
 
-1. Pick the **demo (mocked API)** environment in the header switcher.
-2. Open [find pets by status](apidoc:findPetsByStatus) and press **Send**.
-3. Read the response, then edit the parameters and send again.
+<Steps>
+
+<Step title="Pick an environment">
+Choose **demo (mocked API)** in the header switcher.
+</Step>
+
+<Step title="Send a request">
+Open [find pets by status](apidoc:findPetsByStatus) and press **Send**.
+</Step>
+
+<Step title="Iterate">
+Read the response, then edit the parameters and send again.
+</Step>
+
+</Steps>
 
 The API answering you runs **inside your browser**, in a service worker: no
 backend, no CORS, and the data resets whenever the browser recycles it.
 
 ## Where to go next
 
-- **Getting started** walks through authentication and your first request.
-- **Guides** covers pagination and error handling.
-- **Changelog** lists what moved between versions.
+<Cards>
+
+<Card title="Getting started" href="apidoc:page/getting-started">
+Authentication and your first request.
+</Card>
+
+<Card title="Pagination" href="apidoc:page/pagination">
+Walk a collection without missing an item.
+</Card>
+
+<Card title="Errors" href="apidoc:page/errors">
+What comes back when a call fails, and what to do about it.
+</Card>
+
+<Card title="Changelog" href="apidoc:page/changelog">
+What moved between versions.
+</Card>
+
+</Cards>
