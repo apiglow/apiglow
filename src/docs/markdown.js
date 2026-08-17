@@ -225,8 +225,162 @@ const operationCardsRenderer = {
   },
 }
 
+// --- Prose components (§4.6) -----------------------------------------------
+
+// MDX-shaped syntax, our own parser. `<Steps>` and friends are SYNTAX, not
+// components: a block tokenizer consumes them and emits plain semantic HTML
+// with `data-*` markers, exactly as `codeTabs` does, so the custom tags never
+// reach the DOM and DOMPurify's profile is untouched (rule 5). MDX itself is
+// refused — it compiles to JS and evaluates it (§11).
+//
+// Being a positional block tokenizer is what makes the syntax fence-safe for
+// free: marked offers a block to the extensions before its own fence
+// tokenizer, so a `<Steps>` written INSIDE a fence is already inside a
+// consumed token and renders literally — which a page documenting this
+// feature depends on.
+
+const ATTRIBUTE = /([A-Za-z][\w-]*)="([^"\n]*)"/g
+
+function parseAttributes(source) {
+  const attrs = {}
+  for (const [, name, value] of String(source).matchAll(ATTRIBUTE)) attrs[name] = value
+  return attrs
+}
+
+// The container's own line, its closing line, and the child tag's two. Every
+// tag is alone on its line: that is the house style the syntax is documented
+// with, and it is what makes GitHub parse the markdown between them after
+// stripping the tags it does not know.
+function containerPatterns(tag, child) {
+  const attrs = '(?:[ \\t]+[A-Za-z][\\w-]*="[^"\\n]*")*'
+  return {
+    at: new RegExp(`^ {0,3}<${tag}>`, 'm'),
+    open: new RegExp(`^ {0,3}<${tag}>[^\\S\\n]*$`),
+    close: new RegExp(`^ {0,3}</${tag}>[^\\S\\n]*$`, 'm'),
+    childOpen: new RegExp(`^ {0,3}<${child}(${attrs})[ \\t]*>[^\\S\\n]*$`, 'm'),
+    childClose: new RegExp(`^ {0,3}</${child}>[^\\S\\n]*$`, 'm'),
+  }
+}
+
+// Returns null as soon as the shape isn't one — and that is the whole error
+// policy (§4.6): malformed input is not our token, marked handles it as raw
+// HTML, DOMPurify drops the unknown tag and the prose inside survives. No
+// error marker, because nothing was ever recognized.
+function readContainer(src, patterns, required) {
+  // marked offers every block token the WHOLE remaining document; testing the
+  // first line before doing anything else keeps the parse linear in page
+  // length, exactly as `readFenceRun` does.
+  const firstBreak = src.indexOf('\n')
+  if (firstBreak === -1 || !patterns.open.test(src.slice(0, firstBreak))) return null
+  const close = patterns.close.exec(src)
+  if (!close) return null
+  const children = []
+  let rest = src.slice(firstBreak + 1, close.index)
+  for (;;) {
+    const open = patterns.childOpen.exec(rest)
+    if (!open) break
+    // Anything between two children — or before the first — is dropped: a
+    // container holds its own child tag and nothing else.
+    const after = rest.slice(open.index + open[0].length)
+    const end = patterns.childClose.exec(after)
+    if (!end) return null
+    const attrs = parseAttributes(open[1])
+    if (required.some((name) => !attrs[name])) return null
+    children.push({ attrs, body: after.slice(0, end.index) })
+    rest = after.slice(end.index + end[0].length)
+  }
+  if (!children.length) return null
+  const end = close.index + close[0].length
+  return { children, raw: src.slice(0, src[end] === '\n' ? end + 1 : end) }
+}
+
+// A card grid. The body is full markdown and the title is an attribute, so it
+// is escaped text — a heading there would land in the table of contents.
+function renderCards(token) {
+  const cards = token.children.map((child) => {
+    const title = escapeHtml(child.attrs.title)
+    const body = `<div class="md-card-body">${this.parser.parse(child.tokens)}</div>`
+    const href = child.attrs.href
+    if (!href.startsWith(APIDOC_SCHEME)) {
+      return `<a class="md-card" href="${escapeHtml(href)}"><span class="md-card-title">${title}</span>${body}</a>`
+    }
+    const ref = href.slice(APIDOC_SCHEME.length)
+    const target = resolveApidocRef(ref)
+    // A reference that resolves to nothing is not a card the reader may
+    // follow: same visible failure as a broken link in prose (§4.4).
+    if (!target) {
+      return (
+        `<div class="md-card md-card-broken">` +
+        `<span class="md-card-title">${brokenRef(ref, title)}</span>${body}</div>`
+      )
+    }
+    return `<a class="md-card" href="${escapeHtml(target.href)}"><span class="md-card-title">${title}</span>${body}</a>`
+  })
+  return `<div class="md-cards" data-cards>${cards.join('')}</div>`
+}
+
+// An ordered list, because that is what a sequence of steps is. The title is a
+// paragraph and NOT a heading: a step title is a label, not a section, and
+// inventing a heading level would put junk in the table of contents and break
+// the anchor hierarchy. An author who wants the step listed writes a real
+// `###` inside it.
+function renderSteps(token) {
+  const items = token.children.map((child) => {
+    const title = child.attrs.title
+      ? `<p class="md-step-title">${escapeHtml(child.attrs.title)}</p>`
+      : ''
+    return `<li>${title}${this.parser.parse(child.tokens)}</li>`
+  })
+  return `<ol class="md-steps" data-steps>${items.join('')}</ol>`
+}
+
+// The same shape `codeTabs` produces — labelled panels in a marked container —
+// so the DOM decorator is the same code. Undecorated it is every panel in
+// order, none hidden.
+function renderTabs(token) {
+  const panels = token.children.map(
+    (child) =>
+      `<section data-tab-label="${escapeHtml(child.attrs.label)}">` +
+      `${this.parser.parse(child.tokens)}</section>`,
+  )
+  return `<div class="md-prose-tabs" data-prose-tabs>${panels.join('')}</div>`
+}
+
+// Capitalized and exact (`<Steps>`, not `<steps>`): the JSX convention, and it
+// makes the tags unmistakable against real HTML. Containers do not nest, and
+// each holds only its own child tag.
+const PROSE_COMPONENTS = [
+  { name: 'cards', tag: 'Cards', child: 'Card', required: ['title', 'href'], render: renderCards },
+  { name: 'steps', tag: 'Steps', child: 'Step', required: [], render: renderSteps },
+  { name: 'proseTabs', tag: 'Tabs', child: 'Tab', required: ['label'], render: renderTabs },
+]
+
+function proseComponent({ name, tag, child, required, render }) {
+  const patterns = containerPatterns(tag, child)
+  return {
+    name,
+    level: 'block',
+    start(src) {
+      return src.match(patterns.at)?.index
+    },
+    tokenizer(src) {
+      const read = readContainer(src, patterns, required)
+      if (!read) return undefined
+      return {
+        type: name,
+        raw: read.raw,
+        children: read.children.map(({ attrs, body }) => ({
+          attrs,
+          tokens: this.lexer.blockTokens(body),
+        })),
+      }
+    },
+    renderer: render,
+  }
+}
+
 const docsMarked = new Marked({ async: false, gfm: true })
-docsMarked.use({ extensions: [codeTabs] })
+docsMarked.use({ extensions: [codeTabs, ...PROSE_COMPONENTS.map(proseComponent)] })
 docsMarked.use({ renderer: { ...apidocLinkRenderer, ...operationCardsRenderer } })
 
 // → raw HTML, still to be sanitized by the caller (rule 5).
