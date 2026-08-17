@@ -1082,8 +1082,16 @@ Functional source of truth: [docs-pages.md](docs-pages.md). Summary:
     an ` ```apidoc:operation ` fence becomes one card per line. Both resolve
     against the ACTIVE spec's normalized model, `operationId` first then
     `"METHOD /path"`; an unresolvable reference renders visibly broken rather
-    than as a dead link. No try-it in prose — the card is a link, so rule 20
-    is not in play.
+    than as a dead link. `apidoc:page/{slug}` is the same scheme addressing
+    another docs page, resolved against the outline so the multi-spec prefix
+    travels. No try-it in prose — the card is a link, so rule 20 is not in
+    play.
+  - **Prose components**: `<Cards>`, `<Steps>` and `<Tabs>` — MDX-shaped
+    syntax parsed by our own block extensions, emitting plain semantic HTML
+    (a grid of links, an `<ol>`, a tablist). The custom tags never reach the
+    DOM, so DOMPurify's profile is untouched; a renderer that does not know
+    them strips the tag and keeps the prose. MDX itself is refused: it
+    compiles to JS and evaluates it (rule 5), and it needs a JSX runtime.
 - **Page chrome** on every page, takeover home included: a ToC derived from
   `h2`/`h3` (right-hand column from `xl`, folded dropdown below), prev/next
   links following the flattened nav order, and — only when the host declares

@@ -383,6 +383,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Markdown pages, sanitization (rule 5, one hostile payload per external-HTML path) | — | `sanitize.spec.js`, `navigation.spec.js`, `bootstrap.spec.js` |
 | Docs pages: entry kinds, groups, external links, manifest, i18n maps, bodies carried by the host page, changelog timeline, feedback row (`docs/docs-pages.md`) | `docs-pages.test.js`, `specs.test.js` | `docs-pages.spec.js` |
 | Docs pages: `{{var}}` in prose — resolved, masked, missing, escaped (`docs/docs-pages.md` §12) | `docs-vars.test.js` | `docs-pages.spec.js`, `a11y.spec.js` |
+| Docs pages: prose components `<Cards>`/`<Steps>`/`<Tabs>` and `apidoc:page/{slug}` references (`docs/docs-pages.md` §4.4, §4.6) | `docs-markdown.test.js`, `docs-sections.test.js` | `docs-pages.spec.js`, `a11y.spec.js` |
 | Webhooks, callbacks, simulator | `no-cors.test.js` | `webhooks.spec.js` |
 | `llms-full.txt` export | `llms-full.test.js`, `export-completeness.test.js` | `bootstrap.spec.js` |
 | `llms.txt` index export | `llms.test.js` | `bootstrap.spec.js` |

@@ -55,6 +55,7 @@ normalized model is already in memory at render time.
 | Config | Inline `docsPages` array **or** a URL string pointing to a fetched manifest |
 | Home | A doc page can take over `#/`; the technical welcome view moves to `#/overview` with an auto nav entry |
 | Content | GFM callouts, code tabs (adjacent fences, synced choice), per-page ToC, prev/next, full-text search |
+| Prose components | `<Cards>`, `<Steps>`, `<Tabs>` — MDX-shaped syntax, our own block parser, plain semantic HTML out (§4.6). **No MDX** (§11): it compiles to JS and evaluates it |
 | API integration | Enriched links + inline operation cards; **no** try-it embedded in prose |
 | Formats | `.md` (default), `.html` (DOMPurify), `.txt` (`<pre>`) |
 | i18n | `url`/`title` accept a per-language map with fallback |
@@ -329,7 +330,7 @@ the `format` key and the element type for a carried body (§2.6):
 
 | Format | Ext | Pipeline |
 |---|---|---|
-| `markdown` | `.md` (and anything else) | frontmatter strip → marked (fence grouping §4.3, `apidoc:` links §4.4 as extensions) → DOMPurify → DOM decorations (callouts §4.2, tablists and fence headers §4.3) → heading anchors → hljs |
+| `markdown` | `.md` (and anything else) | frontmatter strip → marked (fence grouping §4.3, `apidoc:` links §4.4, prose components §4.6 as extensions) → DOMPurify → DOM decorations (callouts §4.2, tablists and fence headers §4.3–4.6) → heading anchors → hljs |
 | `html` | `.html` | DOMPurify (same profile) → heading anchors → hljs. Markdown-only features (callouts, code tabs, operation cards) do not apply. |
 | `text` | `.txt` | escaped text in a `<pre>`; no ToC, no anchors |
 
@@ -434,6 +435,96 @@ markdown changelog in any other renderer. The class rides the rendered
 content, so it applies to `.md` and `.html` pages alike; a `.txt` has no
 `h2` to style and gets nothing.
 
+### 4.6 Prose components
+
+What MDX actually buys a docs author is **components in prose**. Most of that
+already ships in markdown-native form here — callouts (§4.2), code tabs
+(§4.3), `apidoc:` links and operation cards (§4.4), `{{var}}` (§12), the
+changelog timeline (§4.5). Three containers close the rest:
+
+````markdown
+<Cards>
+
+<Card title="Quickstart" href="apidoc:page/getting-started">
+Your first request, in two minutes.
+</Card>
+
+</Cards>
+
+<Steps>
+
+<Step title="Install">
+```bash
+npm i
+```
+</Step>
+
+</Steps>
+
+<Tabs>
+
+<Tab label="Cloud">
+Nothing to install.
+</Tab>
+
+</Tabs>
+````
+
+**MDX-shaped syntax, our own parser.** `<Steps>` and friends are *syntax*:
+block-level `marked` extensions consume them and emit plain semantic HTML with
+`data-*` markers, exactly as `codeTabs` does. The custom tags never reach the
+DOM, so **DOMPurify is not touched** — no widened profile, rule 5 unchanged.
+Chosen over `:::` containers because it degrades (a renderer that does not know
+the tag strips it and renders the prose inside) and because it is the shape
+someone arriving from Zudoku or Mintlify already types. §4.2's rejection of
+`:::` for callouts stands and is unrelated: GFM alerts exist and degrade,
+`:::` did not.
+
+The rules, all of them:
+
+- Tags are **capitalized and exact** (`<Steps>`, not `<steps>`) — the JSX
+  convention, and it makes them unmistakable against real HTML.
+- Attributes are `name="value"`, double quotes only, no `"` inside a value.
+  `Card` requires `title` and `href`; `Step`'s `title` is optional; `Tab`
+  requires `label`. Unknown attributes are ignored.
+- Containers do not nest, and each holds only its own child tag. A child's
+  body is **full markdown** — headings, fences, tables, callouts, `{{var}}`.
+  Anything between children that is not a child is dropped.
+- **Blank lines around the tags** are the documented house style: they are
+  what makes a plain renderer parse the inner markdown after stripping the
+  tags. The parser accepts both.
+- Malformed input is **not our token**: `marked` handles it as raw HTML,
+  DOMPurify drops the tag, the prose survives. No error marker — the shape was
+  never recognized. An `href="apidoc:…"` that *is* recognized but resolves to
+  nothing renders the broken-reference marker of §4.4.
+- A container written inside a code fence renders literally — the tokenizer is
+  positional and the fence is consumed first — which is what lets a page
+  document this syntax.
+- Markdown pages only (§4.1's own rule).
+
+What comes out:
+
+- `<Cards>` → a grid of links (`.md-cards`), each card a title and its prose.
+  No `aria-label`: title plus one sentence reads correctly as a link name,
+  where an operation card's three children would read as three fragments.
+- `<Steps>` → an `<ol>` with a numbered rail. A step title is a **paragraph,
+  not a heading**: it is a label, not a section, and inventing a heading level
+  would put junk in the ToC and break the anchor hierarchy. An author who
+  wants the step in the ToC writes a real `###` inside it.
+- `<Tabs>` → the same labelled-panel shape code tabs produce, so the tablist
+  decorator is the same code. **Prose tabs do not sync and add no storage
+  key**: a reader's language choice is global, "Cloud / self-hosted" has
+  nothing to follow on another page. Rule 8 surface unchanged.
+
+`{{var}}` (§12) applies with no work — the walk runs later, over text nodes,
+and card titles and step bodies are text nodes. Values in an `href` are **not**
+interpolated: attributes are not text nodes, and a card points at
+documentation, not at an environment-dependent URL.
+
+The search index (§6) reads a container by its card titles and tab labels: the
+tag itself and a destination are markup, and indexing an `href` would answer a
+search with the page that happens to link somewhere.
+
 ---
 
 ## 5. Page chrome
@@ -519,6 +610,9 @@ The Cmd+K palette indexes docs page **content**, not just titles:
 - Code tabs: real tablist semantics with arrow-key navigation, via
   `src/components/a11y.js` primitives.
 - Operation cards: links with accessible names (`METHOD path — summary`).
+- Prose components (§4.6): the tabs are the same tablist as the code ones;
+  the cards get no `aria-label` (title plus one sentence already reads as the
+  link name); the steps are an `<ol>` and need nothing.
 - ToC and prev/next: `<nav>` landmarks, i18n'd labels.
 - External links: the "external" icon is decorative (`aria-hidden`), the
   new-tab behavior announced via an i18n'd suffix in the accessible name.
@@ -556,7 +650,12 @@ Vitest (pure core):
   declared inside a group), and the zone an override carries.
 - Marked extensions and decorations: callout detection (the daisyUI class
   map itself is pinned in e2e), adjacent-fence grouping, `apidoc:`
-  link resolution (both addressings, unresolvable case), frontmatter strip.
+  link resolution (both addressings, `page/{slug}`, unresolvable cases),
+  frontmatter strip.
+- Prose components (§4.6): each container; nested markdown inside a child;
+  one written inside a code fence stays literal; a missing required attribute
+  or an unclosed tag yields no token; content between children dropped; an
+  `apidoc:` href resolved and unresolved; a `{{var}}` survives untouched.
 - Operation reference resolver against the normalized model.
 - Section splitter + index builder for full-text search.
 - Export snapshots (`llms.txt`, `llms-full.txt`) regenerated deliberately.
@@ -576,6 +675,10 @@ Playwright (packed bundle):
   broken reference shows the visible failure.
 - Code tabs: selection syncs across groups and survives reload; a standalone
   fence shows its header (language token, copy button), a grouped one none.
+- Prose components: the three render; a card navigates and keeps the
+  multi-spec prefix; a broken card is not followable; a step list is an `<ol>`
+  whose titles stay out of the ToC; prose tabs are keyboard-operable and
+  follow no preference.
 - ToC active tracking: a ToC click marks its own entry `aria-current`.
 - Changelog kind: the timeline treatment applies (aria snapshot of the
   release structure + the gutter's computed styles), and only to pages that
@@ -601,6 +704,22 @@ surface (rule 20).
   between prose groups) — the two-zone layout is the decided model.
 - **Try-it embedded in prose** — would make prose an editable surface and
   pull rule 20 into scope; deliberately excluded.
+- **MDX** — markdown where JSX components, `import`/`export` and `{js}`
+  expressions are legal. It is a *compiled* format (`.mdx` → JS module →
+  rendered by a JSX runtime), and its runtime API `eval`s the compiled JS.
+  Refused on three of our own rules at once: rule 5 (no `eval`/`new Function`
+  on external content), zero framework (it needs a JSX runtime), and the
+  closed runtime dependency list (hundreds of kB on the CDN visitor's first
+  paint, for prose — the same reasoning already recorded for Mermaid above).
+  Zudoku can afford MDX because it is a build-time generator; our promise is
+  one `<script>`, no build. §4.6 gives the author the components without the
+  compiler.
+- **Author-supplied components** — a host page registering its own tag for
+  prose to use. That is MDX by another route, and it is refused for the same
+  reasons; so are JSX, `import`/`export` and `{js}` expressions.
+- **Includes** — one page splicing another's markdown (the Mintlify snippet
+  gesture). Real value for multi-spec setups, but it brings fetching, caching
+  and cycle detection with it: its own decision when someone asks.
 - **Frontmatter fields** (title/description overrides, per-page ToC opt-out).
 - **Versioned doc trees**; **breadcrumbs**; **nav collapse-state
   persistence**.
