@@ -130,9 +130,13 @@ const CODE_LANG_KEY = 'code-lang'
 export function decorateCodeTabs(root) {
   const groups = []
   for (const container of root.querySelectorAll('[data-code-tabs]')) {
-    const group = buildTabGroup(container, (lang) => {
-      writePref(CODE_LANG_KEY, lang)
-      for (const other of groups) other.select(lang)
+    const group = buildTabGroup(container, {
+      panels: ':scope > pre',
+      label: t('page.codeTabs'),
+      onPick: (lang) => {
+        writePref(CODE_LANG_KEY, lang)
+        for (const other of groups) other.select(lang)
+      },
     })
     if (group) groups.push(group)
   }
@@ -140,20 +144,30 @@ export function decorateCodeTabs(root) {
   for (const group of groups) group.select(preferred)
 }
 
-function buildTabGroup(container, onPick) {
-  const panels = [...container.querySelectorAll(':scope > pre')]
+// A container of labelled panels → a real tablist. `panels` is the selector
+// picking them out of the container, `label` the tablist's accessible name,
+// and `onPick` what the caller does with the chosen key beyond the switch
+// itself. The key of a panel is its `data-tab-lang`, or its label: whatever a
+// caller syncs on, `select` takes that and nothing else.
+function buildTabGroup(container, { panels: selector, label, onPick }) {
+  const panels = [...container.querySelectorAll(selector)]
   if (panels.length < 2) return null
   const langs = panels.map((panel) => panel.dataset.tabLang || panel.dataset.tabLabel || '')
   const tablist = el('div', 'tabs tabs-box tabs-sm w-fit max-w-full overflow-x-auto')
   tablist.setAttribute('role', 'tablist')
-  tablist.setAttribute('aria-label', t('page.codeTabs'))
+  tablist.setAttribute('aria-label', label)
   const tabs = panels.map((panel) => {
     const tab = el('button', 'tab', text(panel.dataset.tabLabel || ''))
     tab.type = 'button'
     return tab
   })
   tablist.append(...tabs)
-  for (const panel of panels) linkTabPanel(tabs, panel)
+  // One tab per panel: `linkTabPanel` points every tab it is handed at the
+  // panel it is given, so passing the whole list once per panel would leave
+  // all of them controlling the last one.
+  panels.forEach((panel, i) => {
+    linkTabPanel([tabs[i]], panel)
+  })
 
   // One state transition: the visual switch and the ARIA/tabindex side always
   // move together, so they are never two calls a third caller could half-make.
@@ -175,7 +189,8 @@ function buildTabGroup(container, onPick) {
 
   // A preference nobody's group offers leaves that group on its first tab:
   // the user asked for Python, this snippet only exists in cURL, and showing
-  // nothing would be worse than showing the one thing there is.
+  // nothing would be worse than showing the one thing there is. A group with
+  // no preference to follow calls `select()` for the same reason.
   return { select: (lang) => show(Math.max(0, langs.indexOf(lang))) }
 }
 
