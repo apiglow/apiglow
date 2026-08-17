@@ -565,6 +565,7 @@
   "page.callout.warning": "Attention",
   "page.callout.caution": "Danger",
   "page.codeTabs": "Exemples de code, un onglet par langage",
+  "page.proseTabs": "Variantes de contenu, un onglet par option",
   "page.opRef.missing": "Aucune opération ne correspond à « {ref} » dans cette API.",
   "page.pageRef.missing": "Aucune page ne correspond à « {ref} » dans cette documentation.",
   "page.toc": "Sur cette page",

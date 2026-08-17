@@ -494,6 +494,79 @@ api-nav .menu li > button {
    the panels' own vertical margin would add a gap above a snippet that is the
    only thing visible. */
 .md-content .code-tabs pre { margin: 0; }
+
+/* Prose components (docs/docs-pages.md §4.6). A card grid reuses the frame of
+   the operation cards above rather than inventing a second one — a docs page
+   holds both, and two card looks side by side would read as two features. */
+.md-content .md-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.md-content .md-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  text-decoration: none;
+}
+.md-content a.md-card:hover { background: var(--color-base-200); }
+.md-content .md-card-title { font-weight: 600; }
+/* The body is prose the author wrote inside the card: its own paragraph
+   margins would push the card open at both ends. */
+.md-content .md-card-body { font-size: 0.9em; opacity: 0.85; }
+.md-content .md-card-body > :first-child { margin-top: 0; }
+.md-content .md-card-body > :last-child { margin-bottom: 0; }
+.md-content .md-card-broken { border-color: var(--color-error); }
+
+/* Steps: numbered markers in a left gutter joined by one line, the same rail
+   the scenario view uses — a sequence reads the same wherever it appears. The
+   marker is opaque, which is what hides the line behind it. */
+.md-content ol.md-steps {
+  list-style: none;
+  counter-reset: md-step;
+  position: relative;
+  margin: 0.75rem 0;
+  padding-inline-start: 2.5rem;
+}
+.md-content ol.md-steps::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.75rem;
+  inset-inline-start: calc(0.875rem - 0.5px);
+  width: 1px;
+  background: var(--color-base-300);
+}
+.md-content .md-steps > li {
+  counter-increment: md-step;
+  position: relative;
+  margin-bottom: 1rem;
+}
+.md-content .md-steps > li::before {
+  content: counter(md-step);
+  position: absolute;
+  inset-inline-start: -2.5rem;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: calc(infinity * 1px);
+  background: var(--color-base-200);
+  border: 1px solid var(--color-base-300);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.md-content .md-step-title { font-weight: 600; margin: 0.15rem 0 0.35rem; }
+.md-content .md-steps > li > :last-child { margin-bottom: 0; }
+
+/* A prose tab panel holds paragraphs, not a snippet: its first block's own top
+   margin would double the container's gap under the tablist. */
+.md-content .md-prose-tabs > section > :first-child { margin-top: 0; }
 /* Horizontal rules only: the full grid framed every cell and read as a
    spreadsheet; the header carries the small-caps micro-label of the app's own
    dense panels, so a prose table and a parameter table speak one language. */

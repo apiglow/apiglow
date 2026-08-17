@@ -7,6 +7,7 @@ import {
   decorateCallouts,
   decorateCodeHeaders,
   decorateCodeTabs,
+  decorateProseTabs,
   interpolateVariables,
   plainText,
 } from './docs-content.js'
@@ -164,6 +165,7 @@ class MdPage extends HTMLElement {
       if (format === 'markdown') {
         decorateCallouts(content)
         decorateCodeTabs(content)
+        decorateProseTabs(content)
         decorateCodeHeaders(content)
       }
       if (format !== 'text') {

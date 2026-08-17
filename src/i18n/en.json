@@ -565,6 +565,7 @@
   "page.callout.warning": "Warning",
   "page.callout.caution": "Caution",
   "page.codeTabs": "Code samples, one tab per language",
+  "page.proseTabs": "Content variants, one tab per option",
   "page.opRef.missing": "No operation matches \"{ref}\" in this API.",
   "page.pageRef.missing": "No page matches \"{ref}\" in this documentation.",
   "page.toc": "On this page",

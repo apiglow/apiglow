@@ -144,11 +144,26 @@ export function decorateCodeTabs(root) {
   for (const group of groups) group.select(preferred)
 }
 
+// Prose tabs (§4.6): the container the parser emits carries labelled
+// `<section>`s instead of `<pre>`s, so it becomes a tablist through the very
+// same code. They deliberately do NOT sync and add no storage key — a reader's
+// language choice is global, where "Cloud / self-hosted" has nothing to follow
+// on another page (rule 8 surface unchanged).
+export function decorateProseTabs(root) {
+  for (const container of root.querySelectorAll('[data-prose-tabs]')) {
+    buildTabGroup(container, {
+      panels: ':scope > section',
+      label: t('page.proseTabs'),
+    })?.select()
+  }
+}
+
 // A container of labelled panels → a real tablist. `panels` is the selector
 // picking them out of the container, `label` the tablist's accessible name,
-// and `onPick` what the caller does with the chosen key beyond the switch
-// itself. The key of a panel is its `data-tab-lang`, or its label: whatever a
-// caller syncs on, `select` takes that and nothing else.
+// and `onPick` what a caller does with the chosen key beyond the switch itself
+// — a group that follows nothing passes none. The key of a panel is its
+// `data-tab-lang`, or its label: whatever a caller syncs on, `select` takes
+// that and nothing else.
 function buildTabGroup(container, { panels: selector, label, onPick }) {
   const panels = [...container.querySelectorAll(selector)]
   if (panels.length < 2) return null
@@ -182,7 +197,7 @@ function buildTabGroup(container, { panels: selector, label, onPick }) {
   }
   const activate = wireTablist(tablist, tabs, (index) => {
     show(index)
-    onPick(langs[index])
+    onPick?.(langs[index])
   })
   container.classList.add('flex', 'flex-col', 'gap-1', 'my-3')
   container.prepend(tablist)
