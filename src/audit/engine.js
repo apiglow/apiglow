@@ -129,14 +129,25 @@ export function gradeFor(score) {
 
 // Exported for the per-rule tests: a rule is a pure function of the context,
 // and this is the only way to run one.
-export function runRule(rule, ctx) {
+//
+// `severityAt(dataPath)` is the severity each check is graded at — or null for a
+// check that does not count. Per check rather than per rule, because a rule's
+// severity can depend on where it applies; the default is the rule's own.
+// `weight` and `passedWeight` are the check weights the category score sums.
+export function runRule(rule, ctx, severityAt = () => rule.severity) {
   const findings = []
   let checks = 0
+  let weight = 0
+  let passedWeight = 0
   rule.run(ctx, (passed, target = {}) => {
+    const severity = severityAt(dataPathOf(target))
+    if (!severity) return
     checks += 1
-    if (!passed) findings.push(buildFinding(rule, target))
+    weight += SEVERITY_WEIGHT[severity]
+    if (passed) passedWeight += SEVERITY_WEIGHT[severity]
+    else findings.push({ ...buildFinding(rule, target), severity })
   })
-  return { checks, findings }
+  return { checks, weight, passedWeight, findings }
 }
 
 export function createAuditContext({ source, document, model }) {
@@ -163,10 +174,9 @@ function* runCategory(id, rules, ctx) {
   let weightedPassed = 0
   for (const rule of rules) {
     const result = runRule(rule, ctx)
-    const weight = SEVERITY_WEIGHT[rule.severity]
     checks += result.checks
-    weighted += weight * result.checks
-    weightedPassed += weight * (result.checks - result.findings.length)
+    weighted += result.weight
+    weightedPassed += result.passedWeight
     findings.push(...result.findings)
     yield
   }
@@ -194,13 +204,17 @@ function buildFinding(rule, { op = null, location, dataPath, params }) {
     category: rule.category,
     location: location ?? (op ? operationLocation(op) : ''),
     opRef: op && !op.hidden ? op.key : null,
-    dataPath: dataPath ?? op?.pointer ?? '',
+    dataPath: dataPathOf({ op, dataPath }),
     params: params ?? {},
   }
   // Distinguishes "not an operation" from "operation the reader cannot reach":
   // the UI shows a hidden badge instead of a dead link.
   if (op?.hidden) finding.hidden = true
   return finding
+}
+
+function dataPathOf({ op, dataPath }) {
+  return dataPath ?? op?.pointer ?? ''
 }
 
 // A callback's address is a runtime expression, and its deep link is its
