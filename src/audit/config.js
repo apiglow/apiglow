@@ -132,17 +132,20 @@ export function optionsResolver(config) {
   }
 }
 
-// rule → its severity at a given pointer: the rule's own, then `rules`, then
-// every override whose paths cover the pointer, in declaration order — the
-// last word wins, as in a stylesheet. Returns null for a rule switched off
-// everywhere, so the engine does not even run it.
+// rule → its severity at a given pointer: the check's own (a rule may grade
+// its checks differently, `check(…, { severity })` — the rule's severity
+// otherwise), then `rules`, then every override whose paths cover the pointer,
+// in declaration order — the last word wins, as in a stylesheet. A configured
+// severity replaces the check's own: whoever re-grades a rule re-grades all of
+// it. Returns null for a rule switched off everywhere, so the engine does not
+// even run it.
 export function severityResolver(config) {
   return (rule) => {
-    const base = config?.rules?.[rule.id] ?? rule.severity
+    const configured = config?.rules?.[rule.id]
     const overrides = (config?.overrides ?? []).filter((entry) => rule.id in entry.rules)
-    if (!overrides.length) return base === RULE_OFF ? null : () => base
-    return (dataPath) => {
-      let setting = base
+    if (configured === RULE_OFF && !overrides.length) return null
+    return (dataPath, own = rule.severity) => {
+      let setting = configured ?? own
       for (const entry of overrides) {
         if (entry.matchers.some((matches) => matches(dataPath))) setting = entry.rules[rule.id]
       }

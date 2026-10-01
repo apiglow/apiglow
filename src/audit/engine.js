@@ -139,16 +139,18 @@ function countTags(ctx) {
 // Exported for the per-rule tests: a rule is a pure function of the context,
 // and this is the only way to run one.
 //
-// `severityAt(dataPath)` is the severity each check is graded at — or null for a
-// check that does not count. Per check rather than per rule, because a rule's
-// severity can depend on where it applies; the default is the rule's own.
+// `severityAt(dataPath, own)` is the severity each check is graded at — or null
+// for a check that does not count. Per check rather than per rule, because a
+// rule's severity can depend on where it applies: `own` is the check's
+// (`check(…, { severity })`, the rule's otherwise), and the configuration
+// may replace it.
 // `weight` and `passedWeight` are the check weights the category score sums.
 // `options`: the values of the options the rule declares (`rule.options`),
 // its defaults unless the configuration set them.
 export function runRule(
   rule,
   ctx,
-  severityAt = () => rule.severity,
+  severityAt = (_dataPath, own) => own,
   options = optionsResolver()(rule),
 ) {
   const findings = []
@@ -156,7 +158,7 @@ export function runRule(
   let weight = 0
   let passedWeight = 0
   const check = (passed, target = {}) => {
-    const severity = severityAt(dataPathOf(target))
+    const severity = severityAt(dataPathOf(target), target.severity ?? rule.severity)
     if (!severity) return
     checks += 1
     weight += SEVERITY_WEIGHT[severity]

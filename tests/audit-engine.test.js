@@ -207,6 +207,24 @@ describe('audit scoring', () => {
     expect(report.counts).toEqual({ error: 1, warning: 0, info: 0, total: 1 })
   })
 
+  it('grades a check at its own severity when the rule gives it one', () => {
+    const mixed = {
+      id: 'm',
+      category: 'correctness',
+      severity: 'warning',
+      run(_ctx, check) {
+        check(false, { location: 'write' })
+        check(false, { location: 'read', severity: 'info' })
+      },
+    }
+    const report = auditSchema(auditInput(minimal()), [mixed])
+    expect(report.categories[0].findings.map((f) => [f.location, f.severity])).toEqual([
+      ['write', 'warning'],
+      ['read', 'info'],
+    ])
+    expect(report.categories[0].score).toBe(0)
+  })
+
   it('averages the scored categories and grades the mean', () => {
     const report = auditSchema(auditInput(minimal()), [
       passing('a', 'correctness', 'error', 3),

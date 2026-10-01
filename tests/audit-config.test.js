@@ -141,6 +141,14 @@ describe('severityResolver', () => {
     expect(one('/components/schemas/Petal')).toBe('warning')
   })
 
+  it("keeps a check's own severity unless the configuration sets one", () => {
+    expect(resolve({})('/x', 'info')).toBe('info')
+    expect(resolve({ rules: { a: 'error' } })('/x', 'info')).toBe('error')
+    const at = resolve({ overrides: [{ paths: ['/legacy'], rules: { a: 'off' } }] })
+    expect(at('/x', 'info')).toBe('info')
+    expect(at('/legacy/get', 'info')).toBeNull()
+  })
+
   it('can switch a rule back on under a path it was switched off for', () => {
     const at = resolve({
       rules: { a: 'off' },

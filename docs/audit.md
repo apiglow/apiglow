@@ -55,8 +55,10 @@ drifting.
    }
    ```
 
-   - Precedence: the rule's own severity, then `rules`, then every override
-     covering the pointer, in declaration order — the last word wins.
+   - Precedence: the rule's own severity — or the check's, for a rule that
+     grades its checks differently (§4 says which) — then `rules`, then
+     every override covering the pointer, in declaration order — the last
+     word wins. A configured severity applies to every check of the rule.
    - A pointer pattern covers what it matches and everything below it; `*`
      matches within one segment, `**` as a whole segment any number of
      them.
