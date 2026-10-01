@@ -48,3 +48,20 @@ test('reports in French from the catalog shipped next to it', async () => {
   expect(code).toBe(0)
   expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
 })
+
+test('expands a quoted pattern and writes SARIF from the bundle', async () => {
+  const { stdout, code } = await audit(
+    'tests/e2e/fixtures/e2e-api-{clean,b}.json',
+    '--format',
+    'sarif',
+    '--fail-on',
+    'none',
+  )
+  expect(code).toBe(0)
+  const sarif = JSON.parse(stdout)
+  expect(sarif.version).toBe('2.1.0')
+  expect(sarif.runs.map((run) => run.automationDetails.id)).toEqual([
+    'apiglow-audit/tests/e2e/fixtures/e2e-api-b.json/',
+    'apiglow-audit/tests/e2e/fixtures/e2e-api-clean.json/',
+  ])
+})
