@@ -144,6 +144,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- HTML in a description or a docs page can no longer carry a `<style>` that
+  restyles the whole documentation, nor a form, input, button, textarea or
+  select a reader could be asked to type into: they are removed, their text
+  kept. An inline `style` attribute still works. Task lists (`- [x] done`)
+  show ☑ and ☐ for their markers.
 - The try-it says what the browser refuses to send, instead of failing in
   silence or as a network error. A header no page may set — `Origin`,
   `Content-Length`, any `Sec-` header, the full list of the Fetch standard —

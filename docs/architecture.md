@@ -1816,7 +1816,14 @@ imports the shell and never sees the host config directly.
 
 - **All HTML derived from external content** (OpenAPI descriptions,
   examples, remote `.md` pages, scenario files) goes through DOMPurify. No
-  exceptions.
+  exceptions, and one profile for all of it (`sanitize` in
+  `src/components/markdown.js`): DOMPurify's HTML profile minus `<style>`,
+  which would restyle the whole app, and minus every form control —
+  `<form>`, `<input>`, `<button>`, `<textarea>`, `<select>` and its
+  options — which would let a description ask the reader to type a secret
+  into the page. The `style` attribute stays: it reaches no further than its
+  own element. A GFM task list keeps its markers as ☑ / ☐ glyphs instead of
+  the disabled checkboxes marked would build.
 - No `eval` / `new Function`; no unsanitized `innerHTML`. Scenarios are 100 %
   declarative for the same reason — no scripting surface.
 - Secrets: device storage in clear text is assumed and **flagged in the UI**

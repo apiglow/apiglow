@@ -378,9 +378,17 @@ function proseComponent({ name, tag, child, required, render }) {
   }
 }
 
+// GFM task lists: marked renders each marker as a disabled <input>, which the
+// sanitizer refuses with every other form control. A glyph says the same.
+export const taskMarkerRenderer = {
+  checkbox: ({ checked }) => `${checked ? '☑' : '☐'} `,
+}
+
 const docsMarked = new Marked({ async: false, gfm: true })
 docsMarked.use({ extensions: [codeTabs, ...PROSE_COMPONENTS.map(proseComponent)] })
-docsMarked.use({ renderer: { ...apidocLinkRenderer, ...operationCardsRenderer } })
+docsMarked.use({
+  renderer: { ...apidocLinkRenderer, ...operationCardsRenderer, ...taskMarkerRenderer },
+})
 
 // → raw HTML, still to be sanitized by the caller (rule 5).
 export function docsMarkdownToHtml(source) {
