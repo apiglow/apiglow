@@ -61,7 +61,12 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   no value satisfies, a `pattern` that is no regular expression, a `format`
   the type cannot carry, a keyword that cannot apply (`maxLength` on an
   integer), a misspelled one (`maxLenght`, `readonly`), a nullable `enum`
-  without `null`, an array without `items`.
+  without `null`, an array without `items`, a property both read-only and
+  write-only, a recursion no finite value satisfies, a `oneOf` listing a
+  member twice. Payloads too: an example that is only a `$ref` (shown as
+  written, not followed), raw bytes in a JSON body, a form body with no
+  properties to build a form from, required fields in a merge patch, a
+  problem+json `status` that contradicts its response code.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
 - The audit's rules are configurable: switch one off, or change its severity,

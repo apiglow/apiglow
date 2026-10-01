@@ -55,6 +55,14 @@ import { rangeContradiction } from './range-contradiction.js'
 import { patternValid } from './pattern-valid.js'
 import { formatValid } from './format-valid.js'
 import { schemaKeywordTypo } from './schema-keyword-typo.js'
+import { compositionSanity } from './composition-sanity.js'
+import { readonlyWriteonly } from './readonly-writeonly.js'
+import { recursionUnsatisfiable } from './recursion-unsatisfiable.js'
+import { mergePatchRequired } from './merge-patch-required.js'
+import { multipartSchemaObject } from './multipart-schema-object.js'
+import { binaryPlacement } from './binary-placement.js'
+import { exampleHasRef } from './example-has-ref.js'
+import { problemStatusMismatch } from './problem-status-mismatch.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -89,6 +97,15 @@ export const RULES = [
   patternValid,
   formatValid,
   schemaKeywordTypo,
+  // §4.1 schemas: payloads and composition
+  compositionSanity,
+  readonlyWriteonly,
+  recursionUnsatisfiable,
+  mergePatchRequired,
+  multipartSchemaObject,
+  binaryPlacement,
+  exampleHasRef,
+  problemStatusMismatch,
   // §4.2 Documentation completeness
   operationDescribed,
   parameterDescribed,

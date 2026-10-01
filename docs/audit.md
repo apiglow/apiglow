@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (50 rules across the five §4
+2. **Curated, doc-oriented ruleset** (58 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-50 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+58 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -366,6 +366,66 @@ not.
   written; the keyword set is every version's (`src/audit/schema-keywords.js`),
   so a keyword of another version is `version-construct`'s or
   `version-legacy`'s, never a typo.
+- `composition-sanity` (`warning`) — a composition that cannot mean what it
+  says: a bare `oneOf` / `anyOf` of one member (a choice with no alternative:
+  the doc shows a "one of" over a single variant); a member listed twice — in
+  a `oneOf`, every value matching it then matches two members while `oneOf`
+  demands exactly one (JSON Schema 2020-12 §10.2.1.3), so none is valid; in
+  `anyOf` / `allOf`, dead weight generators emit twice; an `allOf` whose
+  members declare disjoint `type`s (`integer` counts within `number`), which
+  accepts nothing. A single member next to any other keyword (`description`,
+  `nullable`) is the 3.0 idiom for decorating a `$ref`, and a single-member
+  `allOf` is never flagged. The first two read the source (a `$ref` is its
+  target's name there); the third the dereferenced schemas.
+- `readonly-writeonly` (`error`) — a schema both `readOnly` and `writeOnly`
+  (OAS 3.0 Schema Object, MUST NOT; 3.1 leaves both to JSON Schema, which
+  gives the pair no meaning). The value is never sent nor returned: the doc's
+  samples drop a readOnly property from requests and a writeOnly one from
+  responses, so this one appears in neither.
+- `recursion-unsatisfiable` (`error`) — a schema no finite instance
+  satisfies: a required property leads back to it through required plain
+  objects (declared `object`, or untyped with object keywords; a required
+  array counts when `minItems` ≥ 1), with no `null`, no `oneOf` / `anyOf`, no
+  optional step on the way. Found as cycles of that graph over `ctx.schemas`
+  by identity (Tarjan, iterative); one finding per cycle, at its first schema,
+  naming the property that closes it. Required properties of `allOf` members
+  count.
+- `merge-patch-required` (`warning`) — an `application/merge-patch+json`
+  request body whose schema (or an `allOf` member) lists `required`
+  properties: RFC 7396 §2 lets every member be omitted, so clients built from
+  it must send the whole resource, and the try-it marks every field
+  mandatory. Usually the resource schema reused as its patch.
+- `multipart-schema-object` (`warning`) — a `multipart/form-data` or
+  `application/x-www-form-urlencoded` request body with no schema, or one that
+  is not an object naming properties: the try-it builds one field per
+  top-level property (`src/components/try-it/body-state.js`), so it shows no
+  field and sends no body. `multipart/mixed` and the other multipart flavours
+  are positional and left alone; a composed (`allOf`…) schema too — the try-it
+  not merging it is this app's gap, not the document's.
+- `binary-placement` (`warning`) — raw bytes where only text can go: a
+  `format: binary` string, or a 3.1 `contentMediaType` of a binary family
+  (image, audio, video, font, octet-stream, pdf, archives, `vnd.*`) without
+  `contentEncoding`, inside a JSON request or response payload or in a
+  parameter (OAS 3.1, "Working with Binary Data": binary in a text
+  context is base64-encoded). The doc prefills an empty string where the file
+  would go, or — for a whole JSON body declared binary — offers a file picker
+  and sends the file labelled as JSON. Multipart parts and non-JSON bodies are
+  a file's place and are not looked at. Reported once per schema, at its
+  declaration.
+- `example-has-ref` (`warning`) — an example whose whole value is
+  `{ "$ref": "…" }` — a Parameter's, Header's or Media Type's `example`, an
+  Example's `value` / `dataValue`, a Schema's `example` or `examples` item.
+  Data is never dereferenced (the loader keeps it as written), so the doc
+  shows the literal object and the try-it prefills it; the author meant the
+  `$ref` on the Example Object, as an `examples` map entry. A value merely
+  containing `$ref` keys deeper down is a payload about JSON Schemas and is
+  legitimate. Read on the source. The GitHub REST description has twenty.
+- `problem-status-mismatch` (`warning`) — an `application/problem+json`
+  response under a concrete status code whose examples (the media type's, the
+  schema's) carry a numeric `status` member, or whose schema pins `status`
+  (`const`, a one-member `enum`), to another code: RFC 9457 §3.1.2 makes
+  `status` the code generated for this occurrence. Ranges and `default` pin
+  nothing and are skipped.
 
 ### 4.2 Documentation completeness
 
