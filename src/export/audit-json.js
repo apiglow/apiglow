@@ -5,10 +5,8 @@ import { t } from '../i18n/index.js'
 // under a consumer breaks it silently — so `format` and `version` say which
 // shape this is, and a change of shape bumps `version`.
 //
-// Each finding gains a `fingerprint`: the baseline's identity (spec, rule,
-// JSON pointer, and the occurrence among findings sharing those three), so a
-// finding keeps its id across runs while the document around it changes. The
-// hash is injected — `node:crypto` in the CLI — to keep this generator pure.
+// Each finding carries the `fingerprint` the CLI gave it (`fingerprinted` in
+// src/audit/baseline.js).
 //
 // `rules` carries, once, the texts of every rule that fired, in the report's
 // language: label, why, fix. They are templates — `{name}` and the like are the
@@ -21,27 +19,19 @@ const REPORT_VERSION = 1
 // `results`: [{ id, source, passed, gates, report, fresh }] — one per spec, as
 // the CLI computes them. `baseline`: whether a baseline was applied, which is
 // when `newFindings` means something.
-export function toAuditJson(results, { passed, baseline, tool, fingerprintOf }) {
+export function toAuditJson(results, { passed, baseline, tool }) {
   const fired = new Map()
   const specs = results.map(({ id, source, passed: specPassed, gates, report, fresh }) => {
-    const seen = new Map()
-    const categories = report.categories.map((category) => ({
-      ...category,
-      findings: category.findings.map((finding) => {
-        fired.set(finding.ruleId, finding)
-        const identity = [id, finding.ruleId, finding.dataPath].join('\u0000')
-        const occurrence = seen.get(identity) ?? 0
-        seen.set(identity, occurrence + 1)
-        return { ...finding, fingerprint: fingerprintOf(`${identity}\u0000${occurrence}`) }
-      }),
-    }))
+    for (const category of report.categories) {
+      for (const finding of category.findings) fired.set(finding.ruleId, finding)
+    }
     return {
       id,
       source,
       passed: specPassed,
       gates,
       ...(baseline ? { newFindings: fresh.length } : {}),
-      report: { ...report, categories },
+      report,
     }
   })
   const rules = Object.fromEntries(

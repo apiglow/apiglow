@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { fingerprinted } from '../src/audit/baseline.js'
 import { auditSchema } from '../src/audit/engine.js'
 import { toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
@@ -210,21 +211,24 @@ describe('audit console report', () => {
 })
 
 // The JSON contract of `apiglow audit` (docs/audit.md §8.1), from the same
-// synthetic report. The fingerprint hash is injected: a readable stand-in here
-// shows exactly what identity each finding was given.
+// synthetic report, fingerprinted the way the CLI does it with a readable
+// stand-in for the hash.
 describe('audit JSON report', () => {
-  const fingerprintOf = (identity) => identity.replaceAll('\u0000', '|')
+  const readable = (identity) => identity.replaceAll('\u0000', '|')
   const json = (report, options = {}) =>
     JSON.parse(
       toAuditJson(
-        [{ id: 'default', source: 'openapi.yaml', passed: true, gates: [], report, fresh: [] }],
-        {
-          passed: true,
-          baseline: false,
-          tool: { name: 'apiglow', version: '0.0.0' },
-          fingerprintOf,
-          ...options,
-        },
+        [
+          {
+            id: 'default',
+            source: 'openapi.yaml',
+            passed: true,
+            gates: [],
+            report: fingerprinted('default', report, readable),
+            fresh: [],
+          },
+        ],
+        { passed: true, baseline: false, tool: { name: 'apiglow', version: '0.0.0' }, ...options },
       ),
     )
 
@@ -234,25 +238,6 @@ describe('audit JSON report', () => {
     // consumer matches, and a constant renamed in passing must fail here.
     expect(report).toMatchObject({ format: 'apiglow-audit-report', version: 1, passed: true })
     expect(report).toMatchSnapshot()
-  })
-
-  it('fingerprints a finding by spec, rule, pointer and occurrence', () => {
-    const twice = {
-      ...REPORT,
-      categories: [
-        {
-          ...REPORT.categories[0],
-          findings: [REPORT.categories[0].findings[0], REPORT.categories[0].findings[0]],
-        },
-      ],
-    }
-    const fingerprints = json(twice).specs[0].report.categories[0].findings.map(
-      (f) => f.fingerprint,
-    )
-    expect(fingerprints).toEqual([
-      'default|duplicate-operation-id|/paths/~1pet~1{petId}/get|0',
-      'default|duplicate-operation-id|/paths/~1pet~1{petId}/get|1',
-    ])
   })
 
   it('counts new findings only when a baseline was applied', () => {

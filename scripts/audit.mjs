@@ -14,7 +14,13 @@ import { isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { load } from 'js-yaml'
-import { applyBaseline, findingsOf, readBaseline, toBaseline } from '../src/audit/baseline.js'
+import {
+  applyBaseline,
+  findingsOf,
+  fingerprinted,
+  readBaseline,
+  toBaseline,
+} from '../src/audit/baseline.js'
 import { readAuditConfig } from '../src/audit/config.js'
 import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.js'
 import { auditSchema } from '../src/audit/engine.js'
@@ -205,7 +211,8 @@ export async function main(args) {
   const { audits, warnings } = await audit(input)
   const known = values.baseline ? await baselineFile(values.baseline) : null
 
-  const results = audits.map(({ id, source, report }) => {
+  const results = audits.map(({ id, source, report: graded }) => {
+    const report = fingerprinted(id, graded, fingerprintOf)
     const applied = known ? applyBaseline(report, known[id]) : null
     const marked = applied?.report ?? report
     const fresh = applied?.fresh ?? findingsOf(report)
@@ -358,7 +365,7 @@ async function write(path, content) {
 
 function render(results, { format, passed, baseline, tool }) {
   if (format === 'json') {
-    return toAuditJson(results, { passed, baseline, tool, fingerprintOf })
+    return toAuditJson(results, { passed, baseline, tool })
   }
   const multi = results.length > 1
   return results

@@ -88,6 +88,26 @@ export function applyBaseline(report, known = {}) {
   return { report: { ...report, categories }, fresh }
 }
 
+// Every finding gains `fingerprint`: the hash of its baseline identity — spec,
+// rule, JSON pointer — plus its occurrence among the findings sharing those
+// three, so it keeps its id across runs while the document around it changes.
+// Computed on the whole report, before any output leaves findings out: an
+// occurrence counted after a filter would hand a finding someone else's id.
+// The hash is injected — `node:crypto` in the CLI — to keep this module pure.
+export function fingerprinted(id, report, hashOf) {
+  const seen = new Map()
+  const categories = report.categories.map((category) => ({
+    ...category,
+    findings: category.findings.map((finding) => {
+      const key = [id, finding.ruleId, finding.dataPath].join('\u0000')
+      const occurrence = seen.get(key) ?? 0
+      seen.set(key, occurrence + 1)
+      return { ...finding, fingerprint: hashOf(`${key}\u0000${occurrence}`) }
+    }),
+  }))
+  return { ...report, categories }
+}
+
 export function findingsOf(report) {
   return report.categories.flatMap((category) => category.findings)
 }

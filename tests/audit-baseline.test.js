@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { BASELINE_FORMAT, applyBaseline, readBaseline, toBaseline } from '../src/audit/baseline.js'
+import {
+  BASELINE_FORMAT,
+  applyBaseline,
+  fingerprinted,
+  readBaseline,
+  toBaseline,
+} from '../src/audit/baseline.js'
 import { gateResults } from '../src/audit/gate.js'
 
 // What `apiglow audit` gates a CI job on (docs/audit.md §8.2–§8.3): the
@@ -77,6 +83,23 @@ describe('audit baseline', () => {
     const report = reportOf([finding('operation-described', '/paths/~1pets/post')])
     const written = JSON.parse(JSON.stringify(toBaseline([{ id: 'default', report }])))
     expect(applyBaseline(report, readBaseline(written).default).fresh).toEqual([])
+  })
+
+  it('fingerprints a finding by spec, rule, pointer and occurrence', () => {
+    const report = reportOf([
+      finding('version-construct', '/components/schemas/Pet'),
+      finding('version-construct', '/components/schemas/Pet'),
+      finding('operation-described', '/paths/~1pets/post'),
+    ])
+    const readable = (identity) => identity.replaceAll('\u0000', '|')
+    const prints = fingerprinted('pets', report, readable).categories[0].findings.map(
+      (f) => f.fingerprint,
+    )
+    expect(prints).toEqual([
+      'pets|version-construct|/components/schemas/Pet|0',
+      'pets|version-construct|/components/schemas/Pet|1',
+      'pets|operation-described|/paths/~1pets/post|0',
+    ])
   })
 
   it('refuses a document that is not a baseline it can trust', () => {
