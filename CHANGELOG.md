@@ -101,8 +101,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 ### Fixed
 
 - A list field holding something else — `tags: pets`, `parameters: {}`, a
-  security scheme whose `scheme` is a number — no longer takes the whole
-  documentation down, nor the audit: the field reads as absent.
+  security scheme whose `scheme` is a number — or an empty YAML list item no
+  longer takes the whole documentation down, nor the audit: the field reads
+  as absent.
 - A `$ref` that leads nowhere no longer stops the whole documentation from
   loading: the rest renders, and the audit names the broken reference.
 - A `$ref` written inside an example (an API about JSON Schemas, say) is

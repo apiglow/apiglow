@@ -133,6 +133,30 @@ describe('loadInlineApiModel', () => {
     expect(model.operations).toHaveLength(1)
   })
 
+  // ref-parser leaves `null` at every use of a chain through a missing pointer,
+  // and names only the pointer in its errors.
+  it('puts back a $ref whose chain breaks further down, next to an external one', async () => {
+    const doc = {
+      openapi: '3.1.0',
+      info: { title: 'Broken chain', version: '1' },
+      paths: {
+        '/pets': {
+          get: {
+            parameters: [
+              { $ref: '#/components/parameters/A' },
+              { $ref: 'missing-file.yaml#/Limit' },
+            ],
+            responses: { 200: { description: 'OK' } },
+          },
+        },
+      },
+      components: { parameters: { A: { $ref: '#/components/parameters/Missing' } } },
+    }
+    const { document } = await loadInlineApiModel(doc)
+    expect(document.paths['/pets'].get.parameters[0]).toEqual({ $ref: '#/components/parameters/A' })
+    expect(document.components.parameters.A).toEqual({ $ref: '#/components/parameters/Missing' })
+  })
+
   it('types the errors: unreadable JSON, unusable value, non-OpenAPI schema', async () => {
     // Neither JSON nor YAML: an unclosed flow mapping is malformed in both.
     await expect(loadInlineApiModel('{ nope')).rejects.toMatchObject({ code: 'malformed' })

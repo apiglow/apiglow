@@ -12,7 +12,8 @@ import petstore30 from './fixtures/petstore-3.0.json'
 // model and the audit must both come through. A crash here is the whole page
 // failing for one typo.
 
-// One contrasting value per kind, so each field is tried once.
+// One contrasting value per kind, then `null` — what a `$ref` the loader could
+// not resolve inside another file leaves behind.
 const WRONG = (value) =>
   Array.isArray(value)
     ? 'text'
@@ -33,11 +34,13 @@ function* mutations(document) {
   }
   walk(document, [])
   for (const path of paths) {
-    const copy = structuredClone(document)
-    let parent = copy
-    for (const key of path.slice(0, -1)) parent = parent[key]
-    parent[path.at(-1)] = WRONG(parent[path.at(-1)])
-    yield [path.join('.'), copy]
+    for (const replace of [WRONG, () => null]) {
+      const copy = structuredClone(document)
+      let parent = copy
+      for (const key of path.slice(0, -1)) parent = parent[key]
+      parent[path.at(-1)] = replace(parent[path.at(-1)])
+      yield [path.join('.'), copy]
+    }
   }
 }
 

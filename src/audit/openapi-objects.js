@@ -381,9 +381,10 @@ export function walkObjects(source, document, minor) {
       if (seen.has(value)) return
       seen.add(value)
       entries.push({ type: 'Reference', expected: kind, node: value, dataPath })
-      if (!external && !value.$ref.startsWith('#')) {
-        visit(nodeAt(document, dataPath), kind, dataPath, depth, true)
-      }
+      // An external target the loader could not read is still the `$ref`
+      // there: `ref-resolves`' finding, and nothing to type.
+      const target = !external && !value.$ref.startsWith('#') ? nodeAt(document, dataPath) : null
+      if (target && typeof target.$ref !== 'string') visit(target, kind, dataPath, depth, true)
       return
     }
     visit(value, kind, dataPath, depth, external)

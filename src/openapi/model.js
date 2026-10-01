@@ -20,6 +20,12 @@ const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'
 // `field-value-kind` names it, and every other page still renders.
 export const listOf = (value) => (Array.isArray(value) ? value : [])
 
+// A list's entries that are objects: a `null` (an empty YAML item, a `$ref` the
+// loader could not resolve inside another file) or a stray string describes
+// nothing.
+const objectsOf = (value) =>
+  listOf(value).filter((param) => param !== null && typeof param === 'object')
+
 // Methods carried by a Path Item: the standard fields above, then the
 // free-form methods from `additionalOperations` (3.2) — keys in uppercase in the
 // schema, lowercased like everywhere else in the model.
@@ -99,11 +105,13 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     }
     // Parameters declared at the path level are inherited by each
     // operation, which can override them individually (key: name + in).
-    const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
+    const pathParams = objectsOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
     // Path-level `servers` are inherited by each operation that declares none:
     // the model carries the effective (most-specific) list, so no consumer
     // re-implements the operation > path precedence.
-    const pathServers = pathItem.servers?.length ? pathItem.servers.map(normalizeServer) : null
+    const pathServers = objectsOf(pathItem.servers).length
+      ? objectsOf(pathItem.servers).map(normalizeServer)
+      : null
     for (const [method, op] of pathItemOperations(pathItem)) {
       if (isHidden(path, method, op, operationKey(path, method, op))) {
         hiddenOperations += 1
@@ -125,7 +133,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
       hiddenOperations += [...pathItemOperations(pathItem)].length
       continue
     }
-    const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
+    const pathParams = objectsOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
     for (const [method, op] of pathItemOperations(pathItem)) {
       if (isHidden(name, method, op, webhookKey(name, method, op))) {
         hiddenOperations += 1
@@ -157,7 +165,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     baseUri: baseUri ?? undefined,
     info: normalizeInfo(raw.info),
     externalDocs: normalizeExternalDocs(raw.externalDocs),
-    servers: listOf(raw.servers).map(normalizeServer),
+    servers: objectsOf(raw.servers).map(normalizeServer),
     tags,
     groups: buildGroups(tags, operations),
     operations,
@@ -165,9 +173,9 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     // Absent, like every other optional key, when there is nothing to record: a
     // documentation that hides nothing has no gap to declare.
     hiddenOperations: hiddenOperations || undefined,
-    securitySchemes: Object.entries(raw.components?.securitySchemes ?? {}).map(([name, s]) =>
-      normalizeSecurityScheme(name, s),
-    ),
+    securitySchemes: Object.entries(raw.components?.securitySchemes ?? {})
+      .filter(([, scheme]) => scheme !== null && typeof scheme === 'object')
+      .map(([name, scheme]) => normalizeSecurityScheme(name, scheme)),
     security: raw.security ?? [],
   })
 }
@@ -263,7 +271,7 @@ function reverseAllOf(raw) {
 function collectTags(raw, operations, hiddenTags) {
   const seen = new Set()
   const tags = []
-  for (const tag of listOf(raw.tags)) {
+  for (const tag of objectsOf(raw.tags)) {
     if (seen.has(tag.name) || hiddenTags.has(tag.name)) continue
     seen.add(tag.name)
     // summary/parent/kind: 3.2. `name` stays the identifier operations point
@@ -420,7 +428,7 @@ export function webhookKey(name, method, op) {
 
 function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, pathServers = null) {
   const parameters = [...pathParams]
-  for (const rawParam of listOf(op.parameters)) {
+  for (const rawParam of objectsOf(op.parameters)) {
     const param = normalizeParameter(rawParam, ctx)
     const idx = parameters.findIndex((p) => p.name === param.name && p.in === param.in)
     if (idx >= 0) parameters[idx] = param
@@ -445,7 +453,9 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
     // null = inherits the global `security`; [] = auth explicitly disabled
     // on this operation. The distinction matters for credential injection.
     security: op.security ?? null,
-    servers: listOf(op.servers).length ? op.servers.map(normalizeServer) : pathServers,
+    servers: objectsOf(op.servers).length
+      ? objectsOf(op.servers).map(normalizeServer)
+      : pathServers,
   })
 }
 
@@ -468,7 +478,7 @@ function normalizeCallbacks(raw, ctx) {
     const list = []
     for (const [expression, pathItem] of Object.entries(expressions)) {
       if (!pathItem || typeof pathItem !== 'object') continue
-      const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
+      const pathParams = objectsOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
       const operations = [...pathItemOperations(pathItem)].map(([m, op]) =>
         normalizeOperation(expression, m, op, pathParams, ctx, 1),
       )

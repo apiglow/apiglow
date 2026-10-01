@@ -1,7 +1,7 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { dereferenceInternal } from './deref.js'
 import { normalizeDocument } from './model.js'
-import { isPayloadPointer } from './payload.js'
+import { childPosition, isPayloadPointer, PAYLOAD, ROOT } from './payload.js'
 import { applyOverlays } from './overlay.js'
 import { convertSwagger2, isSwagger2 } from './swagger2.js'
 import { readUserOverlay, seedUserOverlay, USER_OVERLAY_TOO_LARGE } from './user-overlay.js'
@@ -346,7 +346,8 @@ export async function loadInlineApiModel(source, options = {}) {
 // cannot be resolved — a missing pointer, an unreadable file — stays as written
 // instead of failing the whole load. `original()` → the document before any
 // substitution, where those `$ref` nodes are read back from: ref-parser leaves
-// `null` in their place.
+// `null` in their place — at the failing `$ref`, and at every use of a chain
+// that runs through it, which its error list does not name.
 async function crawl(base, document, original, resolve) {
   const options = {
     resolve,
@@ -363,25 +364,25 @@ async function crawl(base, document, original, resolve) {
     if (!partial || !Array.isArray(errors) || !errors.every((e) => Array.isArray(e.path))) {
       throw err
     }
-    const before = original()
-    for (const { path } of errors) {
-      const ref = nodeAt(before, path)
-      if (ref && typeof ref.$ref === 'string' && path.length) {
-        const parent = nodeAt(partial, path.slice(0, -1))
-        if (parent && typeof parent === 'object') parent[path.at(-1)] = structuredClone(ref)
-      }
-    }
+    restoreRefs(partial, original())
     return partial
   }
 }
 
-function nodeAt(root, path) {
-  let node = root
-  for (const key of path) {
-    if (node == null || typeof node !== 'object') return undefined
-    node = node[key]
+// Walks the document as written next to what ref-parser made of it, and puts
+// the written `$ref` back wherever it left nothing. Bounded by the written
+// document, a tree; payloads were never dereferenced and are not walked.
+function restoreRefs(partial, before) {
+  const walk = (now, was, position) => {
+    for (const key of Array.isArray(was) ? was.keys() : Object.keys(was)) {
+      const written = was[key]
+      const next = childPosition(position, key, written)
+      if (next === PAYLOAD || !written || typeof written !== 'object') continue
+      if (now[key] == null && typeof written.$ref === 'string') now[key] = structuredClone(written)
+      else if (now[key] && typeof now[key] === 'object') walk(now[key], written, next)
+    }
   }
-  return node
+  if (partial && before && typeof before === 'object') walk(partial, before, ROOT)
 }
 
 // Any document the app is handed as text, JSON or YAML. Exported for the
