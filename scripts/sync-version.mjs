@@ -1,6 +1,6 @@
 // One number, one source: package.json. Every place a reader can copy an
 // install line from — the README snippet, the demo page, the docs, the CI
-// snippets running the CLI through `npx` — is rewritten
+// snippets running the CLI through `npx` or the GitHub Action — is rewritten
 // from it, and `--check` (run in CI) fails on the first pin that drifted.
 //
 // Two spellings are deliberately left alone:
@@ -27,6 +27,8 @@ const pin = new RegExp(`(/npm/${pkg.name}@)([^/"'\\s]+)(/)`, 'g')
 // The other line a reader copies: the CLI run through `npx`, pinned for the
 // same reason as the script tag (docs/audit.md §8.5).
 const npxPin = new RegExp(`(\\bnpx (?:--yes |-y )?${pkg.name}@)([^\\s"'\`]+)()`, 'g')
+// The GitHub Action runs the CLI version its tag names (apiglow/audit-action).
+const actionPin = new RegExp(`(\\b${pkg.name}/audit-action@v)([^\\s"'\`]+)()`, 'g')
 
 const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
 if (tracked.status !== 0) {
@@ -46,7 +48,7 @@ for (const file of tracked.stdout.split('\n').filter(Boolean)) {
   const before = readFileSync(path, 'utf8')
   const sync = (match, head, version, tail) =>
     version === 'current' ? match : `${head}${pkg.version}${tail}`
-  const after = before.replace(pin, sync).replace(npxPin, sync)
+  const after = before.replace(pin, sync).replace(npxPin, sync).replace(actionPin, sync)
   if (after === before) continue
   if (check) drifted.push(file)
   else {

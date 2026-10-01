@@ -72,14 +72,19 @@ section — it rehearses the notes of the version it precedes, and quotes them.
   vendors the bundle from the published npm package at an explicit version:
   after a `latest` release, bump that version there and deploy. The site can
   therefore never serve a build that was never released.
+- **The GitHub Action** ([`audit-action`](https://github.com/apiglow/audit-action))
+  runs the CLI version its tag names: after a `latest` release, set its
+  `version` input's default to the new number there, and tag that commit
+  `v<version>`. The docs here already pin that tag.
 
 ## 4. One version, many places
 
 `package.json` is the only place a version is written by hand.
 [`sync-version.mjs`](../scripts/sync-version.mjs) rewrites every
-`/npm/apiglow@` pin and every `npx apiglow@` pin in every tracked file from it
-— the README snippet, the demo install page, the docs, the CI snippets running
-the CLI — and `npm run check:version` fails CI when one
+`/npm/apiglow@` pin, every `npx apiglow@` pin and every
+`apiglow/audit-action@v` pin in every tracked file from it — the README
+snippet, the demo install page, the docs, the CI snippets running the CLI —
+and `npm run check:version` fails CI when one
 has drifted. Two spellings are left alone on purpose: `@current`, the unmoving
 alias the e2e fixtures load from the CDN simulation, and `CHANGELOG.md`, where
 a URL under an old heading documents that old version.
