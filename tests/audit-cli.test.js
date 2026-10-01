@@ -175,6 +175,29 @@ describe('apiglow audit', () => {
     expect(both.stdout).toMatch(/^Schema audit — Clean E2E API\n/)
   })
 
+  it('writes the formats a CI platform displays, placed at the line', async () => {
+    const sarif = JSON.parse((await audit(PETSTORE, '--format', 'sarif')).stdout)
+    const [result] = sarif.runs[0].results.filter((r) => r.ruleId === 'parameter-described')
+    expect(result.locations[0].physicalLocation).toEqual({
+      artifactLocation: { uri: 'tests/e2e/fixtures/e2e-api.json' },
+      region: { startLine: 22, startColumn: 11 },
+    })
+    expect(sarif.runs[0].tool.driver).toMatchObject({
+      name: 'apiglow',
+      informationUri: 'https://apiglow.dev',
+    })
+
+    const annotations = (await audit(PETSTORE, '--format', 'github')).stdout
+    expect(annotations).toContain(
+      '::warning file=tests/e2e/fixtures/e2e-api.json,line=22,col=11,title=Parameter without description [parameter-described]::',
+    )
+    const quality = JSON.parse((await audit(PETSTORE, '--format', 'codequality')).stdout)
+    expect(quality.find((issue) => issue.check_name === 'parameter-described')).toMatchObject({
+      severity: 'major',
+      location: { path: 'tests/e2e/fixtures/e2e-api.json', lines: { begin: 22 } },
+    })
+  })
+
   it('reports in the language it is asked for', async () => {
     const { stdout } = await audit(CLEAN, '--language', 'fr')
     expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
@@ -234,7 +257,7 @@ describe('apiglow audit', () => {
       [[CLEAN, '--fail-on', 'fatal'], /--fail-on must be one of error, warning, info, none/],
       [[CLEAN, '--min-grade', 'E'], /--min-grade must be one of A, B, C, D, F/],
       [[CLEAN, '--min-score', '80%'], /--min-score must be an integer from 0 to 100/],
-      [[CLEAN, '--format', 'sarif'], /--format must be one of text, json, markdown/],
+      [[CLEAN, '--format', 'pdf'], /--format must be one of text, json, markdown, sarif/],
       [[CLEAN, '--baseline', 'a', '--write-baseline', 'b'], /do not combine/],
       [[CLEAN, '--report', 'json'], /--report takes <format>=<file>, got "json"/],
       [[CLEAN, '--report', 'pdf=x.pdf'], /--report format must be one of/],

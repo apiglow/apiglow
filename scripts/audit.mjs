@@ -26,6 +26,12 @@ import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.j
 import { auditSchema } from '../src/audit/engine.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
 import { hostConfig } from '../src/config.js'
+import {
+  SARIF_RESULT_CAP,
+  toAuditAnnotations,
+  toAuditCodeQuality,
+  toAuditSarif,
+} from '../src/export/audit-ci.js'
 import { toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
@@ -33,7 +39,7 @@ import { useDictionary } from '../src/i18n/index.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
 import { CliError, catalog, loadSpecModel, refUrl } from './cli-support.mjs'
 
-const FORMATS = ['text', 'json', 'markdown']
+const FORMATS = ['text', 'json', 'markdown', 'sarif', 'github', 'codequality']
 
 // What a failing `--fail-on` lists on stderr: the answer to "why did my build
 // fail" at the bottom of the log, even when the report went to a file. The
@@ -191,7 +197,8 @@ const USAGE = `Usage: apiglow audit <spec> [options]
   --min-score        0-100: fail below this score
   --baseline         a baseline file: --fail-on only counts findings it does not list
   --write-baseline   write the current findings to this file and pass
-  --format           text | json | markdown (default: text)
+  --format           text | json | markdown | sarif | github | codequality
+                     (default: text)
   --output           write the report to this file instead of stdout
   --report           <format>=<file>: also write the report in this format to
                      this file; repeatable. With --report alone, stdout stays
@@ -229,7 +236,7 @@ export async function main(args) {
   const context = {
     passed,
     baseline: Boolean(known),
-    tool: { name: 'apiglow', version: await toolVersion() },
+    tool: { name: 'apiglow', ...(await toolManifest()) },
   }
   let stdout = ''
   for (const { format, file } of options.reports) {
@@ -238,6 +245,8 @@ export async function main(args) {
     else stdout = output.replace(/\n$/, '')
   }
   const notes = warnings.map((warning) => `warning: ${warning}`)
+  if (options.reports.some((target) => target.format === 'sarif'))
+    notes.push(...sarifCapLines(results))
   if (values['write-baseline']) {
     const baseline = toBaseline(results)
     await write(values['write-baseline'], `${JSON.stringify(baseline, null, 2)}\n`)
@@ -357,11 +366,14 @@ function fingerprintOf(identity) {
 
 // The package's own manifest, one directory up from this file in the repo
 // (scripts/) and in the published package (dist/) alike.
-async function toolVersion() {
+async function toolManifest() {
   try {
-    return JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
+    const { version, homepage } = JSON.parse(
+      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    )
+    return { version, homepage }
   } catch {
-    return ''
+    return { version: '', homepage: '' }
   }
 }
 
@@ -403,8 +415,15 @@ async function write(path, content) {
 
 function render(results, { format, passed, baseline, tool }) {
   if (format === 'json') {
-    return toAuditJson(results, { passed, baseline, tool })
+    return toAuditJson(results, {
+      passed,
+      baseline,
+      tool: { name: tool.name, version: tool.version },
+    })
   }
+  if (format === 'sarif') return toAuditSarif(results, { tool, baseline })
+  if (format === 'github') return toAuditAnnotations(results)
+  if (format === 'codequality') return toAuditCodeQuality(results)
   const multi = results.length > 1
   return results
     .map(({ id, report }) => {
@@ -442,6 +461,19 @@ function verdictLines(results, { multi, options, known }) {
   const failed = results.some((result) => !result.passed)
   lines.push(failed ? 'Audit failed' : 'Audit passed')
   return lines
+}
+
+// What the SARIF report left out, said where the person reading the job log
+// will see it: GitHub would otherwise drop the whole upload.
+function sarifCapLines(results) {
+  const multi = results.length > 1
+  return results
+    .map(({ id, report }) => ({ id, count: findingsOf(report).length }))
+    .filter(({ count }) => count > SARIF_RESULT_CAP)
+    .map(
+      ({ id, count }) =>
+        `${multi ? `[${id}] ` : ''}sarif: ${SARIF_RESULT_CAP} of ${count} results written, new and most severe first — GitHub reads no more per run`,
+    )
 }
 
 function describeGate(gate, known) {

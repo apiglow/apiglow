@@ -31,7 +31,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   console text, Markdown (for a pull request or a GitHub job summary) or a
   versioned JSON report whose findings carry a stable fingerprint and whose
   rules come with their rationale and fix — what a script or an agent reads.
-  One run writes several of them with `--report <format>=<file>`.
+  One run writes several of them with `--report <format>=<file>`, including
+  the formats CI platforms display themselves: SARIF for GitHub code
+  scanning, GitHub annotations on the pull request's diff, GitLab Code
+  Quality for the merge-request widget.
   Every finding is placed at `file:line:column` in the file you edit, through
   `$ref`s into other files too;
   `--config` audits what your documentation shows, overlays and multi-spec

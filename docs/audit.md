@@ -617,6 +617,7 @@ npx apiglow audit --config apidoc.config.json
 - **`--format`**: `text` (default) — the console report, folded by rule like
   the page, the rationale printed once per rule; `markdown` — the export of
   §5, the shape a pull-request comment or a GitHub job summary takes;
+  `sarif`, `github`, `codequality` — for a CI platform to display (§8.4);
   `json` — the engine's report as it is (§3), wrapped with the checks, in a
   versioned contract (`src/export/audit-json.js`):
 
@@ -734,7 +735,42 @@ npx apiglow audit openapi.yaml --baseline audit-baseline.json
   status 2), never read as empty — which would fail every finding — nor as
   covering everything — which would pass a regression.
 
-### 8.4 In a CI job
+### 8.4 Reports for CI platforms
+
+Three formats exist for a CI platform to display the findings itself,
+next to the code. All three carry the report's messages, in the report's
+language, and are written by `src/export/audit-ci.js`.
+
+- **`sarif`** — SARIF 2.1.0, for GitHub code scanning (and any SARIF
+  viewer). One run per spec, its `automationDetails.id`
+  `apiglow-audit/<spec id>/`, so each spec's alerts open and close on
+  their own.
+  - Each rule fired is described once: label, rationale, fix (`help.text`
+    and `help.markdown`), its category as a tag, and
+    `problem.severity` — `error`, `warning`, or `recommendation` for
+    `info`. The texts are templates, as in the JSON report; each result
+    carries its `params`.
+  - Each result: `level` (`error`, `warning`, `note`), the message, the
+    position as `physicalLocation` (the URL for a fetched schema), the JSON
+    pointer as a logical location, the `$ref` sites crossed as
+    `relatedLocations`, the fingerprint as
+    `partialFingerprints["apiglowFingerprint/v1"]`, and with a baseline,
+    `baselineState` (`new` or `unchanged`).
+  - GitHub reads at most 25 000 results per run and refuses the upload
+    beyond. A larger run keeps the new findings first, then the most
+    severe, and stderr says how many were left out.
+- **`github`** — GitHub workflow commands, printed by a step to annotate the
+  pull request's diff: `::error`, `::warning`, `::notice` (for `info`),
+  with the file, line, column and the rule as title. GitHub shows ten
+  annotations of each kind per step and drops the rest silently, so new
+  findings come first and, when some are left out, one last `::notice`
+  says how many.
+- **`codequality`** — GitLab Code Quality: `check_name` (the rule),
+  `description`, `severity` (`error` → `critical`, `warning` → `major`,
+  `info` → `minor`), `location` and our fingerprint, which is what lets
+  the merge-request widget tell new findings from resolved ones.
+
+### 8.5 In a CI job
 
 Pin the version, as for the CDN install: a new release can add a rule, and
 a rule added under a pipeline is a build that fails for a reason nobody

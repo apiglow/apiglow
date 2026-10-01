@@ -231,3 +231,271 @@ Docs readiness — 74 %
       DELETE /admin/reset · (Hidden operation) · /paths/~1admin~1reset/delete
 "
 `;
+
+exports[`audit reports for CI platforms > writes GitHub workflow commands, escaped 1`] = `
+"::error file=apis/pets/openapi.yaml,line=10,col=5,title=Duplicate operationId [duplicate-operation-id]::operationId “getPet” is used by more than one operation.%0AGET /pet/{petId} · /paths/~1pet~1{petId}/get%0AHow to fix: Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).
+::notice file=apis/pets/openapi.yaml,line=11,col=5,title=Operation without tag [operation-tagged]::This operation carries no tag.%0ADELETE /admin/reset · /paths/~1admin~1reset/delete%0AHow to fix: Add at least one tag, and declare it with a description in the top-level tags list.
+::warning file=apis/pets/openapi.yaml,line=10,col=5,title=Security scheme without description [security-scheme-described]::Security scheme “apiKey” has no description.%0Acomponents.securitySchemes.apiKey · /components/securitySchemes/apiKey%0AHow to fix: Add a description to the scheme saying where to get the credential and in what form to paste it.
+"
+`;
+
+exports[`audit reports for CI platforms > writes GitLab Code Quality with our fingerprints 1`] = `
+[
+  {
+    "check_name": "duplicate-operation-id",
+    "description": "operationId “getPet” is used by more than one operation.",
+    "fingerprint": "default|duplicate-operation-id|/paths/~1pet~1{petId}/get|0",
+    "location": {
+      "lines": {
+        "begin": 10,
+      },
+      "path": "apis/pets/openapi.yaml",
+    },
+    "severity": "critical",
+  },
+  {
+    "check_name": "security-scheme-described",
+    "description": "Security scheme “apiKey” has no description.",
+    "fingerprint": "default|security-scheme-described|/components/securitySchemes/apiKey|0",
+    "location": {
+      "lines": {
+        "begin": 10,
+      },
+      "path": "apis/pets/openapi.yaml",
+    },
+    "severity": "major",
+  },
+  {
+    "check_name": "operation-tagged",
+    "description": "This operation carries no tag.",
+    "fingerprint": "default|operation-tagged|/paths/~1admin~1reset/delete|0",
+    "location": {
+      "lines": {
+        "begin": 11,
+      },
+      "path": "apis/pets/openapi.yaml",
+    },
+    "severity": "minor",
+  },
+]
+`;
+
+exports[`audit reports for CI platforms > writes SARIF 2.1.0, one run per spec 1`] = `
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "automationDetails": {
+        "id": "apiglow-audit/default/",
+      },
+      "properties": {
+        "grade": "C",
+        "profile": null,
+        "score": 78,
+      },
+      "results": [
+        {
+          "baselineState": "new",
+          "level": "error",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/paths/~1pet~1{petId}/get",
+                  "name": "GET /pet/{petId}",
+                },
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "apis/pets/openapi.yaml",
+                },
+                "region": {
+                  "startColumn": 5,
+                  "startLine": 10,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "operationId “getPet” is used by more than one operation.",
+          },
+          "partialFingerprints": {
+            "apiglowFingerprint/v1": "default|duplicate-operation-id|/paths/~1pet~1{petId}/get|0",
+          },
+          "properties": {
+            "params": {
+              "operationId": "getPet",
+            },
+            "pointer": "/paths/~1pet~1{petId}/get",
+          },
+          "ruleId": "duplicate-operation-id",
+          "ruleIndex": 0,
+        },
+        {
+          "baselineState": "new",
+          "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/paths/~1admin~1reset/delete",
+                  "name": "DELETE /admin/reset",
+                },
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "apis/pets/openapi.yaml",
+                },
+                "region": {
+                  "startColumn": 5,
+                  "startLine": 11,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "This operation carries no tag.",
+          },
+          "partialFingerprints": {
+            "apiglowFingerprint/v1": "default|operation-tagged|/paths/~1admin~1reset/delete|0",
+          },
+          "properties": {
+            "params": {},
+            "pointer": "/paths/~1admin~1reset/delete",
+          },
+          "ruleId": "operation-tagged",
+          "ruleIndex": 1,
+        },
+        {
+          "baselineState": "unchanged",
+          "level": "warning",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/components/securitySchemes/apiKey",
+                  "name": "components.securitySchemes.apiKey",
+                },
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "apis/pets/openapi.yaml",
+                },
+                "region": {
+                  "startColumn": 5,
+                  "startLine": 10,
+                },
+              },
+            },
+          ],
+          "message": {
+            "text": "Security scheme “apiKey” has no description.",
+          },
+          "partialFingerprints": {
+            "apiglowFingerprint/v1": "default|security-scheme-described|/components/securitySchemes/apiKey|0",
+          },
+          "properties": {
+            "params": {
+              "name": "apiKey",
+            },
+            "pointer": "/components/securitySchemes/apiKey",
+          },
+          "ruleId": "security-scheme-described",
+          "ruleIndex": 2,
+        },
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://apiglow.dev",
+          "name": "apiglow",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "error",
+              },
+              "fullDescription": {
+                "text": "An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.",
+              },
+              "help": {
+                "markdown": "**Why it matters**: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.
+
+**How to fix:** Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).",
+                "text": "An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.
+
+How to fix: Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).",
+              },
+              "id": "duplicate-operation-id",
+              "properties": {
+                "category": "correctness",
+                "problem.severity": "error",
+                "tags": [
+                  "correctness",
+                ],
+              },
+              "shortDescription": {
+                "text": "Duplicate operationId",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "note",
+              },
+              "fullDescription": {
+                "text": "It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.",
+              },
+              "help": {
+                "markdown": "**Why it matters**: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
+
+**How to fix:** Add at least one tag, and declare it with a description in the top-level tags list.",
+                "text": "It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
+
+How to fix: Add at least one tag, and declare it with a description in the top-level tags list.",
+              },
+              "id": "operation-tagged",
+              "properties": {
+                "category": "readiness",
+                "problem.severity": "recommendation",
+                "tags": [
+                  "readiness",
+                ],
+              },
+              "shortDescription": {
+                "text": "Operation without tag",
+              },
+            },
+            {
+              "defaultConfiguration": {
+                "level": "note",
+              },
+              "fullDescription": {
+                "text": "The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.",
+              },
+              "help": {
+                "markdown": "**Why it matters**: The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
+
+**How to fix:** Add a description to the scheme saying where to get the credential and in what form to paste it.",
+                "text": "The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
+
+How to fix: Add a description to the scheme saying where to get the credential and in what form to paste it.",
+              },
+              "id": "security-scheme-described",
+              "properties": {
+                "category": "readiness",
+                "problem.severity": "recommendation",
+                "tags": [
+                  "readiness",
+                ],
+              },
+              "shortDescription": {
+                "text": "Security scheme without description",
+              },
+            },
+          ],
+          "version": "0.0.0",
+        },
+      },
+    },
+  ],
+  "version": "2.1.0",
+}
+`;

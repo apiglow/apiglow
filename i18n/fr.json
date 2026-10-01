@@ -995,6 +995,7 @@
   "audit.copied": "Rapport copié dans le presse-papiers.",
   "audit.empty.title": "Aucun signalement.",
   "audit.empty.hint": "Toutes les vérifications applicables passent sur ce schéma.",
+  "audit.annotations.omitted": "{n} signalement(s) de plus non annoté(s) : GitHub en affiche dix de chaque type par étape. Le rapport complet les liste tous.",
   "audit.rule.duplicate-operation-id.label": "operationId en double",
   "audit.rule.duplicate-operation-id.message": "L’operationId « {operationId} » est utilisé par plusieurs opérations.",
   "audit.rule.duplicate-operation-id.why": "Un operationId doit être unique dans le document, et cette documentation en fait le lien profond de l’opération : l’un des deux liens atterrit sur l’autre opération.",

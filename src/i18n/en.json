@@ -995,6 +995,7 @@
   "audit.copied": "Report copied to the clipboard.",
   "audit.empty.title": "No findings.",
   "audit.empty.hint": "Every applicable check passes on this schema.",
+  "audit.annotations.omitted": "{n} more finding(s) not annotated: GitHub shows ten of each kind per step. The full report lists every one.",
   "audit.rule.duplicate-operation-id.label": "Duplicate operationId",
   "audit.rule.duplicate-operation-id.message": "operationId “{operationId}” is used by more than one operation.",
   "audit.rule.duplicate-operation-id.why": "An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.",

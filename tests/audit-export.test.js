@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { fingerprinted } from '../src/audit/baseline.js'
 import { auditSchema } from '../src/audit/engine.js'
+import {
+  SARIF_RESULT_CAP,
+  toAuditAnnotations,
+  toAuditCodeQuality,
+  toAuditSarif,
+} from '../src/export/audit-ci.js'
 import { toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
@@ -243,5 +249,100 @@ describe('audit JSON report', () => {
   it('counts new findings only when a baseline was applied', () => {
     expect(json(REPORT).specs[0]).not.toHaveProperty('newFindings')
     expect(json(REPORT, { baseline: true }).specs[0].newFindings).toBe(0)
+  })
+})
+
+// The CI platforms' own formats (docs/audit.md §8.4), from the same synthetic
+// report, placed and fingerprinted the way the CLI hands it over.
+describe('audit reports for CI platforms', () => {
+  const placed = {
+    ...REPORT,
+    categories: REPORT.categories.map((category) => ({
+      ...category,
+      findings: category.findings.map((finding, i) => ({
+        ...finding,
+        position: { file: 'apis\\pets\\openapi.yaml', line: 10 + i, column: 5 },
+        ...(finding.severity === 'warning' ? { known: true } : {}),
+      })),
+    })),
+  }
+  const results = [
+    {
+      id: 'default',
+      source: 'apis/pets/openapi.yaml',
+      report: fingerprinted('default', placed, (identity) => identity.replaceAll('\u0000', '|')),
+    },
+  ]
+  const tool = { name: 'apiglow', version: '0.0.0', homepage: 'https://apiglow.dev' }
+
+  it('writes SARIF 2.1.0, one run per spec', () => {
+    const sarif = JSON.parse(toAuditSarif(results, { tool, baseline: true }))
+    expect(sarif).toMatchSnapshot()
+    const [run] = sarif.runs
+    expect(run.automationDetails.id).toBe('apiglow-audit/default/')
+    // New before known: the baseline's findings never take a regression's place.
+    expect(run.results.map((r) => [r.ruleId, r.baselineState])).toEqual([
+      ['duplicate-operation-id', 'new'],
+      ['operation-tagged', 'new'],
+      ['security-scheme-described', 'unchanged'],
+    ])
+    expect(run.results[0].locations[0].physicalLocation).toEqual({
+      artifactLocation: { uri: 'apis/pets/openapi.yaml' },
+      region: { startLine: 10, startColumn: 5 },
+    })
+  })
+
+  it('caps a SARIF run at what GitHub reads, most severe first', () => {
+    const many = (severity, n) =>
+      Array.from({ length: n }, (_, i) => ({
+        ...REPORT.categories[0].findings[0],
+        severity,
+        dataPath: `/x/${severity}/${i}`,
+        fingerprint: `${severity}${i}`,
+      }))
+    const report = {
+      ...REPORT,
+      categories: [
+        {
+          ...REPORT.categories[0],
+          findings: [...many('info', 5), ...many('error', SARIF_RESULT_CAP)],
+        },
+      ],
+    }
+    const [run] = JSON.parse(toAuditSarif([{ id: 'default', source: 'x', report }], { tool })).runs
+    expect(run.results).toHaveLength(SARIF_RESULT_CAP)
+    expect(run.results.every((r) => r.level === 'error')).toBe(true)
+    expect(run.results[0]).not.toHaveProperty('baselineState')
+  })
+
+  it('writes GitHub workflow commands, escaped', () => {
+    expect(toAuditAnnotations(results)).toMatchSnapshot()
+  })
+
+  it('annotates new findings first, ten of a kind, then says how many it left out', () => {
+    const notes = Array.from({ length: 12 }, (_, i) => ({
+      ...REPORT.categories[2].findings[1],
+      dataPath: `/n/${i}`,
+      known: i < 6,
+    }))
+    const report = { ...REPORT, categories: [{ ...REPORT.categories[2], findings: notes }] }
+    const lines = toAuditAnnotations([{ id: 'default', source: 'x', report }])
+      .trimEnd()
+      .split('\n')
+    // Nine finding notices and the summary: GitHub shows ten notices per step.
+    expect(lines).toHaveLength(10)
+    expect(lines.slice(0, 6).every((line) => /\/n\/([6-9]|1[01])/.test(line))).toBe(true)
+    expect(lines.at(-1)).toBe(
+      '::notice::3 more finding(s) not annotated: GitHub shows ten of each kind per step. The full report lists every one.',
+    )
+    expect(
+      toAuditAnnotations([{ id: 'default', source: 'x', report: { ...REPORT, categories: [] } }]),
+    ).toBe('')
+  })
+
+  it('writes GitLab Code Quality with our fingerprints', () => {
+    const issues = JSON.parse(toAuditCodeQuality(results))
+    expect(issues).toMatchSnapshot()
+    expect(issues.map((issue) => issue.severity)).toEqual(['critical', 'major', 'minor'])
   })
 })

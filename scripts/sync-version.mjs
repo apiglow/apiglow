@@ -25,7 +25,7 @@ const EXTENSIONS = ['.md', '.html', '.js', '.mjs', '.json', '.txt', '.yml', '.ya
 const EXCLUDED = ['CHANGELOG.md']
 const pin = new RegExp(`(/npm/${pkg.name}@)([^/"'\\s]+)(/)`, 'g')
 // The other line a reader copies: the CLI run through `npx`, pinned for the
-// same reason as the script tag (docs/audit.md §8.4).
+// same reason as the script tag (docs/audit.md §8.5).
 const npxPin = new RegExp(`(\\bnpx (?:--yes |-y )?${pkg.name}@)([^\\s"'\`]+)()`, 'g')
 
 const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
