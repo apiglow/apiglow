@@ -1030,6 +1030,9 @@
   "audit.rule.version-construct.label": "Construct ahead of the declared version",
   "audit.rule.version-construct.message": "{construct} was introduced by OpenAPI {since}, and this document declares {declared}.",
   "audit.rule.version-construct.why": "This documentation reads it anyway, but a validator or a code generator trusts the declared version and is entitled to reject the document or drop the construct. Bump the openapi field, or express it with what {declared} offers.",
+  "audit.rule.field-without-value.label": "Field declared without a value",
+  "audit.rule.field-without-value.message": "“{field}” is declared without a value.",
+  "audit.rule.field-without-value.why": "OpenAPI gives an empty value no meaning here, so the field says nothing. The usual cause is YAML: in a flow mapping, an unquoted comma ends the value — { description: The signed mandate, as uploaded } reads as the description “The signed mandate” and an empty field “as uploaded”, and the description shows cut short everywhere. Quote the text, or give the field its value.",
   "audit.rule.discriminator-mapping.label": "Discriminator mapping pointing nowhere",
   "audit.rule.discriminator-mapping.message": "The discriminator maps {key} to {target}, which is none of the schemas it can dispatch to.",
   "audit.rule.discriminator-mapping.why": "A client reading this mapping cannot tell what shape {key} stands for. This documentation still shows the key, with nothing to expand behind it. Point it at one of the composite's variants, or at a schema that inherits from this one through allOf.",
@@ -1103,6 +1106,6 @@
   "audit.rule.operation-examples.message": "This operation carries no example, anywhere.",
   "audit.rule.operation-examples.why": "The try-it then prefills a sample generated from the schema — valid but meaningless (\"string\", 0). One hand-written example is what makes the prefilled request sendable as-is.",
   "audit.rule.schema-expand-walls.label": "Schema deeper than the auto-expansion",
-  "audit.rule.schema-expand-walls.message": "Schemas nested deeper than {depth} levels, or recursive.",
+  "audit.rule.schema-expand-walls.message": "Schemas nested deeper than {depth} levels.",
   "audit.rule.schema-expand-walls.why": "The schema view expands {depth} levels on its own and puts an expand button on everything below. The app handles it, but past that line the structure is only readable click by click."
 }

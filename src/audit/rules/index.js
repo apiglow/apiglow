@@ -14,6 +14,7 @@ import { duplicateInlineSchema } from './duplicate-inline-schema.js'
 import { duplicateOperationId } from './duplicate-operation-id.js'
 import { errorResponsesDocumented } from './error-responses-documented.js'
 import { exampleTypeMismatch } from './example-type-mismatch.js'
+import { fieldWithoutValue } from './field-without-value.js'
 import { infoDescribed } from './info-described.js'
 import { infoMetadata } from './info-metadata.js'
 import { linkTarget } from './link-target.js'
@@ -59,6 +60,7 @@ export const RULES = [
   responseSubstance,
   discriminatorMapping,
   linkTarget,
+  fieldWithoutValue,
   versionLegacy,
   versionConstruct,
   schemaDialect,

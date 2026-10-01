@@ -1,4 +1,4 @@
-import { operationContents } from '../schema-walk.js'
+import { carriesFile, operationContents } from '../schema-walk.js'
 
 // Docs readiness: with no example anywhere, the try-it prefills a sample
 // generated from the schema — structurally valid, semantically meaningless
@@ -6,7 +6,9 @@ import { operationContents } from '../schema-walk.js'
 // prefilled request sendable as-is.
 //
 // One check per operation carrying content: an operation that exchanges no
-// payload at all has nothing to exemplify.
+// payload at all has nothing to exemplify, and neither has one whose only
+// payloads are files — a download, an upload — since no example stands for
+// bytes.
 //
 // "Anywhere" includes the parameters: `sample.js` prefills a field from
 // `schema.examples[0]` whatever the field is, so an operation whose only
@@ -18,7 +20,7 @@ export const operationExamples = {
   severity: 'info',
   run(ctx, check) {
     for (const entry of ctx.operations) {
-      const contents = [...operationContents(entry)]
+      const contents = [...operationContents(entry)].filter((item) => !carriesFile(item))
       if (!contents.length) continue
       check(
         contents.some(({ content }) => hasExample(content)) ||

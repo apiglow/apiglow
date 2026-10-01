@@ -1,4 +1,4 @@
-import { operationContents } from '../schema-walk.js'
+import { carriesFile, operationContents } from '../schema-walk.js'
 
 // Per-response counterpart of the readiness rule `operation-examples`: that one
 // asks whether the operation carries any example at all (its try-it prefill
@@ -18,7 +18,8 @@ export const responseExample = {
       // media type it finds one on.
       const byStatus = new Map()
       for (const item of operationContents(entry)) {
-        if (item.kind !== 'response') continue
+        // A file response (a PDF, an export) has no example to write.
+        if (item.kind !== 'response' || carriesFile(item)) continue
         const schema = item.content.schema ?? item.content.itemSchema
         // No schema means no described payload: nothing to exemplify.
         if (!schema || typeof schema !== 'object') continue

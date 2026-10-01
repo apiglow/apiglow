@@ -3,6 +3,7 @@
 // instead of re-walking the document each: one walk, one check per distinct
 // schema object.
 
+import { bodyKind } from '../openapi/body-kind.js'
 import { pointer } from './pointer.js'
 
 // Depth budget (rule 7). Identity dedup already terminates cycles materialized
@@ -47,6 +48,14 @@ export function* operationContents(entry) {
       }
     }
   }
+}
+
+// A media type whose payload is a file — a PDF, an image, `format: binary` —
+// by the app's own verdict (`body-kind.js`): the try-it takes it from a file
+// picker, the doc shows no sample of it, and no hand-written example could stand
+// for its bytes. The example rules have nothing to ask of it.
+export function carriesFile({ mediaType, content }) {
+  return bodyKind({ mediaType, schema: content.schema }) === 'binary'
 }
 
 // → [{ schema, dataPath, op, location }] — `op` is the operation entry the

@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (38 rules across the five §4
+2. **Curated, doc-oriented ruleset** (39 rules across the five §4
    categories), each rule a pure, individually tested function. No rule
    configurability beyond the feature switch — no custom rules, no
    per-rule severity overrides, no ignore lists. Simplest option first;
@@ -144,7 +144,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-38 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+39 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -206,6 +206,21 @@ that contradicts the declared version is a correctness finding.
   hence `warning`. An `operationRef` into another document is skipped — a
   real usage this app cannot follow — and so is a link declaring neither
   field, which is an invalid Link Object rather than a broken one.
+- `field-without-value` (`error`) — a field declared with no value
+  (`null`) where OpenAPI gives an empty value no meaning. The usual cause
+  is invisible in the file: a YAML flow mapping cut by an unquoted comma —
+  `{ description: The signed mandate, as uploaded by the client }` is the
+  description "The signed mandate" plus an empty field "as uploaded by
+  the client" — and the description then shows cut short everywhere, which
+  reads as a bug of whatever displays it. A bare `description:` or an
+  unquoted `type: null` lands here too. Read on the source document, so a
+  component is reported once at its declaration. Skipped: what takes any
+  value — `example`, `default`, `const`, `enum`, an Example's `value` /
+  `dataValue`, a Schema's `examples` list, a Link's `parameters` and
+  `requestBody`, `x-*` extensions — and the payloads under them; array
+  elements, whose `null` is a value. One check per empty field and none
+  otherwise, like the version rules: a clean document is not graded on the
+  fields it got right.
 - `schema-dialect` (`info`) — a `jsonSchemaDialect` this app does not
   read as 2020-12: the document is read anyway, with 2020-12 meaning.
 
@@ -227,7 +242,10 @@ What the document leaves unsaid — mostly `warning`.
 - `response-example` (`info`) — response schema declared without any
   example (the app generates one, but a hand-written example is always
   better). One check per status rather than per media type: the same
-  payload as JSON and as XML is one example to write.
+  payload as JSON and as XML is one example to write. A file response — a
+  PDF, an export, anything the app classifies as binary (`body-kind.js`) —
+  has nothing to check: the doc shows no sample of a file, and no example
+  stands for its bytes.
 - `info-described` (`warning`) — `info.description` missing.
 - `info-metadata` (`info`) — `info.contact` or `info.license` missing or
   empty. Two fields, filled once for the life of the document, and the
@@ -297,10 +315,17 @@ Each message states the concrete degradation *in this app*:
 - `operation-examples` (`info`) — no example anywhere on the operation →
   try-it prefills fall back to generated samples. Any example counts,
   parameters included: a parameter example prefills the try-it just as
-  well.
-- `schema-expand-walls` (`info`) — schema cycles deeper than the
+  well. Only payloads that can carry an example count: an operation whose
+  only payloads are files (a download, an upload) has nothing to check,
+  like one that exchanges no payload at all.
+- `schema-expand-walls` (`info`) — schemas nested deeper than the
   lazy-expansion default → readers will hit "expand" walls. Info only —
-  the app handles it, but authors should know. The depth mirrors
+  the app handles it, but authors should know. Recursion is not flagged: a
+  recursive schema (a tree, a form that describes itself) is the data
+  model, no edit removes it, and the app expands it lazily on purpose
+  (rule 7) — the finding could only be acknowledged, on every operation
+  using the schema. Nesting is what an author can act on, typically a
+  wrapper adding levels the payload does not need. The depth mirrors
   `MAX_AUTO_DEPTH` from `src/components/schema-view.js` as a local
   constant: the core must not import a component, and the two move
   together.

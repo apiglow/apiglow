@@ -4,6 +4,7 @@ import { defaultAllowed } from '../src/audit/rules/default-allowed.js'
 import { discriminatorMapping } from '../src/audit/rules/discriminator-mapping.js'
 import { duplicateOperationId } from '../src/audit/rules/duplicate-operation-id.js'
 import { exampleTypeMismatch } from '../src/audit/rules/example-type-mismatch.js'
+import { fieldWithoutValue } from '../src/audit/rules/field-without-value.js'
 import { linkTarget } from '../src/audit/rules/link-target.js'
 import { pathParamDeclared } from '../src/audit/rules/path-param-declared.js'
 import { pathParamInTemplate } from '../src/audit/rules/path-param-in-template.js'
@@ -703,5 +704,146 @@ describe('link-target', () => {
       hide: ['getPet'],
     })
     expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+})
+
+describe('field-without-value', () => {
+  // What a YAML flow mapping cut by an unquoted comma parses to:
+  // `{ type: string, description: The signed mandate, as uploaded by the client }`.
+  const cut = {
+    type: 'string',
+    description: 'The signed mandate',
+    'as uploaded by the client': null,
+  }
+
+  it('flags the empty field a cut flow mapping leaves, linked to its operation', () => {
+    const result = run(
+      fieldWithoutValue,
+      doc({
+        paths: {
+          '/mandates/{id}': {
+            get: {
+              responses: {
+                200: {
+                  description: 'OK',
+                  content: {
+                    'application/json': {
+                      schema: { type: 'object', properties: { pdf: cut } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.checks).toBe(1)
+    expect(result.findings[0]).toMatchObject({
+      ruleId: 'field-without-value',
+      severity: 'error',
+      category: 'correctness',
+      location: 'GET /mandates/{id}',
+      dataPath:
+        '/paths/~1mandates~1{id}/get/responses/200/content/application~1json/schema/properties/pdf/as uploaded by the client',
+      params: { field: 'as uploaded by the client' },
+    })
+  })
+
+  it('names the component outside an operation, once however often it is used', () => {
+    const result = run(
+      fieldWithoutValue,
+      doc({
+        info: { title: 'A', version: '1', description: null },
+        components: { schemas: { Mandate: cut } },
+      }),
+    )
+    expect(result.findings.map(({ location, dataPath }) => ({ location, dataPath }))).toEqual([
+      { location: 'info', dataPath: '/info/description' },
+      {
+        location: 'components.schemas.Mandate',
+        dataPath: '/components/schemas/Mandate/as uploaded by the client',
+      },
+    ])
+  })
+
+  it('has nothing to check on a document with every field filled', () => {
+    expect(
+      run(fieldWithoutValue, doc({ components: { schemas: { Pet: { type: 'object' } } } })).checks,
+    ).toBe(0)
+  })
+
+  // The fields whose value is any JSON value, and the payloads under them: an
+  // example's nulls are the API's data.
+  it('leaves alone what takes any value, nulls included', () => {
+    const schema = {
+      type: ['string', 'null'],
+      enum: ['a', null],
+      default: null,
+      const: null,
+      example: null,
+      examples: [{ deleted: null }],
+      'x-owner': null,
+    }
+    const result = run(
+      fieldWithoutValue,
+      doc({
+        paths: {
+          '/pets/{id}': {
+            get: {
+              parameters: [{ name: 'id', in: 'path', required: true, schema, example: null }],
+              responses: {
+                200: {
+                  description: 'OK',
+                  content: {
+                    'application/json': {
+                      schema: { type: 'object', default: { owner: null } },
+                      example: { owner: null },
+                      examples: { empty: { value: null }, nested: { value: { owner: null } } },
+                    },
+                  },
+                  links: {
+                    owner: { operationId: 'getOwner', parameters: { id: null }, requestBody: null },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 0, findings: [] })
+  })
+
+  it('reads the source, where a field sits once at its declaration', () => {
+    const shared = { type: 'string', 'as uploaded': null }
+    const document = doc({
+      paths: {
+        '/a': {
+          get: {
+            responses: {
+              200: { description: 'OK', content: { 'application/json': { schema: shared } } },
+            },
+          },
+        },
+      },
+    })
+    const source = doc({
+      paths: {
+        '/a': {
+          get: {
+            responses: {
+              200: {
+                description: 'OK',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/S' } } },
+              },
+            },
+          },
+        },
+      },
+      components: { schemas: { S: shared } },
+    })
+    const result = run(fieldWithoutValue, document, { source })
+    expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/S/as uploaded'])
   })
 })

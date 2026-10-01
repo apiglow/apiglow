@@ -214,6 +214,19 @@ describe('response-example', () => {
   it('has nothing to check on a response with no schema', () => {
     expect(run(responseExample, withResponse({ description: 'No content' })).checks).toBe(0)
   })
+
+  // A PDF, an export: the doc shows no sample of a file, and no example stands
+  // for its bytes.
+  it('has nothing to check on a file response', () => {
+    for (const content of [
+      { 'application/pdf': { schema: { type: 'string', format: 'binary' } } },
+      { 'application/zip': { schema: { type: 'string' } } },
+    ]) {
+      expect(run(responseExample, withResponse({ description: 'The file', content })).checks).toBe(
+        0,
+      )
+    }
+  })
 })
 
 describe('info-described', () => {

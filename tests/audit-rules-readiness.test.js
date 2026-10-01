@@ -238,6 +238,47 @@ describe('operation-examples', () => {
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
+  // A download or an upload: no example stands for the bytes of a file, and the
+  // try-it takes it from a file picker rather than prefilling anything.
+  it('has nothing to check on an operation whose only payloads are files', () => {
+    const download = (content) =>
+      doc({
+        paths: {
+          '/mandates/{id}/pdf': {
+            get: {
+              parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+              responses: { 200: { description: 'The signed mandate', content } },
+            },
+          },
+        },
+      })
+    // 3.0 spells the file with `format: binary`, 3.1+ lets the media type carry it.
+    for (const content of [
+      { 'application/pdf': { schema: { type: 'string', format: 'binary' } } },
+      { 'application/pdf': {} },
+      { 'application/octet-stream': { schema: { type: 'string' } } },
+    ]) {
+      expect(run(operationExamples, download(content)).checks).toBe(0)
+    }
+    expect(
+      run(
+        operationExamples,
+        withContent({ 'image/png': { schema: { type: 'string', format: 'binary' } } }),
+      ).checks,
+    ).toBe(0)
+  })
+
+  it('still checks the JSON payloads of an operation that also carries a file', () => {
+    const result = run(
+      operationExamples,
+      withContent({
+        'application/octet-stream': { schema: { type: 'string', format: 'binary' } },
+        'application/json': { schema: { type: 'object' } },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [{ ruleId: 'operation-examples' }] })
+  })
+
   it('has nothing to check on an operation that exchanges no payload', () => {
     const result = run(
       operationExamples,
@@ -268,12 +309,37 @@ describe('schema-expand-walls', () => {
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
-  it('flags a recursive schema', () => {
+  // A tree, a form that describes itself: the recursion is the data model, and
+  // no edit of the document could remove it.
+  it('does not flag a recursive schema', () => {
     const pet = { type: 'object', properties: { name: { type: 'string' } } }
     // What ref-parser produces from a circular $ref: a real JS cycle.
     pet.properties.friend = pet
-    const result = run(schemaExpandWalls, withSchema(pet))
-    expect(result.findings[0]).toMatchObject({
+    expect(run(schemaExpandWalls, withSchema(pet))).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('still flags plain nesting that runs past the line inside a recursive schema', () => {
+    const node = {
+      type: 'object',
+      properties: {
+        meta: {
+          type: 'object',
+          properties: {
+            owner: {
+              type: 'object',
+              properties: {
+                address: {
+                  type: 'object',
+                  properties: { geo: { type: 'object', properties: { lat: { type: 'number' } } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    }
+    node.properties.children = { type: 'array', items: node }
+    expect(run(schemaExpandWalls, withSchema(node)).findings[0]).toMatchObject({
       ruleId: 'schema-expand-walls',
       severity: 'info',
       location: 'GET /pets',

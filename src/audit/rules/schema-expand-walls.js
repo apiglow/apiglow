@@ -2,9 +2,14 @@ import { operationContents } from '../schema-walk.js'
 
 // Docs readiness, info only — the app handles these schemas, but the author
 // should know what reading them looks like: the schema view auto-expands a
-// bounded number of levels and puts an "expand" button on everything below,
-// systematically so on a recursive node (rule 7). Past that line, the structure
-// is only readable through clicks.
+// bounded number of levels and puts an "expand" button on everything below.
+// Past that line, the structure is only readable through clicks.
+//
+// Recursion is not flagged. A recursive schema — a tree, a form that describes
+// itself — is the data model, not a layout choice: no edit removes it, and the
+// app expands it lazily on purpose (rule 7). A finding the author can only
+// acknowledge, on every operation using the schema, is noise; nesting is what
+// an author can act on, a wrapper adding levels the payload does not need.
 //
 // Mirrors MAX_AUTO_DEPTH in src/components/schema-view.js. The core does not
 // import a component: the value is repeated here, and the two must move
@@ -43,9 +48,9 @@ function hasWall(root) {
   const seen = Array.from({ length: AUTO_EXPAND_DEPTH + 1 }, () => new Set())
   const walk = (schema, depth, ancestors) => {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return false
-    // Back to a node still on the path = the cycle ref-parser materialized:
-    // rendered as an expand button whatever its depth.
-    if (ancestors.has(schema)) return true
+    // Back to a node still on the path = the cycle ref-parser materialized. The
+    // recursion ends this path rather than deepening it (see above).
+    if (ancestors.has(schema)) return false
     if (depth > AUTO_EXPAND_DEPTH) return isComplex(schema)
     if (seen[depth].has(schema)) return false
     seen[depth].add(schema)

@@ -31,9 +31,21 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   console text, Markdown (for a pull request or a GitHub job summary) or JSON;
   `--config` audits what your documentation shows, overlays and multi-spec
   included.
+- A 39th audit rule, `field-without-value`, catches a field declared with no
+  value. Its usual cause is a YAML flow mapping cut by an unquoted comma:
+  `{ description: The signed mandate, as uploaded by the client }` is the
+  description "The signed mandate" plus an empty field — and the description
+  then shows cut short in the documentation and its exports, which looks like
+  their bug.
 
 ### Fixed
 
+- The audit no longer asks for examples on files: a download or an upload (a
+  PDF, an export, an image) has no example to write, and neither
+  `operation-examples` nor `response-example` counts one against you anymore.
+- `schema-expand-walls` no longer flags recursive schemas. A tree or a form
+  that describes itself is your data model, not something to fix; deep
+  nesting is still reported.
 - `npx apiglow bake`, and the `apiglow` bin npm installs, now run the command:
   they used to exit at once without doing anything.
 - The bake reads the overlays a config names from the config's own

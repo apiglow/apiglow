@@ -1030,6 +1030,9 @@
   "audit.rule.version-construct.label": "Construction en avance sur la version déclarée",
   "audit.rule.version-construct.message": "{construct} est apparu avec OpenAPI {since}, alors que ce document déclare {declared}.",
   "audit.rule.version-construct.why": "Cette documentation le lit quand même, mais un validateur ou un générateur de code fait confiance à la version déclarée : il est en droit de rejeter le document ou d’ignorer la construction. Relevez le champ openapi, ou exprimez-la avec ce que propose {declared}.",
+  "audit.rule.field-without-value.label": "Champ déclaré sans valeur",
+  "audit.rule.field-without-value.message": "« {field} » est déclaré sans valeur.",
+  "audit.rule.field-without-value.why": "OpenAPI ne donne aucun sens à une valeur vide ici : le champ ne dit rien. La cause habituelle est YAML : dans un mapping en ligne, une virgule non protégée termine la valeur — { description: Le PDF du mandat, signé par le client } se lit comme la description « Le PDF du mandat » plus un champ vide « signé par le client », et la description apparaît coupée partout. Mettez le texte entre guillemets, ou donnez sa valeur au champ.",
   "audit.rule.discriminator-mapping.label": "Mapping de discriminant sans cible",
   "audit.rule.discriminator-mapping.message": "Le discriminant associe {key} à {target}, qui ne fait pas partie des schémas vers lesquels il peut aiguiller.",
   "audit.rule.discriminator-mapping.why": "Un client qui lit ce mapping ne sait pas quelle forme {key} désigne. Cette documentation affiche quand même la clé, sans rien à déplier derrière. Pointez-la vers une des variantes du composite, ou vers un schéma qui hérite de celui-ci par allOf.",
@@ -1103,6 +1106,6 @@
   "audit.rule.operation-examples.message": "Cette opération ne porte aucun exemple, nulle part.",
   "audit.rule.operation-examples.why": "Le try-it préremplit alors un échantillon généré depuis le schéma — valide mais vide de sens (« string », 0). Un seul exemple écrit à la main rend la requête préremplie envoyable telle quelle.",
   "audit.rule.schema-expand-walls.label": "Schéma plus profond que l'expansion automatique",
-  "audit.rule.schema-expand-walls.message": "Schémas imbriqués au-delà de {depth} niveaux, ou récursifs.",
+  "audit.rule.schema-expand-walls.message": "Schémas imbriqués au-delà de {depth} niveaux.",
   "audit.rule.schema-expand-walls.why": "La vue de schéma déplie {depth} niveaux d’elle-même et met un bouton « déplier » sur tout ce qui est en dessous. L’application le gère, mais passé cette limite la structure ne se lit plus qu’au clic."
 }
