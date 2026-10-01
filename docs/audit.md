@@ -818,27 +818,98 @@ Pin the version, as for the CDN install: a new release can add a rule, and
 a rule added under a pipeline is a build that fails for a reason nobody
 changed.
 
-GitHub Actions — the check, and the Markdown report on the run's summary
-page:
+**GitHub Actions.** The action
+[`apiglow/audit-action`](https://github.com/apiglow/audit-action) runs the
+command in one step: annotations on the diff, the Markdown report on the
+job summary, SARIF to code scanning with `sarif: true`. Its tag is the
+CLI version it runs.
 
 ```yaml
-- uses: actions/setup-node@v4
+- uses: actions/checkout@v7
+- uses: apiglow/audit-action@v0.2.0
   with:
-    node-version: 24
-- name: Schema audit
-  run: |
-    npx --yes apiglow@0.2.0 audit openapi.yaml \
-      --baseline audit-baseline.json --format markdown >> "$GITHUB_STEP_SUMMARY"
+    schema: openapi.yaml
+    baseline: audit-baseline.json
 ```
 
-GitLab CI — the JSON report kept as an artifact:
+The same by hand, every piece in sight:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+steps:
+  - uses: actions/checkout@v7
+  - uses: actions/setup-node@v7
+    with:
+      node-version: 24
+  - name: Schema audit
+    run: |
+      npx --yes apiglow@0.2.0 audit openapi.yaml --baseline audit-baseline.json \
+        --format github --report markdown="$GITHUB_STEP_SUMMARY" --report sarif=audit.sarif
+  - if: always()
+    uses: github/codeql-action/upload-sarif@v4
+    with:
+      sarif_file: audit.sarif
+```
+
+**GitLab CI.** The findings in the merge-request widget, the JSON report
+kept as an artifact:
 
 ```yaml
 schema-audit:
   image: node:24
   script:
-    - npx --yes apiglow@0.2.0 audit openapi.yaml --min-grade B --format json --output audit.json
+    - npx --yes apiglow@0.2.0 audit 'apis/**/openapi.yaml'
+        --baseline audit-baseline.json
+        --report codequality=gl-code-quality-report.json --report json=audit.json
   artifacts:
     when: always
+    reports:
+      codequality: gl-code-quality-report.json
     paths: [audit.json]
+```
+
+**pre-commit.** A local hook (`repo: local`): `language: system` runs the
+`npx` line as written, pinned like the CI job's. `pass_filenames: false`,
+because the command names its schema itself — handed the staged files, it
+would audit only those, under ids the baseline does not know. Any YAML
+change triggers it, since a `$ref` can sit in another file.
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: apiglow-audit
+        name: Schema audit
+        entry: npx --yes apiglow@0.2.0 audit openapi.yaml --baseline audit-baseline.json
+        language: system
+        files: \.ya?ml$
+        pass_filenames: false
+```
+
+**Breaking changes.** Out of scope: the audit grades one version of the
+document, and its baseline answers "what is new", not "did the contract
+break". [oasdiff](https://github.com/oasdiff/oasdiff) compares two
+versions, next to the audit:
+
+```yaml
+- uses: actions/checkout@v7
+  with:
+    fetch-depth: 0
+- name: Breaking changes
+  run: |
+    git show "origin/$GITHUB_BASE_REF:openapi.yaml" > base.yaml
+    docker run --rm -v "$PWD:/specs:ro" tufin/oasdiff:v1.32.1 \
+      breaking /specs/base.yaml /specs/openapi.yaml --fail-on ERR
+```
+
+**An agent fixing the schema.** Pipe it the JSON report (§8.1): every
+finding placed at `file:line:column`, its rule's `why` and `fix` in
+`rules`, and a fingerprint that survives the edit around it. The loop is
+audit, fix, audit again until every check passes; with a baseline,
+`--only-new` keeps its attention on what a change introduced.
+
+```
+npx apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
 ```

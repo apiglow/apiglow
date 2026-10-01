@@ -27,22 +27,24 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   the `#/audit` page and exits non-zero when a check fails — findings of a
   given severity (`--fail-on`, errors by default), a minimum grade or score.
   A committed baseline (`--write-baseline`, then `--baseline`) lets an
-  existing API adopt the check and fail only on new findings; an entry
-  that no longer matches anything fails the run until `--prune-baseline`
-  drops it. Reports as console text, Markdown (for a pull request or a GitHub job summary) or a
-  versioned JSON report whose findings carry a stable fingerprint and whose
-  rules come with their rationale and fix — what a script or an agent reads.
-  One run writes several of them with `--report <format>=<file>`, including
-  the formats CI platforms display themselves: SARIF for GitHub code
-  scanning, GitHub annotations on the pull request's diff, GitLab Code
-  Quality for the merge-request widget. `--min-severity` and `--only-new`
-  trim what a report lists without changing the verdict.
-  Every finding is placed at `file:line:column` in the file you edit, through
-  `$ref`s into other files too;
-  `--config` audits what your documentation shows, overlays and multi-spec
-  included; a quoted pattern (`'apis/**/openapi.yaml'`) audits every schema
-  of a monorepo, each under its path. `--offline` keeps a run off the network,
-  `--fetch-timeout` bounds the wait for a remote schema.
+  existing API adopt the check and fail only on new findings; an entry that
+  no longer matches anything fails the run until `--prune-baseline` drops
+  it. Reports as console text, Markdown (for a pull request or a GitHub job
+  summary) or a versioned JSON report whose findings carry a stable
+  fingerprint and whose rules come with their rationale and fix — what a
+  script or an agent reads. One run writes several of them with
+  `--report <format>=<file>`, including the formats CI platforms display
+  themselves: SARIF for GitHub code scanning, GitHub annotations on the
+  pull request's diff, GitLab Code Quality for the merge-request widget.
+  `--min-severity` and `--only-new` trim what a report lists without
+  changing the verdict. Every finding is placed at `file:line:column` in
+  the file you edit, through `$ref`s into other files too; `--config`
+  audits what your documentation shows, overlays and multi-spec included; a
+  quoted pattern (`'apis/**/openapi.yaml'`) audits every schema of a
+  monorepo, each under its path. `--offline` keeps a run off the network,
+  `--fetch-timeout` bounds the wait for a remote schema. On GitHub, the
+  `apiglow/audit-action` action does it all in one step; the docs carry
+  recipes for GitLab, pre-commit and oasdiff.
 - A 39th audit rule, `field-without-value`, catches a field declared with no
   value. Its usual cause is a YAML flow mapping cut by an unquoted comma:
   `{ description: The signed mandate, as uploaded by the client }` is the
