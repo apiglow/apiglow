@@ -63,6 +63,18 @@ import { multipartSchemaObject } from './multipart-schema-object.js'
 import { binaryPlacement } from './binary-placement.js'
 import { exampleHasRef } from './example-has-ref.js'
 import { problemStatusMismatch } from './problem-status-mismatch.js'
+import { parameterSchemaOrContent } from './parameter-schema-or-content.js'
+import { exclusiveFields } from './exclusive-fields.js'
+import { headerObjectFields } from './header-object-fields.js'
+import { componentKeyFormat } from './component-key-format.js'
+import { statusCodeValid } from './status-code-valid.js'
+import { mediaTypeKeySyntax } from './media-type-key-syntax.js'
+import { extensionReservedPrefix } from './extension-reserved-prefix.js'
+import { uriForm } from './uri-form.js'
+import { licenseIdentifierSpdx } from './license-identifier-spdx.js'
+import { selfUri } from './self-uri.js'
+import { tagUnique } from './tag-unique.js'
+import { tagParent } from './tag-parent.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -88,6 +100,18 @@ export const RULES = [
   unknownField,
   requiredFieldMissing,
   fieldValueKind,
+  parameterSchemaOrContent,
+  exclusiveFields,
+  headerObjectFields,
+  componentKeyFormat,
+  statusCodeValid,
+  mediaTypeKeySyntax,
+  extensionReservedPrefix,
+  uriForm,
+  licenseIdentifierSpdx,
+  selfUri,
+  tagUnique,
+  tagParent,
   // §4.1 schemas: values and keywords
   enumValid,
   nullableEnumNull,

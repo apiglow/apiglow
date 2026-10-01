@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (58 rules across the five §4
+2. **Curated, doc-oriented ruleset** (70 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-58 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+70 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -302,6 +302,78 @@ graded like `field-without-value`: one check per defect, none otherwise.
   documents for a value of another kind, and the model and the audit both
   come through. `null` is `field-without-value`'s; a value only a later
   version allows (`in: querystring` in 3.1) is `version-construct`'s.
+- `parameter-schema-or-content` (`error`) — a Parameter or Header Object
+  without exactly one of `schema` and `content`, or whose `content` map holds
+  more than one media type (OAS 3.x, Parameter Object: "MUST contain either a
+  schema property, or a content property, but not both"; `content` "MUST only
+  contain one entry"). With both, tools pick different ones; with neither,
+  the value has no type — a bare text box in the try-it. A field present
+  without a value is `field-without-value`'s, a `content` that is not a map
+  `field-value-kind`'s.
+- `exclusive-fields` (`error`) — two fields the specification makes mutually
+  exclusive, both set: a Parameter's, Header's or Media Type's `example` and
+  `examples`; an Example's `value` and `externalValue`, and from 3.2
+  `dataValue` with `value` and `serializedValue` with `externalValue`
+  ("If this field is present, … MUST be absent"); a Link's `operationRef` and
+  `operationId`; a License's `identifier` and `url` (3.1+). Which one a tool
+  keeps is undefined — this app shows `examples` over `example`, `value` over
+  `externalValue`, the SPDX `identifier` over the `url`. A pair whose field
+  the declared version lacks is `version-construct`'s. Named for what it
+  covers rather than the examples alone.
+- `header-object-fields` (`error`) — a Header Object carrying `name` or `in`
+  (OAS 3.0/3.1: "MUST NOT be specified"; 3.2 no longer lists them), usually a
+  Parameter pasted into a `headers` map. Ignored — the header is named by its
+  key, here and everywhere — so a `name` that differs from the key promises a
+  header nobody sees. `unknown-field` leaves these two fields to this rule,
+  whose fix says where the name goes.
+- `component-key-format` (`error`) — a key of any `components` map not
+  matching `^[a-zA-Z0-9.\-_]+$` (OAS 3.x, Components Object, MUST): spaces,
+  slashes, accents. Validators reject it, generators turning the name into a
+  type or a file fail or mangle it, and every `$ref` must escape it.
+- `status-code-valid` (`error`) — a Responses key that is neither `default`,
+  a status code from 100 to 599, nor a range with the uppercase wildcard
+  (`2XX`) (OAS 3.x, Responses Object): `200 OK`, `2xx`, `600`. Generators
+  match no response to it; this app shows the key as written, as if it were
+  a status.
+- `media-type-key-syntax` (`error`) — a `content` key of a Parameter, Header,
+  Request Body or Response that is not a media type or range (OAS 3.x; syntax
+  of RFC 9110 §8.3.1 / §12.5.1: `type/subtype`, `type/*`, `*/*`, optional
+  `; name=value` parameters): `json`, `application json`. This app sends the
+  key as the Content-Type and reads the body's kind from it.
+- `extension-reserved-prefix` (`warning`) — 3.1+: a specification extension
+  named `x-oai-…` or `x-oas-…`, prefixes "reserved for uses defined by the
+  OpenAPI Initiative" (Specification Extensions). No MUST, hence `warning`:
+  the cost is a later collision with an official extension. Read on every
+  object the walk types; a Reference Object's extra keys are `ref-siblings`'.
+- `uri-form` (`error`) — a field the specification types as a URL, a URI or
+  an email address ("MUST be in the form of…") holding junk: whitespace,
+  control or never-allowed characters, a value even a URL parser refuses, an
+  `@`-less email — Info `termsOfService`, Contact `url` / `email`, License
+  `url`, External Documentation `url`, the OAuth and OpenID Connect URLs,
+  `oauth2MetadataUrl`, an Example's `externalValue`, `jsonSchemaDialect`, and
+  an XML `namespace`, which must also be absolute. A relative reference
+  passes ("Relative References in URIs"). This app leaves out a link it
+  cannot parse. `$self` is `self-uri`'s, a server URL `server-variables`'.
+- `license-identifier-spdx` (`warning`) — 3.1+: an `info.license.identifier`
+  that is not an SPDX license expression (OAS 3.1, License Object), checked
+  against the SPDX expression grammar (SPDX 2.3 Annex D) and the SPDX License
+  List 3.29.0 embedded in `src/audit/spdx.js` (licence and exception ids,
+  deprecated ones included, case-insensitive; `LicenseRef-…` for a licence
+  of one's own). Licence scanners and SBOM generators read `Apache 2` or
+  `Proprietary` as no licence at all; this app shows the text as written.
+  `warning`: the expression syntax is the SPDX's, the cost lands on tools.
+- `self-uri` (`error`) — 3.2: a `$self` that is not a URI reference (OAS 3.2,
+  OpenAPI Object, MUST). Unable to read it, this app resolves relative `$ref`s
+  and servers against the URL the file was fetched from — what `$self` was
+  declared to override. A fragment is not flagged: the 3.2 text does not
+  forbid one, and this app ignores it when resolving.
+- `tag-unique` (`error`) — two top-level tags with one name ("Each tag name in
+  the list MUST be unique"). This app keeps the first declaration and drops
+  the second's description, external docs and place in the navigation.
+- `tag-parent` (`error`) — 3.2: a tag whose `parent` names no declared tag,
+  or whose chain of parents loops ("The named tag MUST exist … circular
+  references … MUST NOT be used", Tag Object); every tag of a loop is
+  reported. This app files such a tag at the top level of the navigation.
 
 **Schemas.** The rules below read the dereferenced schemas (`ctx.schemas`,
 each reported once, at its component when it has one), except

@@ -11,7 +11,8 @@ import { pointer } from '../pointer.js'
 // A field a LATER version introduced is `version-construct`'s, which says which
 // version to declare; a Schema Object is open to unknown keywords in 3.1, and
 // a misspelled one is `schema-keyword-typo`'s; a Reference Object's extra keys
-// are `ref-siblings`'. One check per unknown field, none otherwise.
+// are `ref-siblings`'; a Header's `name` and `in` `header-object-fields`'.
+// One check per unknown field, none otherwise.
 export const unknownField = {
   id: 'unknown-field',
   category: 'correctness',
@@ -25,6 +26,9 @@ export const unknownField = {
         if (key.startsWith('x-')) continue
         const field = fields[key]
         if (field && (inVersion(field, minor) || (field.since ?? 0) > minor)) continue
+        // A Header's `name` / `in`: `header-object-fields`, whose fix says where
+        // the name goes.
+        if (type === 'Header' && (key === 'name' || key === 'in')) continue
         const at = `${dataPath}${pointer(key)}`
         check(false, {
           ...placeOf(ctx.operations, at),
