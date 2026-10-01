@@ -174,6 +174,7 @@ export function welcomeView(
         el(
           'div',
           'flex flex-wrap items-center gap-2 py-1',
+          server.name ? el('span', 'text-sm font-semibold', text(server.name)) : null,
           el('code', 'font-mono text-sm bg-base-200 rounded px-2 py-0.5', text(server.url)),
           server.description ? el('span', 'text-sm text-subtle', text(server.description)) : null,
         ),

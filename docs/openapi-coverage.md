@@ -48,7 +48,8 @@ Normalized and rendered:
   tag `summary`/`parent`/`kind` (the nav's sections are a hierarchy
   labelled by the summaries, and a non-navigational tag badges the
   operation instead — §4.3),
-  server `name`, `deviceAuthorization`
+  server `name` (shown in every server list, and the name of an
+  environment seeded from it), `deviceAuthorization`
   flow, `oauth2MetadataUrl`, security-scheme `deprecated`,
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
   `itemEncoding`, XML `nodeType`.

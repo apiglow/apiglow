@@ -9,6 +9,7 @@ import {
   envOptions,
   envTrigger,
   gotoApp,
+  gotoFixture,
   mockApi,
   openEnvManager,
   openEnvSwitcher,
@@ -277,4 +278,15 @@ test('a very long name or base URL stays inside the switcher dropdown', async ({
   }
   // The trigger stays bounded (max-w caps), the header does not stretch.
   expect((await envTrigger(page).boundingBox()).width).toBeLessThanOrEqual(360)
+})
+
+// 3.2 gives a server a `name`: the document's own handle for it, so the
+// environment seeded from it is called that rather than by its URL.
+test('an environment seeded from a named 3.2 server takes its name', async ({ page }) => {
+  await gotoFixture(page, '/tests/e2e/fixtures/app-32.html')
+  await openEnvManager(page)
+  const seed = page.locator('env-manager fieldset', { hasText: 'Create from schema servers' })
+  await expect(seed).toContainText('Sandbox')
+  await seed.getByRole('button', { name: 'Create', exact: true }).first().click()
+  await expect(activeEnvName(page)).toHaveText('Sandbox')
 })

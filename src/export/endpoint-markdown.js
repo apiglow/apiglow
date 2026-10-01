@@ -153,9 +153,8 @@ export function toEndpointMarkdown(op, { baseUrl = '' } = {}) {
   if (op.servers?.length) {
     lines.push('', '## Servers', '', 'These override the base URL above for this operation:', '')
     for (const server of op.servers) {
-      lines.push(
-        `- ${server.url}${oneLine(server.description) ? ` — ${oneLine(server.description)}` : ''}`,
-      )
+      const label = [oneLine(server.name), oneLine(server.description)].filter(Boolean).join(': ')
+      lines.push(`- ${server.url}${label ? ` — ${label}` : ''}`)
     }
   }
 

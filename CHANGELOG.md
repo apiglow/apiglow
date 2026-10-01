@@ -144,6 +144,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A 3.2 server's `name` is shown wherever the servers are listed — the home
+  page, the environment manager, `llms-full.txt`, a copied page — and an
+  environment created from that server is called by it, instead of by the
+  server's description or URL.
 - A relative link in the schema — an external example (`externalValue`), an
   `externalDocs`, license or contact URL — now points next to the schema, as
   OpenAPI 3.1 says, instead of next to the documentation page.

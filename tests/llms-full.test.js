@@ -218,4 +218,16 @@ describe('llms-full.txt export', () => {
     // Webhooks come after the last operation.
     expect(out.indexOf('# Webhook:')).toBeGreaterThan(out.indexOf('/pets/{petId}'))
   })
+
+  it('names a server by its 3.2 name, next to its description', () => {
+    const out = toLlmsFullText({
+      ...model,
+      servers: [
+        { name: 'prod', url: 'https://api.example.com', description: 'Production' },
+        { name: 'sandbox', url: 'https://sandbox.example.com' },
+      ],
+    })
+    expect(out).toContain('- https://api.example.com — prod: Production')
+    expect(out).toContain('- https://sandbox.example.com — sandbox')
+  })
 })

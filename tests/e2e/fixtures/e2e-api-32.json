@@ -1,7 +1,7 @@
 {
   "openapi": "3.2.0",
   "info": { "title": "OpenAPI 3.2 E2E API", "version": "1.0.0" },
-  "servers": [{ "name": "e2e", "url": "https://api.e2e.test/v3" }],
+  "servers": [{ "name": "Sandbox", "url": "https://api.e2e.test/v3" }],
   "tags": [
     { "name": "Pets", "summary": "Pet catalogue", "description": "Everything about pets" },
     { "name": "Streams", "summary": "Live streams", "parent": "Pets", "kind": "nav" },

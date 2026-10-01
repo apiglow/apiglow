@@ -300,4 +300,11 @@ describe('endpoint page Markdown export', () => {
     }
     expect(toEndpointMarkdown(streaming, { baseUrl: 'https://api.example.com' })).toMatchSnapshot()
   })
+
+  it('names an operation server by its 3.2 name', () => {
+    const pinned = { ...op, servers: [{ name: 'ops', url: 'https://ops.example.com' }] }
+    expect(toEndpointMarkdown(pinned, { baseUrl: 'https://api.example.com' })).toContain(
+      '- https://ops.example.com — ops',
+    )
+  })
 })

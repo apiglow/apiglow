@@ -108,7 +108,7 @@ export function toLlmsFullText(
   if (model.servers?.length) {
     head.push('', '## Servers', '')
     for (const server of model.servers) {
-      const label = server.description?.trim()
+      const label = [server.name?.trim(), server.description?.trim()].filter(Boolean).join(': ')
       head.push(`- ${server.url}${label ? ` — ${label}` : ''}`)
     }
   }

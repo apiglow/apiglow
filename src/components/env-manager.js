@@ -385,7 +385,8 @@ class EnvManager extends HTMLElement {
       btn.type = 'button'
       btn.addEventListener('click', () => {
         const env = this.#store.create({
-          name: server.description || server.url,
+          // 3.2 `name` is the document's own handle for the server.
+          name: server.name || server.description || server.url,
           baseUrl: server.url,
           // Server template variables ({protocol}…) become
           // env variables pre-filled with their default.
@@ -402,6 +403,7 @@ class EnvManager extends HTMLElement {
         'div',
         'flex flex-wrap items-center gap-2 py-1',
         btn,
+        server.name ? el('span', 'text-xs font-semibold', text(server.name)) : null,
         el('code', 'font-mono text-xs break-all min-w-0', text(server.url)),
         server.description ? el('span', 'text-xs text-subtle', text(server.description)) : null,
       )
