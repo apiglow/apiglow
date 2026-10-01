@@ -643,6 +643,22 @@ npx apiglow audit --config apidoc.config.json
     finding needs nothing but the file.
   - `newFindings` is present only with `--baseline`, and so is
     `known: true` on the findings the baseline lists.
+- **Positions**: every finding of a schema read from a file carries
+  `position: { file, line, column }` — where its node sits in the file the
+  author edits — printed as `file:line:column` in the text and Markdown
+  reports and on stderr, the form terminals and editors turn into a link.
+  - The engine works on the dereferenced document; `src/audit/positions.js`
+    walks the finding's pointer back through the text, following a `$ref`
+    wherever the next segment is not written beside it, into other files
+    too, and `via` lists the `$ref` sites it crossed.
+  - A node the text does not hold — a missing field, a node an overlay
+    added, a converted Swagger 2.0 document — lands on its deepest existing
+    ancestor; a `$ref` that leads nowhere readable keeps the finding on the
+    `$ref` itself.
+  - One parser for both syntaxes: js-yaml's event stream, which carries the
+    offset of every node (JSON is YAML). A schema fetched from a URL or
+    inline in a config has no file, and its findings no position. Cost on
+    the repo's 12 MB schema: about half a second.
 - **`--output <file>`** writes the report to a file instead of stdout.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).

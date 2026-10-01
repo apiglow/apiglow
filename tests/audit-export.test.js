@@ -169,6 +169,27 @@ describe('audit console report', () => {
     expect(text).toContain('      GET /store/{petId} · /paths/~1store~1{petId}/get')
   })
 
+  it('leads an occurrence with its file:line:column when the CLI placed it', () => {
+    const placed = {
+      ...REPORT,
+      categories: [
+        {
+          ...REPORT.categories[0],
+          findings: [
+            {
+              ...REPORT.categories[0].findings[0],
+              position: { file: 'openapi.yaml', line: 42, column: 7 },
+            },
+          ],
+        },
+      ],
+    }
+    expect(toAuditText(placed)).toContain('      openapi.yaml:42:7 · GET /pet/{petId} · /paths/')
+    expect(toAuditMarkdown(placed, { at: AT })).toContain(
+      '  `openapi.yaml:42:7` · `GET /pet/{petId}`',
+    )
+  })
+
   it('states the empty case', () => {
     const perfect = {
       ...REPORT,

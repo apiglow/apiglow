@@ -15,7 +15,7 @@ import { RULES } from './rules/index.js'
 // never presented as one: the report carries the profile it was computed
 // under (`auditProfile`).
 
-export const RULE_OFF = 'off'
+const RULE_OFF = 'off'
 const SETTINGS = [...SEVERITIES, RULE_OFF]
 
 // The raw `audit` block → { config, errors }. Every entry is checked against

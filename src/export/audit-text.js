@@ -59,6 +59,12 @@ export function toAuditText(report) {
   return `${lines.join('\n')}\n`
 }
 
+// `file:line:column`, the form terminals and editors turn into a link. Only the
+// CLI places findings (docs/audit.md §8.1); the page has no file to point at.
+function placeOf({ file, line, column }) {
+  return `${file}:${line}:${column}`
+}
+
 // The engine sorts a category's findings by severity, then rule: one rule's
 // occurrences are already contiguous.
 function byRule(findings) {
@@ -75,6 +81,7 @@ function byRule(findings) {
 // the reader is about to edit, and there is no app to link into from a log.
 function occurrenceLines(finding) {
   const where = [
+    finding.position && placeOf(finding.position),
     finding.location,
     finding.hidden ? `(${t('audit.hidden')})` : null,
     finding.dataPath,

@@ -30,7 +30,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   existing API adopt the check and fail only on new findings. Reports as
   console text, Markdown (for a pull request or a GitHub job summary) or a
   versioned JSON report whose findings carry a stable fingerprint and whose
-  rules come with their rationale and fix — what a script or an agent reads;
+  rules come with their rationale and fix — what a script or an agent reads.
+  Every finding is placed at `file:line:column` in the file you edit, through
+  `$ref`s into other files too;
   `--config` audits what your documentation shows, overlays and multi-spec
   included.
 - A 39th audit rule, `field-without-value`, catches a field declared with no

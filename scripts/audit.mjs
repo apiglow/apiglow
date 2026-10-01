@@ -10,11 +10,13 @@
 
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
-import { isAbsolute, resolve as resolvePath } from 'node:path'
+import { isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
+import { load } from 'js-yaml'
 import { applyBaseline, findingsOf, readBaseline, toBaseline } from '../src/audit/baseline.js'
 import { readAuditConfig } from '../src/audit/config.js'
+import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.js'
 import { auditSchema } from '../src/audit/engine.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
 import { hostConfig } from '../src/config.js'
@@ -23,7 +25,7 @@ import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
 import { useDictionary } from '../src/i18n/index.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
-import { CliError, catalog, loadSpecModel } from './cli-support.mjs'
+import { CliError, catalog, loadSpecModel, refUrl } from './cli-support.mjs'
 
 const FORMATS = ['text', 'json', 'markdown']
 
@@ -67,9 +69,104 @@ export async function audit({ config: raw, base = pathToFileURL(`${process.cwd()
     }
     // The source as its author wrote it — a path for a file, not a `file:` URL.
     const source = spec.url?.startsWith('file:') ? fileURLToPath(spec.url) : (spec.url ?? 'inline')
-    audits.push({ id: spec.id, source, report: auditSchema({ ...loaded, config: rules }) })
+    const report = auditSchema({ ...loaded, config: rules })
+    const url = spec.url ? refUrl(spec.url, base) : null
+    audits.push({
+      id: spec.id,
+      source,
+      report: url?.protocol === 'file:' ? await placed(report, url) : report,
+    })
   }
   return { audits, warnings }
+}
+
+// Every finding gains `position: { file, line, column }` — where its node sits
+// in the file the author edits — and `via`, the `$ref` sites crossed to reach
+// it (docs/audit.md §8.1). Files only: a schema fetched from a URL is not the
+// author's working copy, and an inline one has no file. A file that cannot be
+// read or parsed again leaves its findings unplaced rather than failing a run
+// that already has its report.
+async function placed(report, rootUrl) {
+  const files = new Map()
+  const open = async (url) => {
+    if (!files.has(url.href)) {
+      try {
+        const text = await readFile(url, 'utf8')
+        const find = pointerIndex(text).find
+        const at = lineIndex(text)
+        const document = /^\s*[[{]/.test(text) ? JSON.parse(text) : load(text)
+        files.set(url.href, {
+          document,
+          file: displayPath(url),
+          locate: (pointer) => at(find(pointer).offset),
+        })
+      } catch {
+        files.set(url.href, null)
+      }
+    }
+    return files.get(url.href)
+  }
+  const root = await open(rootUrl)
+  if (!root) return report
+  // `$ref` targets are resolved up front: the walk itself is synchronous.
+  const targets = new Map()
+  const loadDocument = (target, from) => {
+    const url = new URL(target, from ?? rootUrl)
+    const entry = targets.get(url.href)
+    return entry ? { file: url.href, document: entry.document } : null
+  }
+  await collectTargets(root.document, rootUrl, open, targets)
+  const where = (file, pointer) => {
+    const entry = file ? targets.get(file) : root
+    return entry ? { file: entry.file, ...entry.locate(pointer) } : null
+  }
+  const categories = report.categories.map((category) => ({
+    ...category,
+    findings: category.findings.map((finding) => {
+      const { file, pointer, refs } = sourcePointer(finding.dataPath, {
+        document: root.document,
+        loadDocument,
+      })
+      const position = where(file, pointer)
+      if (!position) return finding
+      const via = refs.map((ref) => where(ref.file, ref.pointer)).filter(Boolean)
+      return { ...finding, position, ...(via.length ? { via } : {}) }
+    }),
+  }))
+  return { ...report, categories }
+}
+
+// Every file the document's `$ref`s reach, transitively, keyed by URL — so that
+// `sourcePointer`, which walks synchronously, finds them loaded.
+async function collectTargets(document, url, open, targets) {
+  const pending = [[document, url]]
+  while (pending.length) {
+    const [node, base] = pending.pop()
+    for (const ref of refsIn(node)) {
+      const [target] = ref.split('#')
+      if (!target) continue
+      const next = new URL(target, base)
+      if (next.protocol !== 'file:' || targets.has(next.href)) continue
+      const entry = await open(next)
+      targets.set(next.href, entry)
+      if (entry) pending.push([entry.document, next])
+    }
+  }
+}
+
+function* refsIn(node, seen = new Set()) {
+  if (!node || typeof node !== 'object' || seen.has(node)) return
+  seen.add(node)
+  if (typeof node.$ref === 'string') yield node.$ref
+  for (const value of Object.values(node)) yield* refsIn(value, seen)
+}
+
+// Relative to the working directory when the file is under it — what a
+// terminal and a CI annotation both expect — absolute otherwise.
+function displayPath(url) {
+  const path = fileURLToPath(url)
+  const rel = relative(process.cwd(), path)
+  return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel : path
 }
 
 const USAGE = `Usage: apiglow audit <spec> [options]
@@ -287,7 +384,10 @@ function verdictLines(results, { multi, options, known }) {
     if (!failOn) continue
     const failing = atOrAbove(fresh, options.failOn)
     for (const finding of failing.slice(0, LISTED)) {
-      const where = [finding.location, finding.dataPath].filter(Boolean).join(' · ')
+      const place = finding.position
+        ? `${finding.position.file}:${finding.position.line}:${finding.position.column}`
+        : null
+      const where = [place, finding.location, finding.dataPath].filter(Boolean).join(' · ')
       lines.push(`${prefix}  ${finding.severity} ${finding.ruleId} — ${where}`)
     }
     if (failing.length > LISTED) {

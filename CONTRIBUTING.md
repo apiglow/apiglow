@@ -373,7 +373,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Hiding operations (`x-apiglow-hide`, `openapi.hide`) | `hide.test.js` | — |
 | Schema audit engine, rules, scoring (`docs/audit.md`) | `audit-engine.test.js`, `audit-rules-*.test.js`, `audit-petstore.test.js` | `audit.spec.js` |
 | Schema audit report as Markdown | `audit-export.test.js` | `audit.spec.js` |
-| `apiglow audit` command line: console report, baseline, checks, exit status, input forms, multi-spec, the packaged bin (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
+| `apiglow audit` command line: console report, versioned JSON with fingerprints, positions (`file:line:column` through `$ref`s), baseline, checks, exit status, input forms, multi-spec, the packaged bin (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-positions.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
 | Audit rule configuration: rules off / re-graded, path overrides, per-spec merge, validation, the custom profile on the page and in every report (`docs/audit.md` §2.2) | `audit-config.test.js`, `audit-cli.test.js` | `audit.spec.js` |
 | Schema audit strings (one `message` / `why` / `label` per rule, en + fr) | `audit-strings.test.js` | — |
 | Schema audit page: identity, jumps, help, folding by rule | — | `audit.spec.js`, `perf.spec.js` |

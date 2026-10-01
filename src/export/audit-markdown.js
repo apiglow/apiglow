@@ -135,6 +135,10 @@ function findingLines(finding) {
     `- **${t(`audit.severity.${finding.severity}`)}** — ${t(`audit.rule.${finding.ruleId}.message`, finding.params)}`,
   ]
   const where = []
+  if (finding.position) {
+    const { file, line, column } = finding.position
+    where.push(`\`${file}:${line}:${column}\``)
+  }
   if (finding.location) where.push(`\`${finding.location}\``)
   if (finding.hidden) where.push(`(${t('audit.hidden')})`)
   // Unlike the page, which turns a routable finding into a link, a pasted

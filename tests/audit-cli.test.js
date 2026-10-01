@@ -42,7 +42,7 @@ describe('apiglow audit', () => {
     expect(code).toBe(1)
     expect(stderr).toMatch(/^FAIL {2}--fail-on warning: \d+ finding\(s\)/)
     expect(stderr).toContain(
-      '  warning parameter-described — GET /pets · /paths/~1pets/get/parameters/0',
+      '  warning parameter-described — tests/e2e/fixtures/e2e-api.json:22:11 · GET /pets · /paths/~1pets/get/parameters/0',
     )
     expect(stderr).toMatch(/\nAudit failed$/)
   })
@@ -106,7 +106,9 @@ describe('apiglow audit', () => {
     const regressed = await audit(next, '--fail-on', 'info', '--baseline', baseline)
     expect(regressed.code).toBe(1)
     expect(regressed.stderr).toMatch(/^FAIL {2}--fail-on info: 1 new finding\(s\)/)
-    expect(regressed.stderr).toContain('  warning parameter-described — GET /pets · ')
+    expect(regressed.stderr).toMatch(
+      / {2}warning parameter-described — .*next\.json:\d+:\d+ · GET \/pets · /,
+    )
   })
 
   it('marks the known findings in the JSON report', async () => {
@@ -257,7 +259,7 @@ describe('apiglow audit', () => {
     expect(stdout).toContain(
       'Custom rule set — 1 rule(s) reconfigured, 1 path override(s) — not comparable with the default grade',
     )
-    expect(stderr).toContain('  error parameter-described — GET /pets/{petId} · ')
+    expect(stderr).toMatch(/ {2}error parameter-described — \S+:\d+:\d+ · GET \/pets\/\{petId\} · /)
     // Switched off under /webhooks: the webhook's parameter is neither a finding nor a check.
     expect(stderr).not.toContain('petAdopted')
 
@@ -295,6 +297,60 @@ describe('apiglow audit', () => {
     const missing = await audit(CLEAN, '--audit-config', join(dir, 'missing.json'))
     expect(missing.code).toBe(2)
     expect(missing.stderr).toMatch(/--audit-config .* could not be read/)
+  })
+
+  // docs/audit.md §8.1: what a terminal, an editor and a CI annotation need.
+  it('places each finding at its line and column, across the files $refs reach', async () => {
+    await writeFile(
+      join(dir, 'openapi.yaml'),
+      [
+        'openapi: 3.1.0',
+        'info: { title: Split API, version: 1.0.0 }',
+        'paths:',
+        '  /pets:',
+        '    get:',
+        '      summary: List pets',
+        '      responses:',
+        "        '200':",
+        "          $ref: 'responses.yaml#/Pets'",
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    await writeFile(
+      join(dir, 'responses.yaml'),
+      [
+        'Pets:',
+        '  description: The pets',
+        '  content:',
+        '    application/json:',
+        '      schema:',
+        '        type: object',
+        '        properties:',
+        '          name: { type: string }',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    const { stdout } = await audit(join(dir, 'openapi.yaml'), '--format', 'json')
+    const findings = JSON.parse(stdout).specs[0].report.categories.flatMap((c) => c.findings)
+    const property = findings.find((f) => f.ruleId === 'property-described')
+    expect(property.position).toMatchObject({ line: 8, column: 11 })
+    expect(property.position.file).toMatch(/responses\.yaml$/)
+    // Reached through the root file's `$ref`, which is where the walk crossed.
+    expect(property.via).toEqual([expect.objectContaining({ line: 8, column: 9 })])
+    expect(property.via[0].file).toMatch(/openapi\.yaml$/)
+
+    const text = (await audit(join(dir, 'openapi.yaml'))).stdout
+    expect(text).toMatch(/responses\.yaml:8:11 · GET \/pets/)
+  })
+
+  it('places findings relative to the working directory', async () => {
+    const { stdout } = await audit(PETSTORE, '--format', 'json')
+    const findings = JSON.parse(stdout).specs[0].report.categories.flatMap((c) => c.findings)
+    expect(findings.every((f) => f.position?.file === 'tests/e2e/fixtures/e2e-api.json')).toBe(true)
+    const parameter = findings.find((f) => f.dataPath === '/paths/~1pets/get/parameters/0')
+    expect(parameter.position).toMatchObject({ line: 22, column: 11 })
   })
 
   it('prints its usage', async () => {
