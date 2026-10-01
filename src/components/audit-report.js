@@ -1,6 +1,6 @@
 import { CATEGORIES, GRADES, LOWEST_GRADE } from '../audit/constants.js'
 import { gradeFor } from '../audit/engine.js'
-import { toAuditMarkdown } from '../export/audit-markdown.js'
+import { profileDetail, toAuditMarkdown } from '../export/audit-markdown.js'
 import { t } from '../i18n/index.js'
 import { opHash } from '../router.js'
 import { copyTextButton } from './copy-button.js'
@@ -299,8 +299,10 @@ function severityCounts(counts) {
 // Grade, aggregate score, counts, then one bar per scored category — including
 // the ones with no finding, whose 100 % is exactly what a reader wants to see.
 function summaryCard(report, sections) {
-  // The shipped ruleset always scores at least the readiness category (one
-  // unconditional check on the document), so grade and score are never null here.
+  // The default ruleset always scores at least the readiness category (one
+  // unconditional check on the document); a configuration switching rules off
+  // can leave nothing to grade, and the card then says so rather than invent a
+  // letter.
   const grade = report.grade
   const counts = severityCounts(report.counts)
   const card = el(
@@ -312,8 +314,14 @@ function summaryCard(report, sections) {
       el(
         'div',
         'flex items-baseline gap-2',
-        el('span', `text-5xl font-bold leading-none ${GRADE_TEXT[grade]}`, text(grade)),
-        el('span', 'text-sm text-subtle', text(t('audit.score', { score: report.score }))),
+        grade
+          ? el('span', `text-5xl font-bold leading-none ${GRADE_TEXT[grade]}`, text(grade))
+          : el('span', 'text-5xl font-bold leading-none text-subtle', text('—')),
+        el(
+          'span',
+          'text-sm text-subtle',
+          text(grade ? t('audit.score', { score: report.score }) : t('audit.ungraded')),
+        ),
       ),
       el(
         'div',
@@ -321,6 +329,7 @@ function summaryCard(report, sections) {
         ...(counts.length ? counts : [el('span', 'badge badge-sm', text(t('audit.noFinding')))]),
       ),
     ),
+    profileNote(report.profile),
     el(
       'div',
       'flex flex-col gap-2',
@@ -329,6 +338,20 @@ function summaryCard(report, sections) {
   )
   card.dataset.auditSummary = ''
   return card
+}
+
+// A grade computed under a custom rule set is not the default grade: said next
+// to it, so that a screenshot or a pasted report cannot pass one for the other.
+function profileNote(profile) {
+  if (!profile?.custom) return null
+  const note = el(
+    'p',
+    'text-xs flex flex-wrap items-center gap-2',
+    el('span', 'badge badge-sm badge-outline', text(t('audit.profile.custom'))),
+    el('span', 'text-subtle', text(profileDetail(profile))),
+  )
+  note.dataset.auditProfile = ''
+  return note
 }
 
 function categoryBar(category, section) {

@@ -10,6 +10,7 @@
 // and the audit page renders findings, not the schema.
 
 import { operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
+import { auditProfile, severityResolver } from './config.js'
 import { CATEGORIES, GRADES, LOWEST_GRADE, SEVERITIES, SEVERITY_WEIGHT } from './constants.js'
 import { pointer } from './pointer.js'
 import { RULES } from './rules/index.js'
@@ -19,6 +20,8 @@ import { collectSchemas } from './schema-walk.js'
 // components and ref shapes are observable.
 // `document`: the same document dereferenced (possibly cyclic).
 // `model`: the normalized model, used as the hide filter's verdict (see below).
+// `config`: the rule configuration, as `readAuditConfig` returns it (config.js);
+// absent, every rule runs at its own severity.
 //
 // `rules` is a seam for the engine's own tests (synthetic rules give a
 // deterministic score); production callers pass nothing.
@@ -37,6 +40,7 @@ export function auditSchema(input, rules = RULES) {
 // only meaningful once every category has been graded.
 export function* auditRun(input, rules = RULES) {
   const ctx = createAuditContext(input)
+  const severityFor = severityResolver(input.config)
   yield
   const categories = []
   const counts = { error: 0, warning: 0, info: 0, total: 0 }
@@ -45,6 +49,7 @@ export function* auditRun(input, rules = RULES) {
       id,
       rules.filter((rule) => rule.category === id),
       ctx,
+      severityFor,
     )
     // A category with no applicable check (no rule yet, or nothing in the
     // document to check) is absent from the report rather than scored 0 — an
@@ -63,6 +68,7 @@ export function* auditRun(input, rules = RULES) {
     scope: auditScope(ctx),
     score,
     grade: score === null ? null : gradeFor(score),
+    profile: auditProfile(input.config),
     counts,
     categories,
   }
@@ -167,13 +173,16 @@ export function createAuditContext({ source, document, model }) {
   }
 }
 
-function* runCategory(id, rules, ctx) {
+function* runCategory(id, rules, ctx, severityFor) {
   const findings = []
   let checks = 0
   let weighted = 0
   let weightedPassed = 0
   for (const rule of rules) {
-    const result = runRule(rule, ctx)
+    const severityAt = severityFor(rule)
+    // Switched off everywhere: not run at all, so it costs nothing either.
+    if (!severityAt) continue
+    const result = runRule(rule, ctx, severityAt)
     checks += result.checks
     weighted += result.weight
     weightedPassed += result.passedWeight

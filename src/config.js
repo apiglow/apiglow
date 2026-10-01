@@ -54,6 +54,10 @@ const CONFIG_DEFAULTS = {
   // not the reader's business. It gates that panel and nothing else: what a
   // declared scenario publishes stays governed by its declaration alone (§2).
   features: { scenarios: true, audit: true, onboarding: false, ci: true },
+  // The audit's rule configuration — rules switched off or re-graded, globally
+  // or under some JSON pointers (docs/audit.md §2.2). Read by the audit page
+  // and by `apiglow audit` alike, so both grade the same way.
+  audit: { rules: {}, overrides: [] },
   branding: { productName: 'API Docs', logoUrl: null },
   tryIt: { proxyUrl: null, requestCredentials: 'same-origin' },
   // Per OAuth2 scheme: { "schemeName": { "clientId": "…" } }. clientId

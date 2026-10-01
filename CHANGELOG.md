@@ -39,6 +39,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   their bug.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
+- The audit's rules are configurable: switch one off, or change its severity,
+  for the whole document or only under some paths (`/paths/~1legacy~1*`), in an
+  `audit` block of the config — read by the audit page and by
+  `apiglow audit` alike, or passed to the CLI with `--audit-config`. A grade
+  computed this way is labelled "custom rule set" wherever it appears, so it
+  never passes for the default one, and the CLI refuses to run on an entry it
+  cannot read.
 
 ### Changed
 

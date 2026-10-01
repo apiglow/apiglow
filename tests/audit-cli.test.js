@@ -221,6 +221,63 @@ describe('apiglow audit', () => {
     expect(stderr).toMatch(/--baseline .* could not be read: not an audit baseline/)
   })
 
+  // The rule configuration (docs/audit.md §2.2): the same `audit` block the
+  // page reads, or a file of its own for a run with no host config.
+  it('grades under a rule configuration, and says so', async () => {
+    const config = join(dir, 'audit.json')
+    await writeFile(
+      config,
+      JSON.stringify({
+        rules: { 'parameter-described': 'error' },
+        overrides: [{ paths: ['/webhooks'], rules: { 'parameter-described': 'off' } }],
+      }),
+      'utf8',
+    )
+    const { stdout, stderr, code } = await audit(PETSTORE, '--audit-config', config)
+    expect(code).toBe(1)
+    expect(stdout).toContain(
+      'Custom rule set — 1 rule(s) reconfigured, 1 path override(s) — not comparable with the default grade',
+    )
+    expect(stderr).toContain('  error parameter-described — GET /pets/{petId} · ')
+    // Switched off under /webhooks: the webhook's parameter is neither a finding nor a check.
+    expect(stderr).not.toContain('petAdopted')
+
+    const json = JSON.parse(
+      (await audit(PETSTORE, '--audit-config', config, '--format', 'json')).stdout,
+    )
+    expect(json.specs[0].report.profile).toEqual({
+      custom: true,
+      rules: { 'parameter-described': 'error' },
+      overrides: 1,
+    })
+  })
+
+  it('reads the rule configuration from the host config', async () => {
+    const config = join(dir, 'apidoc.config.json')
+    await writeFile(
+      config,
+      JSON.stringify({
+        openapi: { url: relative(dir, CLEAN) },
+        audit: { rules: { 'info-metadata': 'off' } },
+      }),
+      'utf8',
+    )
+    const json = JSON.parse((await audit('--config', config, '--format', 'json')).stdout)
+    expect(json.specs[0].report.profile.custom).toBe(true)
+  })
+
+  // A pipeline must never pass on a configuration nobody wrote.
+  it('refuses to run on a rule configuration it cannot read', async () => {
+    const config = join(dir, 'audit.json')
+    await writeFile(config, JSON.stringify({ rules: { 'parameter-describd': 'off' } }), 'utf8')
+    const { stderr, code } = await audit(CLEAN, '--audit-config', config)
+    expect(code).toBe(2)
+    expect(stderr).toBe('apiglow audit: audit.rules: unknown rule "parameter-describd"')
+    const missing = await audit(CLEAN, '--audit-config', join(dir, 'missing.json'))
+    expect(missing.code).toBe(2)
+    expect(missing.stderr).toMatch(/--audit-config .* could not be read/)
+  })
+
   it('prints its usage', async () => {
     const { stdout } = await audit('--help')
     expect(stdout).toMatch(/^Usage: apiglow audit <spec> \[options\]/)

@@ -1,5 +1,5 @@
 import { t } from '../i18n/index.js'
-import { identityLines, scopeLines, severityLine } from './audit-markdown.js'
+import { identityLines, profileLines, scopeLines, severityLine } from './audit-markdown.js'
 
 // The audit report as `apiglow audit` prints it in a terminal or a CI log
 // (docs/audit.md §8). Folded by rule like the page rather than listed like the
@@ -13,7 +13,7 @@ export function toAuditText(report) {
   const lines = [`${t('audit.title')}${title ? ` — ${title}` : ''}`]
   lines.push(
     [
-      report.grade ? t('audit.gradeOf', { grade: report.grade }) : null,
+      report.grade ? t('audit.gradeOf', { grade: report.grade }) : t('audit.ungraded'),
       report.score === null ? null : t('audit.score', { score: report.score }),
       report.api.version && t('audit.api.version', { version: report.api.version }),
       report.openapi && `OpenAPI ${report.openapi}`,
@@ -23,6 +23,7 @@ export function toAuditText(report) {
     '',
     ...identityLines(report),
     ...scopeLines(report),
+    ...profileLines(report),
     severityLine(report.counts) || t('audit.noFinding'),
     '',
   )

@@ -39,12 +39,42 @@ drifting.
    grading an API in its own docs while keeping the tool one click away
    for authors.
 2. **Curated, doc-oriented ruleset** (39 rules across the five §4
-   categories), each rule a pure, individually tested function. No rule
-   configurability beyond the feature switch — no custom rules, no
-   per-rule severity overrides, no ignore lists. Simplest option first;
-   extend only on demand. The command line's baseline (§8.3) is not an
-   ignore list: it changes which findings fail a CI job, never which ones
-   are reported.
+   categories), each rule a pure, individually tested function — and
+   **configurable**, because a real API has deliberate, permanent
+   exceptions the baseline (§8.3) cannot cover on new code. The `audit`
+   block of the host config (root and `openapi.specs[]` entries alike)
+   switches a rule off or changes its severity, globally or under some
+   JSON pointers:
+
+   ```json
+   "audit": {
+     "rules": { "property-described": "off", "parameter-described": "error" },
+     "overrides": [{ "paths": ["/paths/~1legacy~1*"],
+                     "rules": { "operation-examples": "off" },
+                     "reason": "frozen legacy API" }]
+   }
+   ```
+
+   - Precedence: the rule's own severity, then `rules`, then every override
+     covering the pointer, in declaration order — the last word wins.
+   - A pointer pattern covers what it matches and everything below it; `*`
+     matches within one segment, `**` as a whole segment any number of
+     them.
+   - A check where its rule is off does not count at all — neither as a
+     finding nor in the score; a rule off everywhere is not even run.
+   - Per spec: rules merge by id (the spec's last), overrides accumulate,
+     root first.
+   - Every entry is checked against the registry: the page names a wrong
+     one in the console and applies the rest; the CLI refuses to run
+     (exit status 2) — a pipeline must never pass on a configuration
+     nobody wrote.
+   - A grade computed this way is **not the default grade** and says so
+     wherever it goes (`report.profile`, §3): next to the letter on the
+     page, in both exports and in the JSON. Grades stay comparable because
+     a custom one is never presented as the default.
+
+   No custom rules. The baseline is not an ignore list either: it changes
+   which findings fail a CI job, never which ones are reported.
 3. **Per-category score + aggregate letter.** Category percentages make
    the letter defensible; the letter alone would be arbitrary, counts
    alone are not shareable.
@@ -119,6 +149,12 @@ The report also carries its own identity and perimeter:
   carrying it). No
   "callbacks" figure: the scope counts the same units as the home page,
   and nothing in the app counts callbacks.
+- `report.profile`: `{ custom, rules, overrides }` — whether the run used a
+  rule configuration (§2.2), the rules it reconfigured, and how many path
+  overrides it declared. `custom: false` is the default grade. A
+  configuration that switches every applicable rule off leaves nothing to
+  grade: `score` and `grade` are then `null`, and the page shows a dash
+  rather than inventing a letter.
 
 Every rule ships four mandatory i18n strings — `audit.rule.{id}.label`,
 `.message`, `.why`, `.fix` — in both `en` and `fr` (rules 9/17 of
@@ -421,7 +457,10 @@ PASSES in a 3.0 document instead of being punished for it.
   every other route — it designates the whole document.
 - **Config**: `features.audit` (default `true`), overridable per spec
   like other feature switches; `false` removes the route, the settings
-  entry and any computation. Documented in `config.example.js`.
+  entry and any computation. The rule configuration is the `audit` block
+  (§2.2), read by `app.js` (rule 10) and handed to the engine as
+  `input.config`, validated by `src/audit/config.js`. Both documented in
+  `config.example.js`.
 - **Export**: a "copy report as Markdown" action, implemented as a pure
   generator in `src/export/` and snapshot-tested, consistent with every
   other export. No sensitive values are involved, so no redaction path: a
@@ -568,6 +607,11 @@ npx apiglow audit --config apidoc.config.json
   marked hidden, and every spec of a multi-spec install is audited. What it
   names is read under the config file's own directory, exactly as the bake
   reads it ([`seo.md`](seo.md) §4).
+- **Rule configuration**: the config's `audit` block (§2.2), or
+  `--audit-config <file>` — a JSON file holding the block alone, for a run
+  that has no host config or wants to grade differently from the published
+  page; it replaces the config's root block. An entry the CLI cannot read
+  stops the run with exit status 2, each entry named.
 - **`--format`**: `text` (default) — the console report, folded by rule like
   the page, the rationale printed once per rule; `markdown` — the export of
   §5, the shape a pull-request comment or a GitHub job summary takes;

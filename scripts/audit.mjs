@@ -13,6 +13,7 @@ import { isAbsolute, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { applyBaseline, findingsOf, readBaseline, toBaseline } from '../src/audit/baseline.js'
+import { readAuditConfig } from '../src/audit/config.js'
 import { auditSchema } from '../src/audit/engine.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
 import { hostConfig } from '../src/config.js'
@@ -49,14 +50,22 @@ export async function audit({ config: raw, base = pathToFileURL(`${process.cwd()
   for (const warning of specsConfig.warnings) warnings.push(warning)
   const audits = []
   for (const spec of specsConfig.specs) {
-    const { loaded } = await loadSpecModel(config, spec, {
+    const { loaded, config: effective } = await loadSpecModel(config, spec, {
       multi: specsConfig.multi,
       base,
       warnings,
     })
+    // Unlike the page, which leaves a wrong entry out and grades with the rest,
+    // a pipeline refuses to run: passing on a configuration nobody wrote is the
+    // one outcome a CI check must never produce.
+    const { config: rules, errors } = readAuditConfig(effective.audit)
+    if (errors.length) {
+      const prefix = specsConfig.multi ? `spec "${spec.id}": ` : ''
+      throw new CliError(errors.map((error) => `${prefix}${error}`).join('\n'))
+    }
     // The source as its author wrote it — a path for a file, not a `file:` URL.
     const source = spec.url?.startsWith('file:') ? fileURLToPath(spec.url) : (spec.url ?? 'inline')
-    audits.push({ id: spec.id, source, report: auditSchema(loaded) })
+    audits.push({ id: spec.id, source, report: auditSchema({ ...loaded, config: rules }) })
   }
   return { audits, warnings }
 }
@@ -66,7 +75,11 @@ const USAGE = `Usage: apiglow audit <spec> [options]
 
   <spec>             path or URL of the OpenAPI document (JSON or YAML)
   --config           the JSON config the host page inlines in #api-doc-config:
-                     its overlays, hidden operations and every spec it declares
+                     its overlays, hidden operations, rule configuration
+                     (audit) and every spec it declares
+  --audit-config     a JSON file holding the rule configuration alone
+                     ({ "rules": …, "overrides": … }); replaces the config's
+                     own audit block
   --fail-on          error | warning | info | none: fail on a finding this
                      severe or worse (default: error)
   --min-grade        A | B | C | D | F: fail below this grade
@@ -86,6 +99,10 @@ export async function main(args) {
   useDictionary(values.language, await catalog(values.language))
 
   const input = positionals[0] ? fromSpec(positionals[0]) : await fromConfig(values.config)
+  // The rule configuration of a run that has no host config to carry it — or
+  // that wants to grade differently from the published page.
+  if (values['audit-config'])
+    input.config = { ...input.config, audit: await auditConfigFile(values['audit-config']) }
   const { audits, warnings } = await audit(input)
   const known = values.baseline ? await baselineFile(values.baseline) : null
 
@@ -129,6 +146,7 @@ function parse(args) {
         'fail-on': { type: 'string', default: 'error' },
         'min-grade': { type: 'string' },
         'min-score': { type: 'string' },
+        'audit-config': { type: 'string' },
         baseline: { type: 'string' },
         'write-baseline': { type: 'string' },
         format: { type: 'string', default: 'text' },
@@ -180,6 +198,14 @@ function checkOptions(values, positionals) {
 function fromSpec(spec) {
   const url = !IS_URL.test(spec) && isAbsolute(spec) ? pathToFileURL(spec).href : spec
   return { config: { openapi: { url } } }
+}
+
+async function auditConfigFile(path) {
+  try {
+    return JSON.parse(await readFile(resolvePath(path), 'utf8'))
+  } catch (err) {
+    throw new CliError(`--audit-config ${path} could not be read: ${err.message}`)
+  }
 }
 
 async function fromConfig(path) {

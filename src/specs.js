@@ -32,6 +32,7 @@ const SPEC_KEYS = new Set([
   'tryIt',
   'branding',
   'features',
+  'audit',
   'oauth',
   'theme',
   'language',
@@ -379,6 +380,16 @@ export function resolveSpecConfig(config, spec, { multi = false } = {}) {
     tryIt: { ...config.tryIt, ...spec.tryIt },
     branding: { ...config.branding, ...spec.branding },
     features: { ...config.features, ...spec.features },
+    // Audit: rules merge by id, the spec's last; overrides accumulate, root
+    // first, so a spec can narrow what the installation declared. Validation is
+    // the audit's own (`readAuditConfig`), on this effective value.
+    audit: {
+      rules: { ...config.audit?.rules, ...spec.audit?.rules },
+      overrides: [
+        ...(Array.isArray(config.audit?.overrides) ? config.audit.overrides : []),
+        ...(Array.isArray(spec.audit?.overrides) ? spec.audit.overrides : []),
+      ],
+    },
     oauth: { ...config.oauth, ...spec.oauth },
     theme: { ...config.theme, ...spec.theme },
     language: { ...config.language, ...spec.language },

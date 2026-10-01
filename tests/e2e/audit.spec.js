@@ -8,6 +8,7 @@ import { clipboardText, gotoApp, gotoFixture, openSettings } from './helpers.js'
 
 const NO_AUDIT_PAGE = '/tests/e2e/fixtures/app-no-audit.html'
 const HIDDEN_OPS_PAGE = '/tests/e2e/fixtures/app-hidden-ops.html'
+const CONFIGURED_PAGE = '/tests/e2e/fixtures/app-audit-config.html'
 const CLEAN_PAGE = '/tests/e2e/fixtures/app-clean.html'
 
 const report = (page) => page.locator('audit-report')
@@ -293,4 +294,28 @@ test('features.audit false removes the block and the route alike', async ({ page
   await gotoFixture(page, `${NO_AUDIT_PAGE}#/audit`)
   await expect(page.locator('main')).toContainText('audit is disabled')
   await expect(report(page)).toHaveCount(0)
+})
+
+// A grade computed under a rule configuration is not the default grade
+// (docs/audit.md §3): the summary says so next to the letter, and an entry the
+// page cannot read is named in the console rather than silently applied.
+test('a configured audit says it is graded under a custom rule set', async ({ page }) => {
+  const warnings = []
+  page.on('console', (message) => {
+    if (message.type() === 'warning') warnings.push(message.text())
+  })
+  await gotoFixture(page, `${CONFIGURED_PAGE}#/audit`)
+  await expect(report(page).locator('[data-audit-profile]')).toContainText(
+    'Custom rule set1 rule(s) reconfigured, 1 path override(s)',
+  )
+  const rule = report(page).locator('[data-rule-id="parameter-described"]').first()
+  await expect(rule).toContainText('Error')
+  expect(warnings.some((text) => text.includes('audit.rules: unknown rule "not-a-rule"'))).toBe(
+    true,
+  )
+
+  // The default page carries no such note.
+  await gotoApp(page, '#/audit')
+  await report(page).locator('[data-audit-summary]').waitFor()
+  await expect(report(page).locator('[data-audit-profile]')).toHaveCount(0)
 })

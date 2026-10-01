@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Variant of app.html with a rule configuration (docs/audit.md §2.2): one
+     rule raised, one switched off under the webhooks, one entry the page
+     cannot read — named in the console, left out, the rest applied. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E — ApiGlow (audit configuration)</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api.json" },
+      "theme": { "default": "light", "available": ["light", "dark", "corporate"] },
+      "language": { "default": "en", "available": ["en", "fr"] },
+      "branding": { "productName": "E2E Docs" },
+      "audit": {
+        "rules": { "parameter-described": "error", "not-a-rule": "off" },
+        "overrides": [{ "paths": ["/webhooks"], "rules": { "parameter-described": "off" } }]
+      }
+    }
+    </script>
+    <script src="/npm/apiglow@current/dist/app.js" type="module"></script>
+  </body>
+</html>

@@ -66,6 +66,7 @@ import {
   SchemaLoadError,
 } from './openapi/loader.js'
 import { isArazzoDocument, parseArazzo } from './import/arazzo.js'
+import { readAuditConfig } from './audit/config.js'
 import { auditRun } from './audit/engine.js'
 import {
   emptyRoute,
@@ -336,6 +337,7 @@ function appLayout(
         },
         document: loaded.document,
         model,
+        config: auditRuleConfig(config.audit),
       }
     : null
   // Generated onboarding page: opt-in, and only if the schema declares a read
@@ -1969,3 +1971,14 @@ async function boot() {
 }
 
 boot()
+
+// The audit's rule configuration as the page applies it. A wrong entry is the
+// integrator's to fix, not a reason to withhold the report: it is named in the
+// console and left out, the rest applies. The CLI reads the same block and
+// refuses to run on it instead — a pipeline must not pass on a config nobody
+// wrote.
+function auditRuleConfig(raw) {
+  const { config, errors } = readAuditConfig(raw)
+  for (const error of errors) console.warn('[api-doc]', error)
+  return config
+}

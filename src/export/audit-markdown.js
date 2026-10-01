@@ -19,7 +19,7 @@ export function toAuditMarkdown(report, { at = new Date() } = {}) {
   const lines = [`# ${t('audit.title')}${title ? ` — ${title}` : ''}`, '']
 
   const grade = [
-    report.grade ? `**${t('audit.gradeOf', { grade: report.grade })}**` : null,
+    report.grade ? `**${t('audit.gradeOf', { grade: report.grade })}**` : t('audit.ungraded'),
     report.score === null ? null : t('audit.score', { score: report.score }),
   ]
     .filter(Boolean)
@@ -38,7 +38,7 @@ export function toAuditMarkdown(report, { at = new Date() } = {}) {
     '',
   )
 
-  lines.push(...identityLines(report), ...scopeLines(report))
+  lines.push(...identityLines(report), ...scopeLines(report), ...profileLines(report))
 
   const counts = severityLine(report.counts)
   lines.push(counts || t('audit.noFinding'), '')
@@ -82,8 +82,9 @@ function formatTimestamp(at) {
   return `${date} ${time}`
 }
 
-// The three helpers below write plain text, not Markdown: the console report
-// (`audit-text.js`) prints the same header lines.
+// The helpers below write plain text, not Markdown: the console report
+// (`audit-text.js`) prints the same header lines, and the page the same
+// profile wording.
 
 // `contact` and `license` are what the `info-metadata` rule grades: a report
 // that flags them missing should show them when they are there.
@@ -105,6 +106,18 @@ export function scopeLines({ scope }) {
     .filter((key) => scope[key] != null)
     .map((key) => `${t(`welcome.${key}`)}: ${scope[key]}`)
   return stats.length ? [stats.join(' · '), ''] : []
+}
+
+// A grade under a custom rule set (docs/audit.md §3) says so wherever it goes.
+export function profileLines({ profile }) {
+  return profile?.custom ? [`${t('audit.profile.custom')} — ${profileDetail(profile)}`, ''] : []
+}
+
+export function profileDetail(profile) {
+  return t('audit.profile.detail', {
+    rules: Object.keys(profile.rules).length,
+    overrides: profile.overrides,
+  })
 }
 
 export function severityLine(counts) {

@@ -47,7 +47,9 @@ comments reference the numbered sections below; renumber with care.
   the values common to the installation; a `specs[]` entry redeclares what is
   specific to it. Four merge rules, chosen by the nature of the value:
   - **settings objects** (`tryIt`, `branding`, `theme`, `language`,
-    `features`, `oauth`): key-by-key merge, the spec wins. A key not
+    `features`, `oauth`): key-by-key merge, the spec wins. The audit's rule
+    configuration (`audit`) merges its `rules` the same way and accumulates
+    its `overrides`, root first (`audit.md` §2.2). A key not
     redeclared keeps the root value; a declared key wins even at `null` (a
     spec can disable the root proxy);
   - **lists of named entities** (`docsPages` by slug, `environments` by
