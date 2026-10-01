@@ -109,6 +109,17 @@ import { enumValuesUndescribed } from './enum-values-undescribed.js'
 import { parameterNameCollision } from './parameter-name-collision.js'
 import { requestExample } from './request-example.js'
 import { errorMachineReadable } from './error-machine-readable.js'
+import { serverHttps } from './server-https.js'
+import { oauthUrlTls } from './oauth-url-tls.js'
+import { authSchemeWeak } from './auth-scheme-weak.js'
+import { apikeyInQuery } from './apikey-in-query.js'
+import { httpSchemeRegistered } from './http-scheme-registered.js'
+import { operationUnsecured } from './operation-unsecured.js'
+import { securedOpErrors } from './secured-op-errors.js'
+import { oauthLegacyFlows } from './oauth-legacy-flows.js'
+import { rateLimitRetryAfter } from './rate-limit-retry-after.js'
+import { sensitiveFieldExposure } from './sensitive-field-exposure.js'
+import { unboundedInput } from './unbounded-input.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -183,6 +194,18 @@ export const RULES = [
   binaryPlacement,
   exampleHasRef,
   problemStatusMismatch,
+  // §4.8 Security: what the document lets through
+  serverHttps,
+  oauthUrlTls,
+  authSchemeWeak,
+  apikeyInQuery,
+  httpSchemeRegistered,
+  operationUnsecured,
+  securedOpErrors,
+  oauthLegacyFlows,
+  rateLimitRetryAfter,
+  sensitiveFieldExposure,
+  unboundedInput,
   // §4.2 Documentation completeness
   operationDescribed,
   parameterDescribed,

@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (104 rules across the six §4
+2. **Curated, doc-oriented ruleset** (115 rules across the seven §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -122,7 +122,7 @@ A finding:
 
 - `severity`: `error` (almost certainly a schema bug) / `warning`
   (probably hurts consumers or the docs) / `info` (worth knowing).
-- `category`: one of the six §4 categories.
+- `category`: one of the seven §4 categories.
 - `opRef`: the operation route target when the finding maps to a rendered
   operation — the UI links it. A finding on a **callback** carries its
   parent operation's `opRef`: the callback is rendered inside that page and
@@ -195,7 +195,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-104 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+115 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -982,6 +982,177 @@ An operation's inputs are its parameters and its non-file request bodies
   tool operations only; a response with no content leaves the status as the
   signal and is not checked. Documenting error responses at all is
   `error-responses-documented`'s.
+
+### 4.8 Security
+
+What the document lets through, each rule against the RFC or the OWASP API
+Security Top 10 (2023) risk it breaks. The document cannot prove what the
+server does; it is the contract every client is built from, and what it
+says is what generated clients, gateways and this documentation do.
+Operation-level rules read the document's paths operations, hidden ones
+included — a webhook or a callback is a request the API sends, and its
+security is the receiver's. An operation's effective security, its servers
+and what counts as cleartext come from one place, `src/audit/security.js`:
+`http:` to any host but the machine itself (`localhost`, `127.0.0.0/8`,
+`[::1]`, which W3C Secure Contexts holds potentially trustworthy). Three rules
+grade their checks at more than one severity — `auth-scheme-weak`,
+`operation-unsecured`, `oauth-legacy-flows` (§2.2: a configured severity
+applies to all of them).
+
+- `server-https` (`warning`) — a Server Object whose URL, variables at
+  their defaults, is `http:` to a host other than the machine itself:
+  every credential and payload crosses the network in clear, and a browser
+  blocks a request from an https page to it as mixed content (W3C Mixed
+  Content) — the try-it of any hosted install cannot reach it without a
+  CORS proxy, and diagnoses the failure as mixed content. `localhost`,
+  `127.0.0.0/8` and `[::1]` are exempt (W3C Secure Contexts: potentially
+  trustworthy, and nothing leaves the machine); a relative URL takes the
+  page's scheme; an undeclared variable in the host gives no verdict
+  (`server-variables`'). Servers the client calls: root, Path Item,
+  Operation, a Link's `server`; one inside a webhook or a callback is the
+  receiver's. One check per Server with a string URL. The credential an
+  operation exposes on such a server is `auth-scheme-weak`'s.
+- `oauth-url-tls` (`error`) — an OAuth or OpenID Connect endpoint over
+  cleartext http: a flow's `authorizationUrl`, `tokenUrl`, `refreshUrl`,
+  `deviceAuthorizationUrl`, a scheme's `openIdConnectUrl` or 3.2
+  `oauth2MetadataUrl`. RFC 6749 requires TLS on the authorization and token
+  endpoints (§3.1, §3.2, MUST) and for refresh tokens (§10.4), RFC 8628 §3.1
+  on the device endpoint, RFC 8414 §3 an https metadata URL, OpenID Connect
+  Discovery §3 an https issuer; OpenAPI repeats it on every flow URL. In the
+  try-it, from an https page, the login navigates to the http page (a
+  navigation is not blocked: the reader types a password there) and the
+  token request is blocked as mixed content. A URL counts only where
+  something fetches it: on a flow that uses it ("Applies To"), under an
+  `oauth2` scheme; `openIdConnectUrl` on `openIdConnect`,
+  `oauth2MetadataUrl` on `oauth2`. Loopback exempt. One check per such URL
+  present; a missing one is `oauth-flow-urls`', a malformed one
+  `uri-form`'s.
+- `auth-scheme-weak` (`error`, per check) — a tool operation whose
+  effective security names, in any alternative, a credential that needs
+  TLS, while one of the servers it goes to is cleartext http. A bearer
+  token — `http` `bearer`, and the access token of an `oauth2` or
+  `openIdConnect` scheme, sent as `Authorization: Bearer` too — is an
+  `error` (RFC 6750 §5.3, MUST); `mutualTLS` is an `error` (the client
+  certificate travels in the TLS handshake, RFC 8705 §2: over http the
+  scheme cannot work); `http` `basic` is a `warning` (RFC 7617 §4, SHOULD
+  NOT). One check per tool operation using one of these, graded at the most
+  severe; the finding names that scheme and the first cleartext server. An
+  `apiKey` has no transport rule to cite — its server is `server-https`'s,
+  which reports the server once where this rule reports what each operation
+  exposes on it.
+- `apikey-in-query` (`warning`) — an `apiKey` security scheme with `in:
+  query`. Servers, proxies and CDNs log a URL whole, TLS or not; RFC 9110
+  §17.9 calls sensitive information in a URI unwise, RFC 6750 §2.3 / §5.3
+  says the same of tokens in a query string ("browser history, web server
+  logs"), OWASP API2:2023 lists credentials in the URL. In the try-it the
+  key is part of the request URL, which the history stores and every export
+  of the request carries; redaction masks it by default, provided the key
+  reads the same once URL-encoded. One check per
+  `apiKey` scheme. That the MCP export cannot carry it is
+  `bridge-degradation`'s.
+- `http-scheme-registered` (`warning`) — an `http` security scheme whose
+  `scheme` is not in the IANA HTTP Authentication Schemes registry (as
+  updated 2025-02-18: Basic, Bearer, Concealed, Digest, DPoP, GNAP, HOBA,
+  Mutual, Negotiate, OAuth, PrivateToken, SCRAM-SHA-1, SCRAM-SHA-256,
+  vapid), compared without case — `JWT`, `token`, `apiKey`, a value with a
+  space. OpenAPI 3.x: the value SHOULD be registered. It is the first word
+  of the `Authorization` header: the try-it sends it lowercased, the MCP
+  export capitalized, and a server expecting `Bearer` refuses both. One
+  check per `http` scheme with a non-empty string `scheme`. A registered
+  scheme the try-it cannot drive (`Digest`, `Negotiate`) is out of scope.
+- `operation-unsecured` (`warning`, per check) — a tool operation anyone
+  can call (OWASP API2:2023, Broken Authentication). The document is the
+  contract: a generated client sends no credential, and this documentation
+  shows no authentication section and a try-it with no credentials form
+  (`applicableSchemes`). Open by omission — no `security` on the operation
+  nor at the root — is a `warning` on a method that changes state and an
+  `info` on a safe one (GET, HEAD, OPTIONS, TRACE, QUERY, and the safe
+  methods a 3.2 `additionalOperations` may name: SEARCH, PROPFIND, REPORT;
+  any other custom method counts as a write). Open by declaration —
+  `security: []` or an empty `{}` alternative — is an `info` whatever the
+  method: the inventory of what is public on purpose, told apart by the
+  `access` param (`omitted` / `declared`). A secured operation passes,
+  graded at the severity an omission would have had. A document with no
+  security scheme and no `security` anywhere gets one check instead, at
+  `/components/securitySchemes`: one gap, not one per operation. Hidden
+  operations count; webhooks and callbacks are the receiver's. A `security`
+  list of malformed entries gives no verdict (`field-value-kind`'s); a
+  requirement on an undeclared scheme reads as secured
+  (`security-scheme-declared`'s).
+- `secured-op-errors` (`info`) — a secured tool operation that does not
+  document how it refuses a caller. Two checks: per operation whose
+  effective security has a requirement and no anonymous alternative, a
+  `401`, a `403` or the `4XX` range is documented (`default` does not count:
+  it is every other failure); per documented `401` of a tool operation, the
+  response declares `WWW-Authenticate`, which RFC 9110 §15.5.2 says the
+  server MUST send with at least one challenge. A generated client maps each
+  documented status to an error, an agent reads it to decide whether to ask
+  for credentials. The try-it's insight strip does not read
+  WWW-Authenticate, so the document is where the reader learns the scheme. A
+  401 written under `components.responses` is checked once, at the
+  component. Whether a mutating operation documents any error is
+  `error-responses-documented`'s.
+- `oauth-legacy-flows` (`error`, per check) — an OAuth 2.0 flow the
+  Security Best Current Practice retires: `password` is an `error` (RFC
+  9700 §2.4, MUST NOT: the client app sees the user's password), `implicit`
+  a `warning` (§2.1.2, SHOULD NOT: the token comes back in the redirect URL,
+  where it leaks and can be replayed). One check per flow of each `oauth2`
+  scheme, the others passing; a 3.2 `deprecated` scheme still counts — its
+  flows run until clients have left. The try-it runs neither flow and falls
+  back to a token pasted by hand. URLs over http are `oauth-url-tls`'s,
+  missing ones `oauth-flow-urls`'.
+- `rate-limit-retry-after` (`info`) — a documented `429` without a
+  `Retry-After` header (case-insensitive). RFC 6585 §4: a 429 MAY say how
+  long to wait, in seconds or as an HTTP date (RFC 9110 §10.2.3); a client
+  written without knowing it retries at once or backs off by a guess. The
+  try-it's insight strip reads the header from a live 429 or 503 whatever
+  the document says, when the API exposes it to the page
+  (Access-Control-Expose-Headers): documenting it is the promise to client
+  authors. Quota headers (`RateLimit-*`, `X-RateLimit-*`) do not stand in
+  for it. One check per 429 of a tool operation; one written under
+  `components.responses` is checked once, at the component.
+- `sensitive-field-exposure` (`warning`) — a schema marked `format:
+  password` (on itself or on an `allOf` member) that a response body of a
+  paths operation carries, without `writeOnly: true` on it or on an `allOf`
+  member. `format: password` is OpenAPI's "hint to obscure the value";
+  `writeOnly` is the keyword for a value sent and never returned — OpenAPI
+  3.0: "SHOULD NOT be sent as part of the response", JSON Schema 2020-12
+  §9.4: "never present when the instance is retrieved". OWASP API3:2023
+  (Broken Object Property Level Authorization) is the reference. Generated
+  clients type the response with the field, and this app's response sample
+  shows it filled in (`pa55w0rd`), where a writeOnly property is left out.
+  By the document's word only, never by property name: a `token` may be
+  what the operation exists to return. Response bodies only (`schema` and
+  3.2 `itemSchema`), readOnly properties included; not response headers,
+  not request schemas, not webhook or callback responses (the integrator
+  writes them), and nothing under a writeOnly schema. One check per
+  password schema, each schema object once, a component's at the
+  component. A schema both readOnly and writeOnly is `readonly-writeonly`'s.
+  No demo document returns one: the petstore's `User.password` has no
+  format.
+- `unbounded-input` (`info`) — a paths operation whose request body takes
+  a string or an array with no upper bound. OWASP API4:2023 (Unrestricted
+  Resource Consumption): "Define and enforce a maximum size of data on all
+  incoming parameters and payloads". Request bodies only, files excepted:
+  parameters travel in the request line and the headers, which every server
+  already caps (RFC 9110 §4.1 asks for 8000 octets of URI and answers 414
+  past its own limit, RFC 6585 §5 431 for headers) — a body has no such
+  ceiling short of the upload limit. Every value position below the body
+  root — properties (readOnly ones skipped; those declared in `then`,
+  `else` or `dependentSchemas` included), map and `patternProperties`
+  values, array and tuple items. A string is bounded by `maxLength`,
+  `enum`, `const`, a fixed-shape `format` (`date`, `date-time`, `time`,
+  `uuid`, `ipv4`, `ipv6`, `duration`) or a `pattern` whose every top-level
+  alternative is anchored `^…$` with no `*`, `+` or `{n,}` outside a
+  character class or a lookaround; an array by `maxItems`, `enum`, `const`,
+  or `prefixItems` with `items: false`. A bound in an `allOf` member bounds
+  the value; a `oneOf`/`anyOf` bounds it when every branch does. A file
+  (`format: binary`) is not a string to bound; numbers are out of scope; an
+  untyped input is `untyped-input`'s. One check per operation with at least
+  one string or array in its body, its finding counting the unbounded
+  values and naming the first three (`owner.name`, `tags[]`, `labels.*`, a
+  body root by its media type). Graded per operation, so a shared
+  component left unbounded shows in each operation accepting it.
 
 ## 5. Architecture
 

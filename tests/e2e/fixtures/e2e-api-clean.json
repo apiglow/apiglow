@@ -79,6 +79,15 @@
                 "example": { "message": "displayName is required." }
               }
             }
+          },
+          "403": {
+            "description": "The API key does not allow creating widgets.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "message": "Forbidden." }
+              }
+            }
           }
         }
       }
@@ -102,10 +111,12 @@
         "properties": {
           "widgetId": {
             "type": "string",
+            "maxLength": 64,
             "description": "Server-assigned identifier of the widget."
           },
           "displayName": {
             "type": "string",
+            "maxLength": 200,
             "description": "Name shown to the end user."
           }
         }

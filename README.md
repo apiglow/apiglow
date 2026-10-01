@@ -140,13 +140,13 @@ Full spec: [`docs/scenarios.md`](docs/scenarios.md).
 
 ## Schema audit
 
-The docs already downloaded your schema, so they can also grade it: 104
-rules across six categories — readiness for AI agents included — a score
-each, a letter grade, and a Markdown report for the ticket. In the browser — nothing is sent anywhere.
+The docs already downloaded your schema, so they can also grade it: 115
+rules across seven categories — security and readiness for AI agents
+included — a score each, a letter grade, and a Markdown report for the ticket. In the browser — nothing is sent anywhere.
 
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-dark.png">
-<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-light.png" alt="The schema audit page: grade A, six category scores, findings folded by rule" width="920">
+<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-light.png" alt="The schema audit page: grade A, seven category scores, findings folded by rule" width="920">
 </picture>
 
 *The demo schema's report card — grade, category scores, folded findings.*

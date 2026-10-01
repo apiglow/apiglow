@@ -1,5 +1,6 @@
 import { credentialHeader } from '../../export/mcp.js'
 import { listOf } from '../../openapi/model.js'
+import { effectiveSecurity } from '../security.js'
 import { toolOperations } from '../tool-inputs.js'
 
 // An operation the MCP server this documentation exports cannot call as
@@ -34,14 +35,13 @@ export const bridgeDegradation = {
     const schemes = new Map(
       listOf(ctx.model.securitySchemes).map((scheme) => [scheme.name, scheme]),
     )
-    const documentSecurity = listOf(ctx.document.security)
     for (const entry of toolOperations(ctx)) {
       const names = []
       for (const { param } of entry.parameters) {
         if (param.in === 'cookie' && typeof param.name === 'string') names.push(param.name)
       }
-      const security = Array.isArray(entry.op.security) ? entry.op.security : documentSecurity
-      names.push(...unreachableSchemes(security, schemes))
+      const { alternatives, anonymous } = effectiveSecurity(ctx, entry)
+      if (!anonymous) names.push(...unreachableSchemes(alternatives, schemes))
       check(!names.length, {
         op: entry,
         params: { names: [...new Set(names)].join(', ') },
@@ -52,10 +52,7 @@ export const bridgeDegradation = {
 
 // The schemes no header carries, when no alternative of the requirement list
 // can be met through headers alone; none when one can.
-function unreachableSchemes(security, schemes) {
-  const alternatives = security.filter(
-    (alt) => alt !== null && typeof alt === 'object' && !Array.isArray(alt),
-  )
+function unreachableSchemes(alternatives, schemes) {
   const lacking = new Set()
   for (const alternative of alternatives) {
     const missing = Object.keys(alternative).filter((name) => {

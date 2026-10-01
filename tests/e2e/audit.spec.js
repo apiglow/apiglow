@@ -55,7 +55,7 @@ test('the report grades the schema and scores each category', async ({ page }) =
   await expect(header).toContainText('B')
   await expect(header).toContainText('86 / 100')
   await expect(header).toContainText('12 warning(s)')
-  await expect(header).toContainText('35 note(s)')
+  await expect(header).toContainText('42 note(s)')
   // One bar per scored category, including the one with no finding: a 100 % is
   // exactly what the author wants to see.
   await expect(header).toContainText('Correctness')
@@ -69,12 +69,13 @@ test('the report grades the schema and scores each category', async ({ page }) =
   )
 
   // A category with no finding gets no section: only its bar above. Here
-  // correctness, deprecation and consistency are clean, so three sections
+  // correctness, deprecation and consistency are clean, so four sections
   // remain after the summary's, in the report's own category order.
   const sections = report(page).locator('section h2')
-  await expect(sections).toHaveCount(4)
-  await expect(sections.nth(1)).toContainText('Documentation')
-  await expect(sections.nth(2)).toContainText('Docs readiness')
+  await expect(sections).toHaveCount(5)
+  await expect(sections.nth(1)).toContainText('Security')
+  await expect(sections.nth(2)).toContainText('Documentation')
+  await expect(sections.nth(3)).toContainText('Docs readiness')
   await expect(sections.last()).toContainText('Agent readiness')
 })
 

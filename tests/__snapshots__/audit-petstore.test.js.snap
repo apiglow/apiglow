@@ -1,14 +1,61 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`audit report on the demo petstore > matches the recorded report 1`] = `
-"OpenAPI 3.2.0 — grade A (95/100)
-error 0 · warning 10 · info 77
+"OpenAPI 3.2.0 — grade A (92/100)
+error 0 · warning 12 · info 120
 
 ## correctness — 99 % over 352 checks
   warning responses-success — failForbidden
   warning responses-success — failRateLimit
   warning responses-success — failServerError
   warning responses-success — failUnavailable
+
+## security — 77 % over 117 checks
+  warning oauth-legacy-flows — /components/securitySchemes/petstore_auth/flows/implicit {"flow":"implicit"}
+  warning operation-unsecured — failValidation {"method":"POST","access":"omitted"}
+  info operation-unsecured — failCors {"method":"GET","access":"omitted"}
+  info operation-unsecured — failHang {"method":"GET","access":"omitted"}
+  info operation-unsecured — failMalformed {"method":"GET","access":"omitted"}
+  info operation-unsecured — failRateLimit {"method":"GET","access":"omitted"}
+  info operation-unsecured — failServerError {"method":"GET","access":"omitted"}
+  info operation-unsecured — failSlow {"method":"GET","access":"omitted"}
+  info operation-unsecured — failUnavailable {"method":"GET","access":"omitted"}
+  info operation-unsecured — failUnreachable {"method":"GET","access":"omitted"}
+  info secured-op-errors — failForbidden {"status":"401","missing":"WWW-Authenticate"}
+  info secured-op-errors — failProtected {"status":"401","missing":"WWW-Authenticate"}
+  info secured-op-errors — addPet {"missing":"401 / 403"}
+  info secured-op-errors — updatePet {"missing":"401 / 403"}
+  info secured-op-errors — findPetsByStatus {"missing":"401 / 403"}
+  info secured-op-errors — findPetsByTags {"missing":"401 / 403"}
+  info secured-op-errors — filterPets {"missing":"401 / 403"}
+  info secured-op-errors — searchPets {"missing":"401 / 403"}
+  info secured-op-errors — deletePet {"missing":"401 / 403"}
+  info secured-op-errors — getPetById {"missing":"401 / 403"}
+  info secured-op-errors — updatePetWithForm {"missing":"401 / 403"}
+  info secured-op-errors — streamPetEvents {"missing":"401 / 403"}
+  info secured-op-errors — subscribeToPet {"missing":"401 / 403"}
+  info secured-op-errors — uploadFile {"missing":"401 / 403"}
+  info secured-op-errors — purgeInventory {"status":"401","missing":"WWW-Authenticate"}
+  info secured-op-errors — getInventory {"missing":"401 / 403"}
+  info secured-op-errors — placeOrder {"missing":"401 / 403"}
+  info secured-op-errors — deleteOrder {"missing":"401 / 403"}
+  info secured-op-errors — getOrderById {"missing":"401 / 403"}
+  info secured-op-errors — createUser {"missing":"401 / 403"}
+  info secured-op-errors — createUsersWithListInput {"missing":"401 / 403"}
+  info secured-op-errors — loginUser {"missing":"401 / 403"}
+  info secured-op-errors — logoutUser {"missing":"401 / 403"}
+  info secured-op-errors — deleteUser {"missing":"401 / 403"}
+  info secured-op-errors — getUserByName {"missing":"401 / 403"}
+  info secured-op-errors — updateUser {"missing":"401 / 403"}
+  info unbounded-input — failValidation {"count":1,"names":"email"}
+  info unbounded-input — addPet {"count":6,"names":"name, category.name, photoUrls, …"}
+  info unbounded-input — updatePet {"count":6,"names":"name, category.name, photoUrls, …"}
+  info unbounded-input — searchPets {"count":4,"names":"name, status, tags, …"}
+  info unbounded-input — subscribeToPet {"count":2,"names":"callbackUrl, events"}
+  info unbounded-input — uploadFile {"count":1,"names":"caption"}
+  info unbounded-input — createUser {"count":6,"names":"username, firstName, lastName, …"}
+  info unbounded-input — createUsersWithListInput {"count":7,"names":"application/json, [].username, [].firstName, …"}
+  info unbounded-input — updateUser {"count":6,"names":"username, firstName, lastName, …"}
 
 ## completeness — 80 % over 236 checks
   warning parameter-described — uploadFile {"name":"additionalMetadata"}

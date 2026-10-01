@@ -88,6 +88,17 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   written, not followed), raw bytes in a JSON body, a form body with no
   properties to build a form from, required fields in a merge patch, a
   problem+json `status` that contradicts its response code.
+- A security category in the audit: eleven rules, each against the RFC or
+  OWASP risk it breaks — an `http://` server (and the mixed-content block a
+  hosted try-it then hits), OAuth and OpenID URLs without TLS, Basic or
+  bearer credentials sent to a cleartext server, an API key in the query
+  string, an `http` scheme no registry knows (`JWT`, `token`), operations
+  open without authentication (a warning on writes, a note on reads, and
+  the inventory of what `security: []` declares public), secured operations
+  that never document a 401 or 403, a 401 without `WWW-Authenticate`, the
+  OAuth password and implicit flows RFC 9700 retires, a 429 without
+  `Retry-After`, a `format: password` field returned in a response, and
+  request bodies whose strings and arrays have no maximum size.
 - A sixth audit category, agent readiness: what an AI agent gets when it
   calls your API through a tool — an MCP bridge, a GPT Action, Semantic
   Kernel. Fifteen rules, each naming what concretely goes wrong: an

@@ -523,6 +523,10 @@ exports[`audit rule descriptions > lists the rules as a versioned JSON document 
       "label": "Correctness",
     },
     {
+      "id": "security",
+      "label": "Security",
+    },
+    {
       "id": "completeness",
       "label": "Documentation",
     },

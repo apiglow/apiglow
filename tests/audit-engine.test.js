@@ -324,7 +324,27 @@ describe('audit report', () => {
                       'application/json': { schema: { type: 'string' }, example: 'Kitty' },
                     },
                   },
+                  401: {
+                    description: 'No valid API key',
+                    headers: {
+                      'WWW-Authenticate': {
+                        description: 'The scheme to authenticate with',
+                        schema: { type: 'string' },
+                      },
+                    },
+                  },
                 },
+              },
+            },
+          },
+          security: [{ apiKey: [] }],
+          components: {
+            securitySchemes: {
+              apiKey: {
+                type: 'apiKey',
+                in: 'header',
+                name: 'X-Api-Key',
+                description: 'The key issued with the account',
               },
             },
           },
@@ -338,6 +358,7 @@ describe('audit report', () => {
     // means anything, and this document has one parameter.
     expect(report.categories.map((c) => c.id)).toEqual([
       'correctness',
+      'security',
       'completeness',
       'deprecation',
       'readiness',

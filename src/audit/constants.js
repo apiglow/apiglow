@@ -5,6 +5,7 @@
 // Declaration order = display order of the report.
 export const CATEGORIES = [
   'correctness',
+  'security',
   'completeness',
   'deprecation',
   'consistency',
