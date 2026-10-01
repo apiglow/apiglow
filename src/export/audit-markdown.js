@@ -82,9 +82,12 @@ function formatTimestamp(at) {
   return `${date} ${time}`
 }
 
+// The three helpers below write plain text, not Markdown: the console report
+// (`audit-text.js`) prints the same header lines.
+
 // `contact` and `license` are what the `info-metadata` rule grades: a report
 // that flags them missing should show them when they are there.
-function identityLines({ api }) {
+export function identityLines({ api }) {
   const contact = [api.contact?.name, api.contact?.email, api.contact?.url].filter(Boolean)
   const license = [api.license?.name || api.license?.identifier, api.license?.url].filter(Boolean)
   const parts = [
@@ -97,14 +100,14 @@ function identityLines({ api }) {
 // The perimeter, in the same units as the page's stats — the figures a reader
 // needs to weigh a percentage: 46 % over four operations is not 46 % over a
 // hundred and forty.
-function scopeLines({ scope }) {
+export function scopeLines({ scope }) {
   const stats = ['operations', 'groups', 'webhooks', 'securitySchemes', 'schemas']
     .filter((key) => scope[key] != null)
     .map((key) => `${t(`welcome.${key}`)}: ${scope[key]}`)
   return stats.length ? [stats.join(' · '), ''] : []
 }
 
-function severityLine(counts) {
+export function severityLine(counts) {
   return ['error', 'warning', 'info']
     .filter((severity) => counts[severity])
     .map((severity) => t(`audit.count.${severity}`, { n: counts[severity] }))

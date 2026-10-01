@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { auditSchema } from '../src/audit/engine.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
+import { toAuditText } from '../src/export/audit-text.js'
 import { loadInlineApiModel } from '../src/openapi/loader.js'
 
 // Markdown export of the audit report (docs/audit.md §5). The synthetic report
@@ -132,5 +133,56 @@ describe('audit Markdown export', () => {
     // The heading names the audited API, which the report itself carries: the
     // caller passes nothing beyond the report.
     expect(markdown).toContain('# Schema audit — Petstore (demo)')
+  })
+})
+
+// The console report of `apiglow audit` (docs/audit.md §8), from the same
+// synthetic report: what differs from the Markdown is the folding, so that is
+// what the tests below look at.
+describe('audit console report', () => {
+  it('renders grade, scores and findings folded by rule', () => {
+    expect(toAuditText(REPORT)).toMatchSnapshot()
+  })
+
+  it('states the rationale once per rule, above every occurrence', () => {
+    const twice = {
+      ...REPORT,
+      categories: [
+        {
+          ...REPORT.categories[0],
+          counts: { error: 2, warning: 0, info: 0 },
+          findings: [
+            REPORT.categories[0].findings[0],
+            {
+              ...REPORT.categories[0].findings[0],
+              location: 'GET /store/{petId}',
+              dataPath: '/paths/~1store~1{petId}/get',
+            },
+          ],
+        },
+      ],
+    }
+    const text = toAuditText(twice)
+    expect(text.match(/Why it matters/g)).toHaveLength(1)
+    expect(text).toContain('Error · Duplicate operationId (2) [duplicate-operation-id]')
+    expect(text).toContain('      GET /store/{petId} · /paths/~1store~1{petId}/get')
+  })
+
+  it('states the empty case', () => {
+    const perfect = {
+      ...REPORT,
+      score: 100,
+      grade: 'A',
+      counts: { error: 0, warning: 0, info: 0, total: 0 },
+      categories: [REPORT.categories[1]],
+    }
+    expect(toAuditText(perfect)).toMatch(
+      /No findings\. Every applicable check passes on this schema\.\n$/,
+    )
+  })
+
+  it('resolves every rule string the demo petstore produces', async () => {
+    const input = await loadInlineApiModel(JSON.parse(readFileSync(PETSTORE, 'utf8')))
+    expect(toAuditText(auditSchema(input))).not.toMatch(/audit\.(rule|category|severity)\./)
   })
 })
