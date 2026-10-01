@@ -146,7 +146,7 @@ each, a letter grade, and a Markdown report for the ticket. In the browser — n
 
 <picture>
 <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-dark.png">
-<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-light.png" alt="The schema audit page: grade A, five category scores, findings folded by rule" width="920">
+<img src="https://raw.githubusercontent.com/apiglow/apiglow/main/.github/readme/audit-light.png" alt="The schema audit page: grade A, six category scores, findings folded by rule" width="920">
 </picture>
 
 *The demo schema's report card — grade, category scores, folded findings.*
