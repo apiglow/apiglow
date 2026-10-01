@@ -144,6 +144,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A GET or HEAD request with a body in the document is no longer blocked by
+  that body: the browser cannot send one, so the try-it now says so next to
+  the body editor and sends the request without it. The body stays in the
+  cURL command, which is how you send it. Replaying a 3.2 custom method from
+  the history also sends it as the document spells it.
 - A token request the browser blocks as mixed content (an `http://` token
   URL from a docs page served over https) now says so, instead of the
   generic "CORS or connectivity" error.

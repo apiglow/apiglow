@@ -14,6 +14,7 @@ import {
 import { fileBodyLabel } from '../openapi/body-kind.js'
 import { isMultiValue, isObjectValue } from '../openapi/params.js'
 import { prefilledValues } from '../openapi/prefill.js'
+import { canHaveBody, wireMethod } from '../openapi/methods.js'
 import {
   buildRequest,
   effectiveBaseUrl,
@@ -1369,7 +1370,14 @@ class ApiTryItPanel extends HTMLElement {
         el('div', 'px-3 pb-3 text-xs font-mono text-white/70', text("'")),
       )
     }
-    return box
+    const method = wireMethod(this.#op.verb ?? this.#op.method)
+    if (!contents.length || canHaveBody(method)) return box
+    return el(
+      'div',
+      'flex flex-col gap-1',
+      el('p', 'text-xs text-faint', text(t('tryit.bodylessMethodNote', { method }))),
+      box,
+    )
   }
 
   // Body editor embedded in the mockup: transparent-text textarea

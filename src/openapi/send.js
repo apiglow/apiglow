@@ -1,6 +1,6 @@
 import { fileBodyLabel } from './body-kind.js'
 import { diagnoseFailure, extractTransfer } from './insights.js'
-import { wireMethod } from './methods.js'
+import { canHaveBody, wireMethod } from './methods.js'
 import { applyProxy } from './request-builder.js'
 
 // Actual send pipeline (docs/architecture.md §5.5): proxy, fetch, round-trip measurement,
@@ -10,8 +10,6 @@ import { applyProxy } from './request-builder.js'
 // (docs/scenarios.md §6) sends exactly the same requests and produces
 // identically shaped history entries. No DOM here: the progress
 // meter is an optional observer (`meter`).
-
-const BODYLESS_METHODS = ['GET', 'HEAD']
 
 /**
  * @param {object} built - output of `buildRequest` (already validated: `missing` and
@@ -226,10 +224,6 @@ export function applyResult(entry, result) {
 function retyped(file, contentType) {
   if (!contentType || file.type === contentType) return file
   return new File([file], file.name, { type: contentType, lastModified: file.lastModified })
-}
-
-function canHaveBody(method) {
-  return !BODYLESS_METHODS.includes(method.toUpperCase())
 }
 
 // What the history DISPLAYS as body: the multipart text representation, the

@@ -8,6 +8,7 @@ import { insightStrip } from './insight-strip.js'
 import { highlightSource, prettyJson } from './markdown.js'
 import { captureButton } from './scenario-capture.js'
 import { stepRequestFromEntry } from '../scenarios/capture.js'
+import { canHaveBody, wireMethod } from '../openapi/methods.js'
 import { methodBadgeClass, statusColorClass } from './method-colors.js'
 
 // Builds a row's collapse content, keyed by the row. Only `#applyFocus` needs
@@ -498,8 +499,7 @@ class RequestHistoryList extends HTMLElement {
   // Replays the stored request as-is (resolved) and logs the result
   // as a new entry.
   async #replay(entry) {
-    const method = entry.method.toUpperCase()
-    const canHaveBody = !['GET', 'HEAD'].includes(method)
+    const method = wireMethod(entry.method)
     const copy = {
       ...entry,
       timestamp: Date.now(),
@@ -514,7 +514,7 @@ class RequestHistoryList extends HTMLElement {
       const response = await fetch(entry.request.url, {
         method,
         headers: entry.request.headers,
-        body: canHaveBody && entry.request.body != null ? entry.request.body : undefined,
+        body: canHaveBody(method) && entry.request.body != null ? entry.request.body : undefined,
         credentials: this.requestCredentials,
       })
       // Like in the try-it: `durationMs` is the full round-trip, body read

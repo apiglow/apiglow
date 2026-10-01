@@ -400,6 +400,7 @@
   "tryit.bodyFileMissing": "This endpoint expects a file as its body — pick one before sending.",
   "tryit.cookieNote": "This request carries a cookie credential: browsers drop the Cookie header set from scripts — it is kept in the cURL export but not sent by the browser.",
   "tryit.cookieParamNote": "Cookie parameters leave in a folded Cookie header: browsers drop it when a script sets it, so it reaches the cURL export and the snippets but not the API from this page.",
+  "tryit.bodylessMethodNote": "A browser cannot send a body with {method}: the request leaves this page without it. The cURL command keeps the body — run it to make the call as written.",
   "tryit.sendEmpty": "Send empty (name=)",
   "tryit.networkFail": "Request failed at network level — no HTTP response was received.",
   "tryit.networkFailHelp": "The line above is the browser's raw error; for security, browsers hide the exact cause from scripts. Typical causes: CORS blocking (missing Access-Control-Allow-Origin for this origin), DNS or TLS failure, no network, or a request blocked by an extension. The devtools Network tab shows the precise reason.",

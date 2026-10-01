@@ -673,6 +673,12 @@ load, a revision we do not know. An overlay never breaks a load.
 - **Deliberately minimal body validation**: well-formed JSON + presence of
   top-level `required` fields, checked **after** interpolation. No full JSON
   Schema validation (no Ajv).
+- **A `GET` or `HEAD` body is kept but not sent**: `fetch` refuses one, so the
+  request leaves the page without it, and a note next to the body editor says
+  so. The editor stays because the cURL command carries the body. Nothing in
+  that body blocks the send — neither its validation nor a missing
+  variable — and the history records the request as it left, with no body
+  (`canHaveBody` in `src/openapi/methods.js`).
 - Native `fetch`; duration measured via `performance.now()`; the actual send
   pipeline is the pure-ish module `src/openapi/send.js`, shared with the
   scenario runner.

@@ -261,6 +261,23 @@ describe('buildRequest', () => {
     expect(r.errors).toEqual([])
   })
 
+  it('never blocks a GET or HEAD send on a body the browser does not send', () => {
+    for (const method of ['get', 'head']) {
+      const r = buildRequest({
+        op: { ...op, method },
+        baseUrl: 'https://x',
+        pathValues: { petId: '1' },
+        body: '{"q": "{{term}}", oops',
+        mediaType: 'application/json',
+        bodySchema: { required: ['q'] },
+        variables: {},
+      })
+      expect(r.errors).toEqual([])
+      expect(r.missing).toEqual([])
+      expect(r.body).toBe('{"q": "{{term}}", oops')
+    }
+  })
+
   it('carries auth cookies in a Cookie header (picked up by cURL)', () => {
     const auth = buildAuthInjection(
       { name: 'k', type: 'apiKey', in: 'cookie', paramName: 'session' },

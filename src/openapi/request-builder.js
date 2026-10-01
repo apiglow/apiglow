@@ -1,6 +1,7 @@
 import { serverUrl } from './servers.js'
 import { interpolate } from '../env/interpolate.js'
 import { bodyKind } from './body-kind.js'
+import { canHaveBody } from './methods.js'
 import {
   encodePair,
   findParam,
@@ -187,6 +188,19 @@ export function buildRequest({
   // FormData, the same fields folded into a query string, a picked file, or
   // text. `bodyKind` is the only place that decides.
   const kind = bodyKind({ mediaType })
+  // A GET or HEAD body is built for the cURL export but never leaves the
+  // browser: nothing in it may block the send — not its validation, not a
+  // variable it lacks.
+  const bodySent = canHaveBody(op.verb ?? op.method)
+  const bodyError = (error) => {
+    if (bodySent) errors.push(error)
+  }
+  const resolveBody = (template) => {
+    if (bodySent) return resolve(template)
+    const r = interpolate(template, variables)
+    for (const u of r.used) used.set(u.name, u)
+    return r.value
+  }
   const setContentType = () => {
     if (mediaType && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
       headers['Content-Type'] = mediaType
@@ -213,12 +227,12 @@ export function buildRequest({
         }
         return f.fileName
           ? { name: f.name, fileName: f.fileName, ...extras }
-          : { name: f.name, value: resolve(String(f.value ?? '')), ...extras }
+          : { name: f.name, value: resolveBody(String(f.value ?? '')), ...extras }
       })
       .filter((f) => f.fileName || f.value !== '')
     for (const field of bodySchema?.required ?? []) {
       if (!fields.some((f) => f.name === field))
-        errors.push({ code: 'body-missing-required', name: field })
+        bodyError({ code: 'body-missing-required', name: field })
     }
     if (kind === 'urlencoded') {
       // Serialized here rather than in `send`: the history entry, the live
@@ -253,7 +267,7 @@ export function buildRequest({
     bodyFile = { name: file.name, size: file.size, type: file.type }
     setContentType()
   } else if (body !== '' && body !== undefined && body !== null) {
-    resolvedBody = resolve(String(body))
+    resolvedBody = resolveBody(String(body))
     // Deliberately minimal validation (docs/architecture.md §5.5): well-formed JSON +
     // presence of top-level required fields. No full JSON Schema
     // (future extension). Validated AFTER interpolation — before that, {{var}}
@@ -263,18 +277,18 @@ export function buildRequest({
         const parsed = JSON.parse(resolvedBody)
         for (const field of bodySchema?.required ?? []) {
           if (parsed && typeof parsed === 'object' && !(field in parsed)) {
-            errors.push({ code: 'body-missing-required', name: field })
+            bodyError({ code: 'body-missing-required', name: field })
           }
         }
       } catch {
-        errors.push({ code: 'body-invalid-json' })
+        bodyError({ code: 'body-invalid-json' })
       }
     }
     setContentType()
   } else if (kind === 'binary' && op.requestBody?.required) {
     // Blocked only for a file body: an empty text body is a payload someone
     // may legitimately want to send, whereas here there is nothing at all.
-    errors.push({ code: 'body-file-missing' })
+    bodyError({ code: 'body-file-missing' })
   }
 
   return {

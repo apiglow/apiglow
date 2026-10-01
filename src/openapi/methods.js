@@ -18,3 +18,10 @@ export function wireMethod(method) {
   const text = String(method)
   return HTTP_METHODS.includes(text.toLowerCase()) ? text.toUpperCase() : text
 }
+
+// Fetch throws on a GET or HEAD request that carries a body, so a send drops
+// it. The editors keep one all the same: the cURL export sends it, and some
+// APIs read a GET body (search endpoints, mostly).
+export function canHaveBody(method) {
+  return !['GET', 'HEAD'].includes(wireMethod(method))
+}

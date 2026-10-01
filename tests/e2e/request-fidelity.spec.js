@@ -116,3 +116,23 @@ test('a urlencoded body follows its encoding object', async ({ page }) => {
   // `explode: true` repeats the pair; `allowReserved` keeps the slash.
   expect(calls[0].body).toBe('tags=sci-fi&tags=classic&path=shelves/a')
 })
+
+// Fetch cannot carry a GET body, so the page sends the request without it —
+// and says so, since the cURL command is the reader's one way to send it.
+test('a GET body stays in the cURL command, is said not to leave, and blocks nothing', async ({
+  page,
+}) => {
+  const calls = await mockApi(page)
+  await gotoOp(page, PAGE, 'lookupBooks')
+
+  await expect(tryIt(page)).toContainText('A browser cannot send a body with GET')
+  const body = tryIt(page).locator('textarea')
+  // Invalid JSON missing its required field: it would block a POST.
+  await body.fill('{"title": "Dune"')
+  await expect(tryIt(page)).toContainText("--data '")
+
+  await send(page)
+  await expectResponded(page)
+  expect(calls[0].method).toBe('GET')
+  expect(calls[0].body).toBeNull()
+})

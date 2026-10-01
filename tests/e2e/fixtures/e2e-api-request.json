@@ -42,6 +42,26 @@
         }
       }
     },
+    "/books/lookup": {
+      "get": {
+        "operationId": "lookupBooks",
+        "tags": ["Requests"],
+        "summary": "Look books up by a query body",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query"],
+                "properties": { "query": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Matching books" } }
+      }
+    },
     "/books": {
       "post": {
         "operationId": "createBook",
