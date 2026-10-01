@@ -32,7 +32,7 @@ describe('readAuditConfig', () => {
     expect(errors).toEqual([])
     expect(config.rules).toEqual({ a: 'off', b: 'error' })
     expect(config.overrides).toMatchObject([
-      { paths: ['/paths/~1legacy~1*'], rules: { c: 'info' }, reason: 'frozen' },
+      { paths: ['/paths/~1legacy~1*'], rules: { c: 'info' } },
     ])
   })
 
@@ -51,6 +51,18 @@ describe('readAuditConfig', () => {
     ])
     expect(config.rules).toEqual({ a: 'warning' })
     expect(config.overrides).toEqual([])
+  })
+
+  // A misspelled key inside an override would otherwise drop the whole entry
+  // in silence — the config would look applied and change nothing.
+  it('refuses an override that changes no rule, or carries a key it does not know', () => {
+    expect(read({ overrides: [{ paths: ['/x'], rule: { a: 'off' } }] }).errors).toEqual([
+      'audit.overrides[0].rules: missing — an override changes rules',
+      'audit.overrides[0].rule: unknown key',
+    ])
+    expect(read({ overrides: [{ paths: ['/x'], rules: { a: 'off' }, reason: 3 }] }).errors).toEqual(
+      ['audit.overrides[0].reason: expected text'],
+    )
   })
 
   it('has nothing to say about an absent block', () => {

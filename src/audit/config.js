@@ -16,6 +16,7 @@ import { RULES } from './rules/index.js'
 // under (`auditProfile`).
 
 const RULE_OFF = 'off'
+const OVERRIDE_KEYS = new Set(['paths', 'rules', 'reason'])
 const SETTINGS = [...SEVERITIES, RULE_OFF]
 
 // The raw `audit` block → { config, errors }. Every entry is checked against
@@ -45,14 +46,18 @@ export function readAuditConfig(raw, ruleIds = RULES.map((rule) => rule.id)) {
     if (!paths.length || valid.length !== paths.length) {
       errors.push(`${at}.paths: expected a list of JSON pointers, each starting with "/"`)
     }
+    if (entry.rules === undefined) errors.push(`${at}.rules: missing — an override changes rules`)
     const rules = readRules(entry.rules, `${at}.rules`, known, errors)
+    // `reason` is for the next reader of the config — JSON has no comments —
+    // and the audit has no use for it beyond checking it is text.
+    if (entry.reason !== undefined && typeof entry.reason !== 'string') {
+      errors.push(`${at}.reason: expected text`)
+    }
+    for (const key of Object.keys(entry)) {
+      if (!OVERRIDE_KEYS.has(key)) errors.push(`${at}.${key}: unknown key`)
+    }
     if (!valid.length || !Object.keys(rules).length) continue
-    config.overrides.push({
-      paths: valid,
-      matchers: valid.map(pointerMatcher),
-      rules,
-      reason: typeof entry.reason === 'string' ? entry.reason : '',
-    })
+    config.overrides.push({ paths: valid, matchers: valid.map(pointerMatcher), rules })
   }
   for (const key of Object.keys(raw)) {
     if (key !== 'rules' && key !== 'overrides') errors.push(`audit.${key}: unknown key`)

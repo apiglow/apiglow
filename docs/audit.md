@@ -64,6 +64,8 @@ drifting.
      finding nor in the score; a rule off everywhere is not even run.
    - Per spec: rules merge by id (the spec's last), overrides accumulate,
      root first.
+   - `reason` is free text for the next reader of the config — JSON has no
+     comments — and the audit only checks it is text.
    - Every entry is checked against the registry: the page names a wrong
      one in the console and applies the rest; the CLI refuses to run
      (exit status 2) — a pipeline must never pass on a configuration
