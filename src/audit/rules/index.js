@@ -9,6 +9,8 @@ import { conversionApproximation } from './conversion-approximation.js'
 import { defaultAllowed } from './default-allowed.js'
 import { deprecationReplacement } from './deprecation-replacement.js'
 import { discriminatorMapping } from './discriminator-mapping.js'
+import { documentOpenapi } from './document-openapi.js'
+import { documentSyntax } from './document-syntax.js'
 import { duplicateOperationId } from './duplicate-operation-id.js'
 import { errorResponsesDocumented } from './error-responses-documented.js'
 import { exampleTypeMismatch } from './example-type-mismatch.js'
@@ -142,6 +144,9 @@ import { serverPlaceholder } from './server-placeholder.js'
 import { serverDescribed } from './server-described.js'
 
 export const RULES = [
+  // §4.1 Correctness: the file itself, whatever it holds
+  documentSyntax,
+  documentOpenapi,
   // §4.1 Correctness, §4.6 version awareness
   duplicateOperationId,
   pathParamDeclared,

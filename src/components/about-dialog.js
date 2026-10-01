@@ -1,7 +1,7 @@
 import { BUNDLED_CREDITS, PROJECT_LICENSE } from '../credits.js'
 import { ARAZZO_VERSION } from '../export/arazzo.js'
 import { t } from '../i18n/index.js'
-import { SUPPORTED_OPENAPI_VERSIONS, SUPPORTED_SWAGGER_VERSIONS } from '../openapi/loader.js'
+import { SUPPORTED_OPENAPI_VERSIONS, SUPPORTED_SWAGGER_VERSIONS } from '../openapi/versions.js'
 import { OVERLAY_VERSION } from '../openapi/overlay.js'
 import { modalDismiss, openModal } from './a11y.js'
 import { el, text } from './dom.js'

@@ -45,7 +45,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.audit.config.js && vite build --config vite.cli.config.js",
+    "build": "vite build && vite build --config vite.audit.config.js && vite build --config vite.reader.config.js && vite build --config vite.cli.config.js",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test --project=chromium",
@@ -72,16 +72,16 @@
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:dist": "node scripts/check-dist.mjs",
     "check:surface": "node scripts/check-public-surface.mjs",
-    "check:syntax": "es-check checkBrowser dist/app.js dist/audit.js --module --checkFeatures",
+    "check:syntax": "es-check checkBrowser dist/app.js dist/audit.js dist/read-document.js --module --checkFeatures",
     "check:version": "node scripts/sync-version.mjs --check"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "16.0.0",
     "dompurify": "3.4.13",
     "highlight.js": "11.12.0",
-    "js-yaml": "5.3.0",
     "json-p3": "2.2.2",
-    "marked": "18.0.9"
+    "marked": "18.0.9",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

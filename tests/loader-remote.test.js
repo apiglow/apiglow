@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadApiModel, SchemaLoadError } from '../src/openapi/loader.js'
 import { effectiveBaseUrl } from '../src/openapi/request-builder.js'
@@ -173,5 +174,44 @@ describe('loadApiModel', () => {
     const { model } = await loadApiModel('specs/openapi.json')
     expect(model.linkBase).toBe('https://docs.example.com/guide/specs/openapi.json')
     expect(serverUrl(model.servers[0])).toBe('https://docs.example.com/guide/specs/v1')
+  })
+})
+
+// The strict read failed: the loader reads the text it already has
+// (docs/architecture.md §14.21).
+describe('loadApiModel on a text the strict read refuses', () => {
+  const broken = new URL('fixtures/broken/', import.meta.url)
+  const text = (name) => readFileSync(new URL(name, broken), 'utf8')
+
+  // A `|+` block whose only line is blank: valid YAML that ref-parser's parser
+  // refuses, and the shape of the OpenAI description.
+  it('opens a valid YAML document the strict parser refused, with no problem', async () => {
+    serve(text('keep-chomp.yaml'))
+    const { model, problems } = await loadApiModel('https://api.example.com/openapi.yaml')
+    expect(model.operations[0].description).toBe('\n')
+    expect(problems).toEqual([])
+  })
+
+  it('opens a recoverable document fetched by URL, its problems kept', async () => {
+    serve(text('tab.yaml'))
+    const { model, problems } = await loadApiModel('https://api.example.com/openapi.yaml')
+    expect(model.operations).toHaveLength(1)
+    expect(problems.map(({ code, line }) => [code, line])).toEqual([['TAB_AS_INDENT', 5]])
+  })
+
+  it('says a JSON body is not JSON instead of reading it as YAML in silence', async () => {
+    serve(text('trailing-comma.json'))
+    const { problems } = await loadApiModel('https://api.example.com/openapi.json')
+    expect(problems.map(({ code, line, column }) => [code, line, column])).toEqual([
+      ['json', 1, 66],
+    ])
+  })
+
+  // The CLI's seam: it reads the file, the core never touches the disk.
+  it('reads the text handed over for a file: URL', async () => {
+    const url = new URL('dup-key.yaml', broken)
+    const { model, problems } = await loadApiModel(url.href, { body: text('dup-key.yaml') })
+    expect(model.operations[0].summary).toBe('B')
+    expect(problems.map((problem) => problem.code)).toEqual(['DUPLICATE_KEY'])
   })
 })

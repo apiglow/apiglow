@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (135 rules across the seven §4
+2. **Curated, doc-oriented ruleset** (137 rules across the seven §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -91,7 +91,9 @@ drifting.
    converted to 3.0.4 upstream of everything (`src/openapi/swagger2.js`),
    and what the audit scores is that conversion. Rules are version-aware
    (see §4.6), and the conversion's own approximations get a rule of their
-   own (`conversion-approximation`).
+   own (`conversion-approximation`). A document declaring any other version
+   is reported as such (`document-openapi`) and graded with the newest
+   rules — by the CLI: the page does not open it.
 6. **The rule engine is in-house, plain JS.** Not because dependencies are
    forbidden — the dependency policy admits libraries for spec and format
    work (design rationale: `architecture.md`) — but because a linter's
@@ -188,7 +190,7 @@ checks all four over the registry, in both languages.
 
 ## 4. Rule catalog
 
-135 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+137 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -207,6 +209,31 @@ Contradictions inside the document — mostly `error`. The three
 version-awareness rules (§4.6) also belong to this category: a construct
 that contradicts the declared version is a correctness finding.
 
+Two rules are about the file itself, and run whatever it holds (`file: true`
+in the registry): a file holding no mapping — nothing, a list, a sentence —
+gets a report of these two alone, graded F, since there is no document to
+grade.
+
+- `document-syntax` (`error`) — what the text itself gets wrong: a
+  duplicate key, a tab used as indentation, a trailing comma, a file cut
+  short, an alias to no anchor, a second document in the stream. The loader
+  reads past it ([architecture.md](architecture.md) §14.21), so the rest of
+  the report still grades what the file holds, but validators and code
+  generators refuse the file. One failing check per problem the reading
+  reported, `params: { line, column, detail, format }`: `detail` is the
+  parser's own one-line message, shown as data; `format` is `JSON` for a
+  text that looks like JSON and is not (it was read as YAML), `YAML`
+  otherwise. The CLI places it at that line and column, not at a pointer. A
+  text read strictly has no check here.
+- `document-openapi` (`error`) — the file holds no OpenAPI 3.x or Swagger
+  2.0 description: nothing, a list, a sentence, `swagger: 1.x`, an `openapi`
+  major other than 3 or an unknown 3.x minor. `params.found` says what it
+  holds in a notation no language translates — `(empty)`, `[…]`,
+  `"hello world"`, `swagger: 1.2`, `openapi: 4.0.0`. A mapping with a
+  version the app does not read is graded anyway, with the newest rules
+  (3.2), under this finding; one with no `openapi` field is
+  `required-field-missing`'s, a non-string `openapi` `field-value-kind`'s.
+  One check per file.
 - `duplicate-operation-id` (`error`) — the same `operationId` declared
   more than once.
 - `path-param-declared` (`error`) — path template placeholder with no
@@ -348,14 +375,17 @@ fields it got right, and a clean one keeps its score.
   version introduced is `version-construct`'s, a Media Type's `$ref` before
   3.2 included; a Schema Object's keywords
   are open in 3.1 (`schema-keyword-typo` has the misspelled ones); a
-  Reference Object's extra keys are `ref-siblings`'.
+  Reference Object's extra keys are `ref-siblings`'; a root `swagger`
+  naming another version is `document-openapi`'s.
 - `required-field-missing` (`error`) — a required field absent: `info.version`,
   a Parameter's `in`, a Server Variable's `default`, a 3.0 Operation's
   `responses`, the field a security scheme's type requires (`name` and
   `in` for `apiKey`, `scheme` for `http`, `flows` for `oauth2`,
   `openIdConnectUrl`), and in 3.1+ at least one of `paths`, `components`,
   `webhooks`. An OAuth flow's URLs are `oauth-flow-urls`'s, a Response
-  missing both content and description `response-substance`'s.
+  missing both content and description `response-substance`'s, a root
+  `openapi` where a `swagger` field names another version
+  `document-openapi`'s.
 - `field-value-kind` (`error`) — a value of the wrong kind (a string where
   a list belongs: `tags: pets`) or outside the set the specification allows:
   a Parameter's `in` (`body` is Swagger 2.0's) and `style`, a security
@@ -1632,8 +1662,10 @@ applies to all of them).
   (for rules that need resolved subtrees), plus the normalized model,
   which doubles as the hide-filter verdict so findings on hidden
   operations can be labeled. Concretely:
-  `auditSchema({ source, document, model })`. The loader returns the
-  three of them next to the model — `source` as a lazy getter, `document`
+  `auditSchema({ source, document, model, problems })` — `problems` being
+  what the loader's tolerant read found wrong in the text, `[]` for a text
+  read strictly (`document-syntax`). The loader returns `source`,
+  `document` and `problems` next to the model — `source` as a lazy getter, `document`
   eagerly: it parses first and
   dereferences a clone against the same URL — which keeps the source's
   `$ref`s observable while external `$ref`s still resolve. When
@@ -1766,6 +1798,10 @@ applies to all of them).
   policy). `tests/audit-strings.test.js` checks `label`/`message`/`why`/`fix`
   over the whole registry, in both languages — fixture-driven coverage
   alone would only catch rules a fixture happens to fire.
+  `tests/audit-rules-document.test.js` runs the loader and the engine, the
+  CLI's way, on every file of `tests/fixtures/broken/` — a duplicate key, a
+  trailing comma, an empty file, a list, OpenAPI 4… — and pins that each
+  gets a report and which file rule fires.
 - **Export**: Markdown report generator snapshot-tested like the others.
 - **Playwright**: with the default config, the settings drawer shows the
   audit block, its button routes to `#/audit`, the page renders, a
@@ -1807,7 +1843,7 @@ npx apiglow audit --config apidoc.config.json
 ```
 
 - **Input**: exactly one of a schema — a path, resolved against the working
-  directory, or a URL; JSON or YAML — or `--config`, the JSON object the host
+  directory, or a URL; JSON or YAML, valid or not (§8.2) — or `--config`, the JSON object the host
   page inlines in `#api-doc-config`. The config form audits what the
   documentation shows: its overlays are applied, its hidden operations are
   marked hidden, and every spec of a multi-spec install is audited. What it
@@ -1873,10 +1909,14 @@ npx apiglow audit --config apidoc.config.json
     added, a converted Swagger 2.0 document — lands on its deepest existing
     ancestor; a `$ref` that leads nowhere readable keeps the finding on the
     `$ref` itself.
-  - One parser for both syntaxes: js-yaml's event stream, which carries the
-    offset of every node (JSON is YAML). A schema fetched from a URL or
+  - What the text itself gets wrong (`document-syntax`) is placed at the
+    line and column the parser reported: where a text is broken, a pointer
+    means nothing.
+  - One parser for both syntaxes: the `yaml` package's document, which keeps
+    the source range of every node, keys included (JSON is YAML), and reads
+    a text no strict parser accepts too. A schema fetched from a URL or
     inline in a config has no file, and its findings no position. Cost on
-    the repo's 12 MB schema: about half a second.
+    the repo's 12 MB schema: about a second and a half.
 - **`--output <file>`** writes the report to a file instead of stdout.
 - **`--report <format>=<file>`**, repeatable, writes one more report per
   occurrence from the same run — the JSON for a script, the Markdown for
@@ -1937,9 +1977,20 @@ value. When `--fail-on` fails, stderr lists the findings that made it fail
 
 Exit status: `0` every check passed, `1` a check failed, `2` the audit
 could not run — an unknown option, a value out of range, a schema that
-cannot be read. Every option is validated before anything is loaded: a
+cannot be reached. Every option is validated before anything is loaded: a
 typo in a threshold must neither cost a download nor read as "no
 threshold".
+
+A file the command can open always gets a report, however broken it is. A
+text no strict parser accepts is read tolerantly
+([architecture.md](architecture.md) §14.21) and each of its errors is a
+`document-syntax` finding; a file holding no OpenAPI description, or one of
+a version the app does not read, is a `document-openapi` finding — both
+`error`, so the default `--fail-on error` fails the run with status `1`, and
+`--fail-on none` lets it pass. `spec "…" could not be loaded`, with status
+`2`, therefore means the schema could not be reached — a missing file, a
+network failure, a fetch past `--fetch-timeout` — or that a document read
+whole could still not be processed.
 
 ### 8.3 Baseline
 

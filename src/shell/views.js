@@ -27,8 +27,18 @@ export function loadingView() {
   )
 }
 
-export function errorView(message) {
-  const alert = el('div', 'alert alert-error', el('span', '', text(message)))
+// `details`: lines under the message — what is wrong in a schema the loader
+// could not use, each at its line and column.
+export function errorView(message, details = []) {
+  const body = details.length
+    ? el(
+        'div',
+        'flex flex-col gap-2',
+        el('span', '', text(message)),
+        el('ul', 'list-disc ps-5 text-sm', ...details.map((line) => el('li', '', text(line)))),
+      )
+    : el('span', '', text(message))
+  const alert = el('div', 'alert alert-error', body)
   alert.setAttribute('role', 'alert')
   return el('div', 'max-w-2xl mx-auto mt-16 px-4', alert)
 }

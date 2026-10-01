@@ -17,10 +17,12 @@ const problems = []
 // budget below is what catches it.)
 // `audit.js` is the schema audit, which app.js imports on the first visit to
 // #/audit (vite.audit.config.js).
+// `read-document.js` is the tolerant reader, which app.js imports only for a
+// schema that failed its strict read (vite.reader.config.js, §14.21).
 // `cli.js` is the author-side CLI (`apiglow bake`, docs/seo.md §4), built for
 // Node by vite.cli.config.js and exposed as the `apiglow` bin: no browser ever
 // fetches it, which is also why no budget below counts it.
-const EXPECTED_JS = ['app.js', 'audit.js', 'cli.js']
+const EXPECTED_JS = ['app.js', 'audit.js', 'cli.js', 'read-document.js']
 const jsFiles = readdirSync(dist)
   .filter((f) => f.endsWith('.js'))
   .sort()
@@ -46,7 +48,7 @@ if (jsFiles.includes('cli.js')) {
 // means an asset path stopped resolving via `new URL(…, import.meta.url)`
 // and every CDN install gets a broken css/i18n URL.
 const bundle = readFileSync(join(dist, 'app.js'), 'utf8')
-for (const file of ['app.js', 'audit.js']) {
+for (const file of ['app.js', 'audit.js', 'read-document.js']) {
   if (readFileSync(join(dist, file), 'utf8').includes('document.currentScript')) {
     problems.push(
       `document.currentScript found in dist/${file} — rule 4 forbids it (null in an ES module)`,
@@ -59,6 +61,13 @@ for (const file of ['app.js', 'audit.js']) {
 // back on every reader's download without failing anything else.
 if (/"audit\.rule\.[\w-]+\.why"/.test(bundle) || bundle.includes('field-without-value')) {
   problems.push('dist/app.js carries the schema audit — it ships in dist/audit.js (§14.8)')
+}
+
+// Same for the tolerant reader (§14.21): a static import of it would put a
+// second YAML parser on every boot. `BLOCK_AS_IMPLICIT_KEY` is one of that
+// parser's error codes, which no other code in the bundle spells.
+if (bundle.includes('BLOCK_AS_IMPLICIT_KEY')) {
+  problems.push('dist/app.js carries the tolerant reader — it ships in dist/read-document.js')
 }
 
 // Rule 3: the built CSS ships every standard daisyUI theme, or
@@ -101,10 +110,14 @@ const MAX_CSS_BYTES = 300_000
 // Fetched by authors only, on the audit page — still bytes on their wire, and
 // the file every new rule grows.
 const MAX_AUDIT_JS_BYTES = 340_000
+// Fetched only for a schema its strict read refused: the YAML parser, and
+// little else.
+const MAX_READER_JS_BYTES = 160_000
 for (const [file, cap] of [
   ['app.js', MAX_JS_BYTES],
   ['app.css', MAX_CSS_BYTES],
   ['audit.js', MAX_AUDIT_JS_BYTES],
+  ['read-document.js', MAX_READER_JS_BYTES],
 ]) {
   const size = statSync(join(dist, file)).size
   if (size > cap) {
@@ -118,6 +131,6 @@ if (problems.length) {
   process.exitCode = 1
 } else {
   console.log(
-    `check-dist: ok (app.js, audit.js and the CLI, no currentScript, ${themes.size} themes)`,
+    `check-dist: ok (app.js, audit.js, read-document.js and the CLI, no currentScript, ${themes.size} themes)`,
   )
 }

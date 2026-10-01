@@ -20,10 +20,10 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run test:e2e` | Playwright (Chromium) against the CDN simulation |
 | `npm run test:e2e:all` | The same suite on all five projects — three engines plus two emulated phones |
 | `npm run test:coverage` | Vitest + a coverage summary over the pure core |
-| `npm run build` | → `dist/app.js` + `dist/app.css` + `dist/i18n/*.json` + `dist/audit.js` (+ `dist/cli.js`) |
+| `npm run build` | → `dist/app.js` + `dist/app.css` + `dist/i18n/*.json` + `dist/audit.js` + `dist/read-document.js` (+ `dist/cli.js`) |
 | `npm run preview:cdn` | build + `npm pack` + jsDelivr simulation on :4173 |
 | `npm run check:invariants` | The cross-cutting rules a test suite cannot see (rules 1, 2, 5, 6, 9, 10, 12, 13, 14, 20) |
-| `npm run check:dist` | Post-build gate on `dist/`: one JS file, no `document.currentScript`, every daisyUI theme, size budgets (rules 3, 4, 8, 14) |
+| `npm run check:dist` | Post-build gate on `dist/`: exactly the expected JS files, no `document.currentScript`, every daisyUI theme, size budgets (rules 3, 4, 8, 14) |
 | `npm run check:surface` | Frozen public surfaces (tags, events, `apidoc…` names, i18n keys) against `public-surface.json`; `-- --update` accepts a deliberate change (CONVENTIONS.md) |
 | `npm run check:syntax` | `es-check` against the declared `browserslist` baseline — the built bundle parses on every supported browser |
 | `npm run report:contrast` | **Informative, gates nothing**: contrast of the design layer's ink recipes on every shipped daisyUI theme, measured in a browser against `dist/app.css` (`--all` lists every pair). Needs a build |
@@ -375,6 +375,8 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Hiding operations (`x-apiglow-hide`, `openapi.hide`) | `hide.test.js` | — |
 | Schema audit engine, rules, scoring (`docs/audit.md`) | `audit-engine.test.js`, `audit-rules-*.test.js`, `audit-petstore.test.js` | `audit.spec.js` |
 | A malformed document — a field of the wrong kind, an empty list item, a broken `$ref` — renders and audits instead of failing | `malformed-documents.test.js`, `loader-inline.test.js`, `deref.test.js` | — |
+| A text no strict parser accepts (`docs/architecture.md` §14.21): the tolerant reader (JSON read through YAML, every YAML error, aliases, BOM, one problem per place), reached only on a failed strict read and loaded from `dist/read-document.js`; a recovered schema opens, an unusable one lists each problem on the error page | `read-document.test.js`, `loader-inline.test.js`, `loader-remote.test.js` | `bootstrap.spec.js`, `audit.spec.js` |
+| The audit reports on any file it can open: `document-syntax` at the parser's line and column, `document-openapi` on a file holding no OpenAPI description, an unknown version graded with the newest rules, a non-mapping graded alone | `audit-rules-document.test.js`, `audit-cli.test.js` | `audit.spec.js`, `audit-cli.spec.js` |
 | The audit loads on demand, from `dist/audit.js` (`docs/architecture.md` §14.8) | `i18n.test.js` | `audit.spec.js` |
 | Server URL variables: defaults filled in, kept as environment variables when seeded | `servers.test.js` | `environments.spec.js` |
 | An `allOf` body or sample carries every member's properties | `all-of.test.js` | `bodies.spec.js` |

@@ -14,13 +14,13 @@ import { headline, read, section } from './lib.mjs'
 const CHECKS = [
   {
     format: 'OpenAPI',
-    file: 'src/openapi/loader.js',
+    file: 'src/openapi/versions.js',
     versions: (t) =>
       JSON.parse(t.match(/SUPPORTED_OPENAPI_VERSIONS = (\[.*?\])/)[1].replaceAll("'", '"')),
   },
   {
     format: 'Swagger (OpenAPI 2.0)',
-    file: 'src/openapi/loader.js',
+    file: 'src/openapi/versions.js',
     versions: (t) =>
       JSON.parse(t.match(/SUPPORTED_SWAGGER_VERSIONS = (\[.*?\])/)[1].replaceAll("'", '"')),
   },

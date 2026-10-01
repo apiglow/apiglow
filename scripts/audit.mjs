@@ -13,7 +13,6 @@ import { glob, readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
-import { load } from 'js-yaml'
 import {
   applyBaseline,
   findingsOf,
@@ -39,6 +38,7 @@ import { toAuditJson, toAuditRulesJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditRuleText, toAuditText } from '../src/export/audit-text.js'
 import { useDictionary } from '../src/i18n/index.js'
+import { readDocument } from '../src/openapi/read-document.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
 import { CliError, catalog, loadSpecModel, refUrl } from './cli-support.mjs'
 
@@ -89,6 +89,7 @@ export async function audit({
       multi: specsConfig.multi,
       base,
       warnings,
+      anyContent: true,
     })
     // Unlike the page, which leaves a wrong entry out and grades with the rest,
     // a pipeline refuses to run: passing on a configuration nobody wrote is the
@@ -119,12 +120,16 @@ function filesConfig(files) {
   return { multi: false, specs, warnings: [] }
 }
 
+const TEXT_PLACED = 'document-syntax'
+
 // Every finding gains `position: { file, line, column }` — where its node sits
 // in the file the author edits — and `via`, the `$ref` sites crossed to reach
 // it (docs/audit.md §8.1). Files only: a schema fetched from a URL is not the
 // author's working copy, and an inline one has no file. A file that cannot be
-// read or parsed again leaves its findings unplaced rather than failing a run
-// that already has its report.
+// read again leaves its findings unplaced rather than failing a run that
+// already has its report. What the text itself gets wrong (`document-syntax`)
+// is placed where the parser found it: a pointer means nothing there.
+
 async function placed(report, rootUrl) {
   const files = new Map()
   const open = async (url) => {
@@ -133,7 +138,7 @@ async function placed(report, rootUrl) {
         const text = await readFile(url, 'utf8')
         const find = pointerIndex(text).find
         const at = lineIndex(text)
-        const document = /^\s*[[{]/.test(text) ? JSON.parse(text) : load(text)
+        const { document } = readDocument(text)
         files.set(url.href, {
           document,
           file: displayPath(url),
@@ -162,6 +167,10 @@ async function placed(report, rootUrl) {
   const categories = report.categories.map((category) => ({
     ...category,
     findings: category.findings.map((finding) => {
+      if (finding.ruleId === TEXT_PLACED) {
+        const { line, column } = finding.params
+        return { ...finding, position: { file: root.file, line, column } }
+      }
       const { file, pointer, refs } = sourcePointer(finding.dataPath, {
         document: root.document,
         loadDocument,

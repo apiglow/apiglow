@@ -10,6 +10,7 @@
 // and the audit page renders findings, not the schema.
 
 import { listOf, operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
+import { isSupportedOpenapi, NEWEST_OPENAPI } from '../openapi/versions.js'
 import { auditProfile, severityResolver } from './config.js'
 import { CATEGORIES, SEVERITIES, SEVERITY_WEIGHT, gradeFor } from './constants.js'
 import { walkObjects } from './openapi-objects.js'
@@ -21,6 +22,12 @@ import { collectSchemas } from './schema-walk.js'
 // components and ref shapes are observable.
 // `document`: the same document dereferenced (possibly cyclic).
 // `model`: the normalized model, used as the hide filter's verdict (see below).
+// `problems`: what the tolerant read found wrong in the text (the loader's
+// `problems`, docs/audit.md §8) — absent or empty for a text read strictly.
+// A `source` that is no mapping — an empty file, a list, a sentence: what the
+// CLI hands over for a file it could open and the loader could not use — gets
+// a report of the rules that read the file itself (`file: true`), and nothing
+// else: there is no document to grade.
 // `config`: the rule configuration, as `readAuditConfig` returns it (config.js);
 // absent, every rule runs at its own severity.
 //
@@ -41,6 +48,7 @@ export function auditSchema(input, rules = RULES) {
 // only meaningful once every category has been graded.
 export function* auditRun(input, rules = RULES) {
   const ctx = createAuditContext(input)
+  if (!ctx.mapping) rules = rules.filter((rule) => rule.file)
   const severityFor = severityResolver(input.config)
   yield
   // The typed walk of the source is a slice's worth of work on a heavy
@@ -69,7 +77,9 @@ export function* auditRun(input, rules = RULES) {
     ? Math.round(categories.reduce((sum, c) => sum + c.score, 0) / categories.length)
     : null
   return {
-    openapi: ctx.version.raw,
+    // What the document declares, which is not the version graded when this
+    // app does not read that one (`parseVersion`).
+    openapi: typeof ctx.document.openapi === 'string' ? ctx.document.openapi : '',
     api: apiIdentity(ctx.document.info),
     scope: auditScope(ctx),
     score,
@@ -160,12 +170,21 @@ export function runRule(rule, ctx, severityAt = (_dataPath, own) => own) {
   return { checks, weight, passedWeight, findings }
 }
 
-export function createAuditContext({ source, document, model }) {
+export function createAuditContext({ source, document, model, problems = [] }) {
+  // What the file holds, as read, for the rules about the file itself.
+  const content = source
+  const mapping = isMapping(source) && isMapping(document)
+  if (!mapping) {
+    source = {}
+    document = {}
+  }
   // The audit sees the FULL document — an author wants the whole picture, hidden
   // operations included — but the model is the hide filter's verdict: an
   // operation absent from it has no route, so its findings must not carry a
   // link (docs/audit.md §3).
-  const routable = new Set([...model.operations, ...model.webhooks].map((op) => op.id))
+  const routable = new Set(
+    [...(model?.operations ?? []), ...(model?.webhooks ?? [])].map((op) => op.id),
+  )
   const operations = collectOperations(document, routable)
   const version = parseVersion(document.openapi)
   let objects = null
@@ -173,6 +192,9 @@ export function createAuditContext({ source, document, model }) {
     source,
     document,
     model,
+    content,
+    mapping,
+    problems,
     version,
     operations,
     schemas: collectSchemas(document, operations),
@@ -247,11 +269,18 @@ function operationLocation(op) {
 }
 
 // Rules that must branch on the declared version (docs/audit.md §4.6) read
-// this, never a substring test of their own.
+// this, never a substring test of their own. A version this app does not read
+// — none, an OpenAPI 4, an unknown 3.x — is graded with the newest semantics
+// (rule 19), `document-openapi` saying why, and `raw` names the version graded:
+// the findings that quote it speak of the rules they applied.
 function parseVersion(raw) {
-  const text = typeof raw === 'string' ? raw : ''
+  const text = isSupportedOpenapi(raw) ? raw : NEWEST_OPENAPI
   const [major, minor] = text.split('.')
-  return { raw: text, major: Number(major) || 0, minor: Number(minor) || 0 }
+  return { raw: text, major: Number(major), minor: Number(minor) }
+}
+
+function isMapping(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 // One entry per operation of the document, webhooks and callbacks included,

@@ -13,7 +13,8 @@ import { pointer } from '../pointer.js'
 // types it a Reference of that version); a Schema Object is open to unknown
 // keywords in 3.1, and a misspelled one is `schema-keyword-typo`'s; a Reference
 // Object's extra keys are `ref-siblings`'; a Header's `name` and `in`
-// `header-object-fields`'.
+// `header-object-fields`'; a root `swagger`, naming a version this app does not
+// read, `document-openapi`'s.
 // One check per unknown field, none otherwise.
 export const unknownField = {
   id: 'unknown-field',
@@ -31,6 +32,7 @@ export const unknownField = {
         // A Header's `name` / `in`: `header-object-fields`, whose fix says where
         // the name goes.
         if (type === 'Header' && (key === 'name' || key === 'in')) continue
+        if (type === 'OpenAPI' && key === 'swagger') continue
         const at = `${dataPath}${pointer(key)}`
         check(false, {
           ...placeOf(ctx.operations, at),

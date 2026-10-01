@@ -605,6 +605,48 @@ describe('apiglow audit', () => {
     expect((await audit('--list-rules', CLEAN)).code).toBe(2)
   })
 
+  // docs/audit.md §8.2: a file the command could open is a file it reports on.
+  // Exit status 2 stays for a file it cannot reach.
+  it('reports on a file the strict read refuses, the problem at its line and column', async () => {
+    const broken = (name) =>
+      relative(process.cwd(), fileURLToPath(new URL(`fixtures/broken/${name}`, import.meta.url)))
+    const dup = await audit(broken('dup-key.yaml'), '--format', 'json')
+    expect(dup.code).toBe(1)
+    const [finding] = JSON.parse(dup.stdout).specs[0].report.categories[0].findings
+    expect(finding).toMatchObject({
+      ruleId: 'document-syntax',
+      params: { line: 9, column: 7, detail: 'Map keys must be unique', format: 'YAML' },
+      position: { file: broken('dup-key.yaml'), line: 9, column: 7 },
+    })
+    expect(dup.stderr).toContain(`error document-syntax — ${broken('dup-key.yaml')}:9:7`)
+    expect((await audit(broken('dup-key.yaml'), '--fail-on', 'none')).code).toBe(0)
+
+    const comma = await audit(broken('trailing-comma.json'))
+    expect(comma.code).toBe(1)
+    expect(comma.stdout).toContain(
+      'The file is not valid JSON at line 1, column 66: Expected double-quoted property name',
+    )
+  })
+
+  it('reports on a file holding no OpenAPI description, with exit status 1 not 2', async () => {
+    const broken = (name) => fileURLToPath(new URL(`fixtures/broken/${name}`, import.meta.url))
+    for (const [name, found] of [
+      ['list.yaml', '[…]'],
+      ['empty.yaml', '(empty)'],
+      ['text.yaml', '"hello world"'],
+      ['v4.json', 'openapi: 4.0.0'],
+      ['swagger12.json', 'swagger: 1.2'],
+    ]) {
+      const { stdout, code } = await audit(broken(name), '--format', 'json')
+      expect(code, name).toBe(1)
+      const findings = JSON.parse(stdout).specs[0].report.categories.flatMap((c) => c.findings)
+      expect(findings.find((f) => f.ruleId === 'document-openapi').params, name).toEqual({ found })
+      expect((await audit(broken(name), '--fail-on', 'none')).code, name).toBe(0)
+    }
+    const { stdout } = await audit(broken('list.yaml'))
+    expect(stdout).toMatch(/^Schema audit\nGrade F · 0 \/ 100\n/)
+  })
+
   it('prints its usage', async () => {
     const { stdout } = await audit('--help')
     expect(stdout).toMatch(/^Usage: apiglow audit <spec>\.\.\. \[options\]/)

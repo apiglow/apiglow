@@ -64,9 +64,9 @@ Enforcement chain (single source of truth: the `browserslist` field in
 2. Vite `build.target` is derived from it via `browserslist-to-esbuild`
    (a devDependency — the closed-runtime-dependencies rule restricts
    *runtime* deps only), never hardcoded.
-3. CI tripwire in the quality job: `es-check` validates `dist/app.js`
-   and `dist/audit.js` syntax after build, catching a config regression that would silently
-   ship too-new syntax.
+3. CI tripwire in the quality job: `es-check` validates `dist/app.js`,
+   `dist/audit.js` and `dist/read-document.js` syntax after build, catching
+   a config regression that would silently ship too-new syntax.
 
 Runtime *API* compatibility (as opposed to syntax) is covered by the live
 three-engine matrix for current versions, and by the baseline floor being

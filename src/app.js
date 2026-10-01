@@ -174,12 +174,28 @@ function loadErrorMessage(err) {
     case 'http':
       return t('error.load.http', { status: err.detail.status })
     case 'malformed':
-      return t('error.load.malformed')
+      return err.detail.problems?.length ? t('error.load.malformedAt') : t('error.load.malformed')
     case 'unsupported-version':
       return t('error.load.unsupportedVersion', { found: err.detail.found ?? '?' })
     default:
       return t('error.load.invalidSchema')
   }
+}
+
+// What the tolerant read found wrong in the text (docs/architecture.md §5.1),
+// one line each under the message. Bounded: a text broken early can make a
+// parser trip on every line after it, and the first few are the ones to fix.
+const LISTED_PROBLEMS = 10
+
+function loadErrorProblems(err) {
+  const problems = err instanceof SchemaLoadError ? (err.detail?.problems ?? []) : []
+  const lines = problems
+    .slice(0, LISTED_PROBLEMS)
+    .map((problem) => t('error.load.problem', problem))
+  if (problems.length > LISTED_PROBLEMS) {
+    lines.push(t('error.load.moreProblems', { count: problems.length - LISTED_PROBLEMS }))
+  }
+  return lines
 }
 
 // Announcements the reader has closed (architecture §6.2). Global rather than
@@ -336,6 +352,7 @@ function appLayout(
         },
         document: loaded.document,
         model,
+        problems: loaded.problems,
         // Validated where the registry is, in the audit module: the rule ids
         // are only known once it has loaded.
         rawConfig: config.audit,
@@ -1982,7 +1999,7 @@ async function boot() {
     )
   } catch (err) {
     console.error('[api-doc]', err, err?.detail?.cause ?? '')
-    root.replaceChildren(errorView(loadErrorMessage(err)))
+    root.replaceChildren(errorView(loadErrorMessage(err), loadErrorProblems(err)))
   }
 }
 

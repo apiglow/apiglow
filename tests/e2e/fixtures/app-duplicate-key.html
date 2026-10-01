@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- Host page for a schema no strict parser accepts — a key written twice —
+     that the app still opens (docs/architecture.md §14.21): the audit names
+     the problem, at its line and column. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E2E duplicate key — ApiGlow</title>
+  </head>
+  <body>
+    <script id="api-doc-config" type="application/json">
+    {
+      "openapi": { "url": "/tests/e2e/fixtures/e2e-api-duplicate-key.yaml" },
+      "branding": { "productName": "E2E Duplicate Key" }
+    }
+    </script>
+    <script src="/npm/apiglow@current/dist/app.js" type="module"></script>
+  </body>
+</html>

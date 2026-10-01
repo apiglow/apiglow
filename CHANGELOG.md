@@ -139,6 +139,18 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   computed this way is labelled "custom rule set" wherever it appears, so it
   never passes for the default one, and the CLI refuses to run on an entry it
   cannot read.
+- The audit reads any file and says what is wrong in it. A duplicate key, a
+  tab used as indentation, a trailing comma, a file cut short: each is a
+  finding at its line and column (`document-syntax`), and the rest of the
+  file is still graded. A file holding no OpenAPI description — empty, a
+  list, plain text, Swagger 1.x, OpenAPI 4 — gets a report saying so
+  (`document-openapi`) instead of stopping `apiglow audit`: exit status 2 is
+  left for a file it cannot reach.
+- The documentation opens a schema it can read past an error in, and its
+  audit names the error. A schema it cannot use says what is wrong in it,
+  line and column, instead of a bare "could not be parsed". The reader that
+  does this loads only for such a schema, from `read-document.js` next to
+  `app.js`: a self-hosted copy needs it there.
 
 ### Removed
 
@@ -188,6 +200,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A valid YAML schema the previous parser refused now opens, and its audit
+  runs: OpenAI's, whose `|+` block holds a single blank line, is one.
 - A 3.2 server's `name` is shown wherever the servers are listed — the home
   page, the environment manager, `llms-full.txt`, a copied page — and an
   environment created from that server is called by it, instead of by the

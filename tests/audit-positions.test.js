@@ -68,6 +68,32 @@ describe('pointerIndex', () => {
   })
 })
 
+describe('pointerIndex on texts no strict parser accepts', () => {
+  it('places a duplicate key at its last occurrence, the one whose value counts', () => {
+    const text = 'info:\n  title: A\n  title: B\n'
+    expect(place(text, '/info/title')).toEqual({ line: 3, column: 3, exact: true })
+  })
+
+  it('gives a complex key no pointer, nor anything under it', () => {
+    const text = '? [a, b]\n: { c: 1 }\nd: 2\n'
+    expect(place(text, '/d')).toEqual({ line: 3, column: 1, exact: true })
+    expect(place(text, '/c')).toMatchObject({ exact: false })
+  })
+
+  it('reads the first document of a stream only', () => {
+    const text = 'a: 1\n---\nb: 2\n'
+    expect(place(text, '/a')).toMatchObject({ line: 1, exact: true })
+    expect(place(text, '/b')).toEqual({ line: 1, column: 1, exact: false })
+  })
+
+  it('places what it reads past a syntax error', () => {
+    const text = '{"openapi": "3.1.0", "paths": {},}'
+    expect(place(text, '/paths')).toEqual({ line: 1, column: 22, exact: true })
+    const tab = 'openapi: 3.1.0\npaths: {}\n\tbad: tab\n'
+    expect(place(tab, '/paths')).toEqual({ line: 2, column: 1, exact: true })
+  })
+})
+
 describe('sourcePointer', () => {
   const document = {
     paths: {

@@ -10,6 +10,7 @@ const NO_AUDIT_PAGE = '/tests/e2e/fixtures/app-no-audit.html'
 const HIDDEN_OPS_PAGE = '/tests/e2e/fixtures/app-hidden-ops.html'
 const CONFIGURED_PAGE = '/tests/e2e/fixtures/app-audit-config.html'
 const CLEAN_PAGE = '/tests/e2e/fixtures/app-clean.html'
+const DUPLICATE_KEY_PAGE = '/tests/e2e/fixtures/app-duplicate-key.html'
 
 const report = (page) => page.locator('audit-report')
 
@@ -285,6 +286,28 @@ test('a schema with nothing to report gets the empty state, not an empty page', 
   const empty = report(page).locator('.alert')
   await expect(empty).toContainText('No findings.')
   await expect(empty).toContainText('Every applicable check passes')
+})
+
+// docs/architecture.md §14.21: a text no strict parser accepts still opens
+// when it can be read, and the audit says what is wrong in it, where.
+test('a schema with a syntax error opens, and its audit names the error', async ({ page }) => {
+  const reader = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('/read-document.js')) reader.push(request.url())
+  })
+  await gotoFixture(page, DUPLICATE_KEY_PAGE)
+  await expect(page.locator('header')).toContainText('E2E Duplicate Key')
+  // The last value of the key wins, as in every parser.
+  await expect(page.locator('api-nav')).toContainText('List every pet')
+  expect(reader).toHaveLength(1)
+
+  await page.evaluate(() => {
+    window.location.hash = '#/audit'
+  })
+  const finding = report(page).locator('li[data-rule-id="document-syntax"]')
+  await expect(finding).toContainText(
+    'The file is not valid YAML at line 12, column 7: Map keys must be unique',
+  )
 })
 
 test('the report is copied as Markdown, findings and rationales included', async ({ page }) => {

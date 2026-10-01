@@ -168,3 +168,73 @@ describe('loadInlineApiModel', () => {
     })
   })
 })
+
+// A text the strict read refuses is read tolerantly (docs/architecture.md
+// §14.21): what can be recovered opens, with what is wrong in it as
+// `problems`; what cannot says why, line and column, and carries what it holds.
+describe('loadInlineApiModel on a text the strict read refuses', () => {
+  const YAML = 'openapi: 3.1.0\ninfo:\n  title: T\n  version: "1"\npaths:\n  /a:\n    get:\n'
+  const OPERATION = '      responses:\n        "200": { description: ok }\n'
+
+  it('opens a document with a duplicate key, the problem kept for the audit', async () => {
+    const loaded = await loadInlineApiModel(
+      `${YAML}      summary: A\n      summary: B\n${OPERATION}`,
+    )
+    expect(loaded.model.operations[0].summary).toBe('B')
+    expect(loaded.problems).toEqual([
+      { code: 'DUPLICATE_KEY', line: 9, column: 7, detail: 'Map keys must be unique' },
+    ])
+  })
+
+  it('opens JSON with a trailing comma, saying it is not JSON', async () => {
+    const loaded = await loadInlineApiModel(JSON.stringify(DOC).replace(/}$/, ',}'))
+    expect(loaded.model.operations[0].id).toBe('listPets')
+    expect(loaded.source.info.title).toBe('Inline API')
+    expect(loaded.problems.map((problem) => problem.code)).toEqual(['json'])
+  })
+
+  it('reports no problem on a text the strict read accepts', async () => {
+    expect((await loadInlineApiModel(JSON.stringify(DOC))).problems).toEqual([])
+    expect((await loadInlineApiModel(`${YAML}${OPERATION}`)).problems).toEqual([])
+    expect((await loadInlineApiModel(structuredClone(DOC))).problems).toEqual([])
+  })
+
+  it('lists what is wrong when the recovered document is still unusable', async () => {
+    const err = await loadInlineApiModel('{ nope').catch((error) => error)
+    expect(err).toMatchObject({ code: 'malformed' })
+    expect(err.detail.problems).toEqual([
+      expect.objectContaining({ code: 'json', line: 1, column: 3 }),
+    ])
+  })
+
+  it('stops on a well-formed text holding no mapping, carrying what it holds', async () => {
+    for (const [text, content] of [
+      ['- a\n- b\n', ['a', 'b']],
+      ['hello world', 'hello world'],
+      ['', undefined],
+      ['[1, 2]', [1, 2]],
+    ]) {
+      const err = await loadInlineApiModel(text).catch((error) => error)
+      expect(err, JSON.stringify(text)).toMatchObject({ code: 'invalid-schema' })
+      expect(err.detail).toEqual({ problems: [], content })
+    }
+  })
+
+  // The audit's reading (docs/audit.md §8): a version this app does not read is
+  // graded anyway, with the newest semantics; the page keeps refusing it.
+  it('reads any version under `anyVersion`, and only then', async () => {
+    const v4 = { ...structuredClone(DOC), openapi: '4.0.0' }
+    await expect(loadInlineApiModel(structuredClone(v4))).rejects.toMatchObject({
+      code: 'unsupported-version',
+    })
+    const loaded = await loadInlineApiModel(structuredClone(v4), { anyVersion: true })
+    expect(loaded.model.operations[0].id).toBe('listPets')
+    expect(loaded.source.openapi).toBe('4.0.0')
+    const { openapi: _, ...unversioned } = structuredClone(DOC)
+    expect((await loadInlineApiModel(unversioned, { anyVersion: true })).model.info.title).toBe(
+      'Inline API',
+    )
+    const swagger = await loadInlineApiModel({ swagger: '1.2', apis: [] }, { anyVersion: true })
+    expect(swagger.model.operations).toEqual([])
+  })
+})

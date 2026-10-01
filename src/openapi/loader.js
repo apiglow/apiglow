@@ -5,9 +5,13 @@ import { childPosition, isPayloadPointer, PAYLOAD, ROOT } from './payload.js'
 import { applyOverlays } from './overlay.js'
 import { convertSwagger2, isSwagger2 } from './swagger2.js'
 import { readUserOverlay, seedUserOverlay, USER_OVERLAY_TOO_LARGE } from './user-overlay.js'
+import { isSupportedOpenapi, NEWEST_OPENAPI } from './versions.js'
 
 // Typed error: the UI translates `code` into a distinct educational message
 // (docs/architecture.md §5.1: CORS, 404, malformed content, invalid schema).
+// After a tolerant read (`readTolerantly`), `detail.problems` lists what is
+// wrong in the text and `detail.content` is what it holds when that is no
+// mapping — the audit still reports on a file it could open (docs/audit.md §8).
 export class SchemaLoadError extends Error {
   constructor(code, detail = {}) {
     super(`schema load failed: ${code}`)
@@ -56,8 +60,19 @@ const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
 // and the user overlay's dry run read the raw ones (rule 6) — both are
 // user-triggered, which is why `source` is a lazy getter: its consumers pay
 // for it on first access instead of every boot paying for them.
-function loaded(sourceOf, document, options, overlays = null) {
-  const result = { model: buildModel(document, options), document, overlays }
+// `problems`: what the tolerant read found wrong in the text, `[]` when the
+// strict one succeeded — the audit's `document-syntax` reports them.
+function loaded(sourceOf, document, options, overlays = null, problems = []) {
+  let model
+  try {
+    model = buildModel(document, options)
+  } catch (err) {
+    // A document recovered from a broken text, and still unusable: what is
+    // wrong in the text is what the reader has to hear about.
+    if (problems.length) throw new SchemaLoadError('malformed', { cause: err, problems })
+    throw err
+  }
+  const result = { model, document, overlays, problems }
   Object.defineProperty(result, 'source', { get: sourceOf, enumerable: true })
   return result
 }
@@ -177,12 +192,72 @@ function documentBase(doc, url) {
   }
 }
 
-// A `file:` URL never comes from a browser: it is what the bake CLI hands over
-// for a schema sitting next to the config on disk (docs/seo.md §4). There is no
-// CORS to tell a 404 apart from, and `fetch` cannot read one anyway — ref-parser
-// reads it off the disk, and an unreadable file surfaces as `malformed` with the
-// system error as its cause.
+// A `file:` URL never comes from a browser: it is what the CLI hands over for a
+// schema sitting on disk (docs/seo.md §4, docs/audit.md §8). There is no CORS to
+// tell a 404 apart from, and `fetch` cannot read one anyway: the CLI reads the
+// file itself and hands its text over as `options.body` — the core never
+// touches the disk. Without it, ref-parser reads the disk, and an unreadable
+// file surfaces as `malformed` with the system error as its cause.
 const FILE_URL = /^file:/i
+
+// The tolerant reader's own test (`read-document.js`), restated: importing it
+// would put the YAML parser it carries into app.js.
+const LOOKS_LIKE_JSON = /^\s*[[{]/
+
+const isMapping = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+// A document read whatever state its text is in (docs/architecture.md §14.21)
+// → { document, problems }. Reached only once the strict read has failed, and
+// fetched then, as a file of its own next to app.js: a healthy schema pays
+// nothing for it. Resolved like the audit (§14.8, rule 4): the same expression
+// finds src/openapi/read-document.js in dev and in the tests, and
+// dist/read-document.js next to the bundle.
+async function readTolerantly(text) {
+  const { readDocument } = await import(
+    /* @vite-ignore */ new URL(/* @vite-ignore */ './read-document.js', import.meta.url).href
+  )
+  return readDocument(text)
+}
+
+// The root document of a text → { root, problems, json }: `JSON.parse`, else
+// the strict YAML read `parseYaml` (ref-parser's), and only when that FAILED
+// the tolerant one. Text that looks like JSON and is not goes straight there:
+// ref-parser would read it as YAML without a word, and a trailing comma would
+// pass unseen. `json` says the root came from `JSON.parse` on the text — what
+// lets the caller rebuild it from the text later. `text` may be null (a
+// `file:` URL read by ref-parser off the disk): no tolerant read then.
+//
+// The root must be a mapping to go any further. When it is not — nothing, a
+// list, a sentence — the load stops, carrying what the file holds for the
+// audit to name: `malformed` when the text itself is broken, `invalid-schema`
+// when it is well-formed and simply no API description.
+async function readRoot(text, parseYaml) {
+  let root = null
+  if (text !== null) {
+    try {
+      root = JSON.parse(text)
+    } catch {
+      root = null
+    }
+  }
+  if (isMapping(root)) return { root, problems: [], json: true }
+  let failed = text !== null && root === null && LOOKS_LIKE_JSON.test(text)
+  if (!failed && !Array.isArray(root)) {
+    try {
+      root = await parseYaml()
+    } catch (err) {
+      if (text === null) throw err
+      failed = true
+    }
+  }
+  let problems = []
+  if (failed) ({ document: root, problems } = await readTolerantly(text))
+  if (isMapping(root)) return { root, problems, json: false }
+  throw new SchemaLoadError(problems.length ? 'malformed' : 'invalid-schema', {
+    problems,
+    content: root,
+  })
+}
 
 // `options` is passed through as-is to normalization (today: `hide`) —
 // the shell injects into it what it read from the host config, the core never
@@ -196,7 +271,9 @@ export async function loadApiModel(url, options = {}) {
   // same request already in flight (the shell's boot prefetch): same
   // classification, one transfer instead of two.
   let text = null
-  if (!FILE_URL.test(String(url))) {
+  if (FILE_URL.test(String(url))) {
+    if (options.body !== undefined) text = await options.body
+  } else {
     let response
     try {
       response = await (options.response ?? fetch(url))
@@ -221,23 +298,18 @@ export async function loadApiModel(url, options = {}) {
   let dereferenced
   let baseUri = null
   let overlays = null
+  let problems = []
   try {
     // JSON documents skip ref-parser for the root read: `JSON.parse` on the
     // text in hand is what ref-parser would do after re-reading the URL, and
     // succeeding here is also what proves the lazy `source` below can rebuild
-    // from the same text. YAML (or `file:`, where ref-parser reads the disk)
-    // takes the ref-parser path unchanged. Either way only the root document
-    // is read at this point, so `$ref`s stay intact for the audit's shape.
-    let root = null
-    if (text !== null) {
-      try {
-        root = JSON.parse(text)
-      } catch {
-        root = null
-      }
-    }
-    const isJson = root !== null && typeof root === 'object'
-    if (!isJson) root = await $RefParser.parse(url, { resolve })
+    // from the same text. YAML (or a `file:` URL with no text handed over,
+    // where ref-parser reads the disk) takes the ref-parser path unchanged.
+    // Either way only the root document is read at this point, so `$ref`s
+    // stay intact for the audit's shape.
+    const read = await readRoot(text, () => $RefParser.parse(url, { resolve }))
+    const { root, json: isJson } = read
+    problems = read.problems
     const parsed = await overlaid(root, options, resolve)
     overlays = parsed.diagnostics
     const source = upconverted(parsed.document)
@@ -284,12 +356,19 @@ export async function loadApiModel(url, options = {}) {
       }
     }
   } catch (err) {
-    throw new SchemaLoadError('malformed', { cause: err })
+    if (err instanceof SchemaLoadError) throw err
+    throw new SchemaLoadError('malformed', { cause: err, problems })
   }
   // Stage boundaries around normalization (`loaded` runs it): dereference,
   // normalize and the caller's first render each get their own task.
   await nextTask()
-  const result = loaded(sourceOf, dereferenced, { ...options, baseUri, documentUrl: url }, overlays)
+  const result = loaded(
+    sourceOf,
+    dereferenced,
+    { ...options, baseUri, documentUrl: url },
+    overlays,
+    problems,
+  )
   await nextTask()
   return result
 }
@@ -300,17 +379,12 @@ export async function loadApiModel(url, options = {}) {
 // page, for lack of a document URL.
 export async function loadInlineApiModel(source, options = {}) {
   let doc
+  let problems = []
   if (typeof source === 'string') {
-    try {
-      doc = JSON.parse(source)
-    } catch {
-      // Not JSON: YAML, which a host page has every reason to paste as-is
-      // rather than convert. ref-parser already carries a YAML parser (and
-      // JSON is a subset of YAML) — reaching it means handing it a URL it can
-      // read, so the text is served through a one-shot resolver on a synthetic
-      // scheme. No new dependency: platform-first (architecture.md §14.2).
-      doc = await parseInlineYaml(source)
-    }
+    // JSON, or YAML — which a host page has every reason to paste as-is
+    // rather than convert — read by ref-parser's own parser; only a text both
+    // refuse goes to the tolerant read.
+    ;({ root: doc, problems } = await readRoot(source, () => parseInlineYaml(source)))
   } else if (source && typeof source === 'object') {
     // ref-parser mutates the document it's given: the host page's
     // config must not end up dereferenced (and cyclic) under the
@@ -336,10 +410,16 @@ export async function loadInlineApiModel(source, options = {}) {
       dereferenced = await crawl(baseUri, structuredClone(doc), () => doc, resolve)
     }
   } catch (err) {
-    throw new SchemaLoadError('malformed', { cause: err })
+    throw new SchemaLoadError('malformed', { cause: err, problems })
   }
   await nextTask()
-  const result = loaded(() => doc, dereferenced, { ...options, baseUri }, overlaidDoc.diagnostics)
+  const result = loaded(
+    () => doc,
+    dereferenced,
+    { ...options, baseUri },
+    overlaidDoc.diagnostics,
+    problems,
+  )
   await nextTask()
   return result
 }
@@ -396,44 +476,41 @@ export async function parseDocumentText(text) {
   try {
     return JSON.parse(text)
   } catch {
-    return parseInlineYaml(text)
+    try {
+      return await parseInlineYaml(text)
+    } catch (err) {
+      throw new SchemaLoadError('malformed', { cause: err })
+    }
   }
 }
 
 // Synthetic URL: only its extension matters, and it is what makes ref-parser
-// pick its YAML parser instead of guessing from bytes.
+// pick its YAML parser instead of guessing from bytes. Reaching that parser
+// means handing it a URL it can read, so the text is served through a one-shot
+// resolver on a synthetic scheme: no second YAML parser in app.js
+// (architecture.md §14.2).
 const INLINE_YAML_URL = 'inline:/spec.yaml'
 
-async function parseInlineYaml(text) {
+function parseInlineYaml(text) {
   stubBuffer()
-  try {
-    return await $RefParser.parse(INLINE_YAML_URL, {
-      resolve: {
-        inline: { order: 1, canRead: /^inline:/, read: () => text },
-        // The document is a string in memory: nothing else is reachable from
-        // it, and a `$ref` to a file path would be a surprise, not a feature.
-        file: false,
-      },
-    })
-  } catch (err) {
-    throw new SchemaLoadError('malformed', { cause: err })
-  }
+  return $RefParser.parse(INLINE_YAML_URL, {
+    resolve: {
+      inline: { order: 1, canRead: /^inline:/, read: () => text },
+      // The document is a string in memory: nothing else is reachable from
+      // it, and a `$ref` to a file path would be a surprise, not a feature.
+      file: false,
+    },
+  })
 }
-
-// The version lines this app claims to support (rule 19). Exported because the
-// About dialog advertises them: one list, so the promise made to the reader and
-// the check that rejects a document cannot say different things.
-export const SUPPORTED_OPENAPI_VERSIONS = ['3.0', '3.1', '3.2']
-// Read too, through conversion rather than through normalization: the app never
-// renders a 2.0 document, it renders the 3.0 one `swagger2.js` makes of it. Same
-// reason for exporting it — the About dialog says it, and so does the error.
-export const SUPPORTED_SWAGGER_VERSIONS = ['2.0']
-const SUPPORTED_OPENAPI_RE = new RegExp(
-  `^(${SUPPORTED_OPENAPI_VERSIONS.map((v) => v.replace('.', '\\.')).join('|')})(\\.|$)`,
-)
 
 // Validation + normalization of an already dereferenced document. Separate from
 // loadApiModel so it's testable without network access (fixtures).
+//
+// `options.anyVersion`: a mapping whose version this app does not support —
+// none, a pre-2.0 Swagger, an OpenAPI 4 or an unknown 3.x — is read with the
+// newest semantics instead of refused. The audit's (docs/audit.md §8): its
+// report says what is wrong with the version, and grades the rest anyway. The
+// page keeps refusing it, with the version named.
 export function buildModel(doc, options = {}) {
   // A raw 2.0 document reaches this path from a fixture or a host page that
   // hands over an already-dereferenced object: converting here too keeps the
@@ -442,6 +519,9 @@ export function buildModel(doc, options = {}) {
   // the conversion is what matters either way.
   const converted = upconverted(doc)
   const version = typeof converted?.openapi === 'string' ? converted.openapi : null
+  if (options.anyVersion && isMapping(converted) && !isSupportedOpenapi(version)) {
+    return normalized({ ...converted, openapi: NEWEST_OPENAPI }, options)
+  }
   if (!version) {
     // A Swagger version we have no conversion table for is "valid but
     // unsupported", to be distinguished from arbitrary JSON that isn't an
@@ -450,10 +530,14 @@ export function buildModel(doc, options = {}) {
       throw new SchemaLoadError('unsupported-version', { found: doc.swagger })
     throw new SchemaLoadError('invalid-schema')
   }
-  if (!SUPPORTED_OPENAPI_RE.test(version))
+  if (!isSupportedOpenapi(version))
     throw new SchemaLoadError('unsupported-version', { found: version })
+  return normalized(converted, options)
+}
+
+function normalized(doc, options) {
   try {
-    return normalizeDocument(converted, options)
+    return normalizeDocument(doc, options)
   } catch (err) {
     throw new SchemaLoadError('invalid-schema', { cause: err })
   }

@@ -4,7 +4,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { t } from '../src/i18n/index.js'
-import { loadApiModel, loadInlineApiModel } from '../src/openapi/loader.js'
+import { loadApiModel, loadInlineApiModel, SchemaLoadError } from '../src/openapi/loader.js'
 import { resolveSpecConfig } from '../src/specs.js'
 
 // What the author has to fix before the command can run at all, as opposed to
@@ -56,7 +56,13 @@ export async function catalog(language) {
 // not read is the end of the run, not a warning: everything a command writes
 // derives from it. The loader's typed code plus what it was reading, because
 // "malformed" alone names neither the file nor what was wrong with it.
-export async function loadSpecModel(config, spec, { multi, base, warnings }) {
+//
+// `anyContent` is the audit's (docs/audit.md §8): a file it could open is a
+// file it reports on. Whatever version the document declares, it is read —
+// with the newest semantics when this app does not know that version — and a
+// file holding no mapping at all comes back as what it holds (`model: null`),
+// for the rules about the file itself to name.
+export async function loadSpecModel(config, spec, { multi, base, warnings, anyContent = false }) {
   const resolved = resolveSpecConfig(config, spec, { multi })
   for (const warning of resolved.warnings) warnings.push(warning)
   const effective = resolved.config
@@ -73,14 +79,26 @@ export async function loadSpecModel(config, spec, { multi, base, warnings }) {
     // command reads is the documentation as published (docs/user-overlay.md
     // decision 11).
     userOverlay: null,
+    anyVersion: anyContent,
   }
   if (!spec.url && !spec.spec) {
     throw new CliError(`spec "${spec.id}": neither a url nor an inline document`)
   }
+  const url = spec.spec ? null : refUrl(spec.url, base)
+  // A file is read here, and its text handed to the loader: the core never
+  // touches the disk, and a text it cannot parse strictly is one it can still
+  // read tolerantly (docs/architecture.md §14.21).
+  if (url?.protocol === 'file:') {
+    try {
+      options.body = await readText(url)
+    } catch (err) {
+      throw new CliError(`spec "${spec.id}" could not be loaded: ${err.message}`)
+    }
+  }
   try {
     const loaded = spec.spec
       ? await loadInlineApiModel(spec.spec, options)
-      : await loadApiModel(refUrl(spec.url, base).href, options)
+      : await loadApiModel(url.href, options)
     // An overlay that could not be read or applied leaves the schema as
     // published, which is no reason to stop — but the author has to hear of it.
     for (const warning of loaded.overlays?.warnings ?? []) {
@@ -88,6 +106,11 @@ export async function loadSpecModel(config, spec, { multi, base, warnings }) {
     }
     return { loaded, config: effective }
   } catch (err) {
+    if (anyContent && err instanceof SchemaLoadError && err.detail && 'content' in err.detail) {
+      const { content, problems } = err.detail
+      const loaded = { model: null, source: content, document: content, problems, overlays: null }
+      return { loaded, config: effective }
+    }
     const cause = err.detail?.cause?.message ?? err.message
     throw new CliError(`spec "${spec.id}" could not be loaded: ${err.code ?? 'error'} — ${cause}`)
   }

@@ -8,7 +8,9 @@ import { inVersion, isRequired, OBJECTS, objectLabel, PATTERNED } from '../opena
 //
 // Left to the rules that already say more about the same gap: an OAuth flow's
 // URLs (`oauth-flow-urls`, which names what the try-it loses) and a Response
-// without a description when it has no content either (`response-substance`).
+// without a description when it has no content either (`response-substance`),
+// and a root `openapi` where a `swagger` field names another version
+// (`document-openapi`, which quotes it).
 // A field present with no value is `field-without-value`'s. One check per
 // missing field, none otherwise.
 
@@ -37,6 +39,7 @@ export const requiredFieldMissing = {
       for (const [key, field] of Object.entries(OBJECTS[type])) {
         if (!isRequired(field, minor) || !inVersion(field, minor) || key in node) continue
         if (type === 'Response' && key === 'description' && !node.content) continue
+        if (type === 'OpenAPI' && key === 'openapi' && node.swagger != null) continue
         report(type, dataPath, key)
       }
       if (type === 'SecurityScheme') {

@@ -407,6 +407,7 @@ const BUDGET_CEILINGS = {
     MAX_JS_BYTES: 1_200_000,
     MAX_CSS_BYTES: 300_000,
     MAX_AUDIT_JS_BYTES: 340_000,
+    MAX_READER_JS_BYTES: 160_000,
   },
 }
 
@@ -501,9 +502,9 @@ for (const file of srcFiles) {
     '@apidevtools/json-schema-ref-parser',
     'dompurify',
     'highlight.js',
-    'js-yaml',
     'json-p3',
     'marked',
+    'yaml',
   ]
   const actual = Object.keys(JSON.parse(read('package.json')).dependencies ?? {}).sort()
   if (actual.join(' ') !== PINNED_RUNTIME_DEPS.join(' ')) {

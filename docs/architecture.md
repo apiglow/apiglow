@@ -60,8 +60,9 @@ What it does:
   sources), library-mode build for distribution. Output: `dist/app.js`
   (minified ESM) + `dist/app.css` + `dist/i18n/*.json` + `dist/fonts/`,
   plus — from passes that share nothing with the first — `dist/audit.js`,
-  the schema audit `app.js` loads on demand (§14.8), and the author-side
-  `dist/cli.js` CLI (§3, [seo.md](seo.md) §4).
+  the schema audit `app.js` loads on demand (§14.8), `dist/read-document.js`,
+  the tolerant reader it loads only for a schema its strict read refused
+  (§14.21), and the author-side `dist/cli.js` CLI (§3, [seo.md](seo.md) §4).
 - **Runtime dependencies** — short by design, open only for spec/format
   work. An addition must do **spec or format work** *and* correspond to a
   job we actually want done in full, then be justified in this list with its
@@ -75,11 +76,15 @@ What it does:
     snippet generators emit, plus the ones an API doc writes in fences);
   - `json-p3` — RFC 9535 JSONPath, which Overlay 1.1 makes a MUST for an
     action's `target`. Weight on `dist/app.js`: +14 kB gzipped, +63 kB raw;
-  - `js-yaml` — YAML 1.2 parsing with source offsets (`parseEvents`), for
-    the CLI to place an audit finding at its line and column in the file
-    the author edits. Already ref-parser's YAML parser, so it adds nothing
-    to `dist/app.js`; declared and pinned because the CLI imports it
-    directly, and ref-parser's caret range must not move that API under us.
+  - `yaml` — YAML 1.2 reading that never gives up on a text: a document
+    comes back from a duplicate key, a tab, a broken flow collection or an
+    unresolved alias, with each error's code and source position, and every
+    node keeps its source range. It is the tolerant reader of §14.21 (the
+    page and the CLI) and what places an audit finding at its line and column
+    in the file the author edits (`src/audit/positions.js`). Weight: nothing
+    on `dist/app.js` — it ships in `dist/read-document.js` (130 kB raw,
+    35 kB gzipped), fetched only for a schema the strict read refused.
+    ref-parser keeps its own YAML parser (js-yaml) for the strict read.
 
   Every package here ships to every reader, so any addition is justified in
   this list with its role and its weight.
@@ -189,8 +194,8 @@ per spec — the merge rules live in [multi-spec.md §2](multi-spec.md).
 - The schema comes from a **URL** (`openapi.url`) or is **carried by the
   page** (`openapi.spec`: object, JSON string or **YAML string** — the
   inline loader tries `JSON.parse` first, then hands the text to ref-parser's
-  own YAML parser through a one-shot resolver on a synthetic `inline:` URL, so
-  no dependency is added). Same pipeline either way, inline simply skips the
+  own YAML parser through a one-shot resolver on a synthetic `inline:` URL;
+  a text both refuse is read tolerantly, §14.21). Same pipeline either way, inline simply skips the
   network step. The home page offers the **source as served** for download
   (the API editor's own file, YAML included, external `$ref`s unresolved;
   indented JSON for an inline schema): the schema is public by construction,
@@ -311,7 +316,11 @@ per spec — the merge rules live in [multi-spec.md §2](multi-spec.md).
   non-CORS-safelisted headers are named as dropped before the send
   (`src/openapi/no-cors.js`).
 - Explicit, distinct loading/error states: CORS, 404, malformed content,
-  invalid schema.
+  invalid schema. A text the strict read refuses is read tolerantly
+  (§14.21): a document that comes back opens normally, its problems left
+  to the audit (`document-syntax`); one that cannot be used shows the
+  malformed state with each problem listed under it — "Line L, column C:"
+  and the parser's own message.
 
 #### 5.1.1 Swagger 2.0 (conversion, not a second pipeline)
 
@@ -1404,8 +1413,9 @@ Three properties worth stating, because they are what the design turns on:
   is where its role and weight are argued.
 - **Every claim has one source.** The identity comes from `package.json`
   through Vite's `define` (like the §5.11 diagnostics), the version lines from
-  the two loader constants that reject everything else
-  (`SUPPORTED_OPENAPI_VERSIONS` and `SUPPORTED_SWAGGER_VERSIONS` — one promise
+  the two constants the loader rejects everything else by
+  (`SUPPORTED_OPENAPI_VERSIONS` and `SUPPORTED_SWAGGER_VERSIONS`, in
+  `src/openapi/versions.js` — one promise
   to the reader, whether it is kept by normalization or by conversion), the
   Overlay revision from `overlay.js`, the Arazzo revision from the exporter.
   Imports and exports are two rows, not one: the formats a reader can bring in
@@ -1876,6 +1886,7 @@ imports the shell and never sees the host config directly.
 │   ├── config.js           # host-config reading, shared by the app and the bake CLI
 │   ├── shell/              # views, panels, toolbar, themes, head.js (per-route <head>)
 │   ├── openapi/            # loader, $ref resolution, model.js (normalization),
+│   │                       # read-document.js (tolerant reader, §14.21),
 │   │                       # auth.js, send.js, sample.js, diff.js, hide.js
 │   ├── components/         # light-DOM web components
 │   ├── scenarios/          # scenario model, loader, runner, pointer, step controller
@@ -2321,7 +2332,8 @@ else states a version:
    fallbacks the baseline needs: deriving it keeps some 35 kB of duplicated
    pre-`oklch` color declarations out of `dist/app.css`.
 3. `npm run check:syntax` (`es-check checkBrowser … --checkFeatures`) reads
-   the same field and validates `dist/app.js` and `dist/audit.js` after
+   the same field and validates `dist/app.js`, `dist/audit.js` and
+   `dist/read-document.js` after
    every CI build. It is
    the only guard between a `build.target` regression and a bundle no
    baseline browser can parse — CI's own browsers are all far above the
@@ -2539,7 +2551,9 @@ that drops either silently breaks the CDN install while dev mode keeps
 working — the packed-tarball e2e and `npm run check:dist` are what catch
 it.
 
-The one exception is the schema audit. Its engine and rules — a hundred of
+The exceptions are what a session may never need, imported on demand: the
+schema audit, and the tolerant reader (§14.21), built and loaded the same way
+for a schema whose strict read failed. The audit's engine and rules — a hundred of
 them by design, each with four texts — are read by an API's authors on a
 page readers never open, and every reader would otherwise download them.
 So they ship as `dist/audit.js`, built by a pass of their own
@@ -2562,7 +2576,7 @@ So they ship as `dist/audit.js`, built by a pass of their own
 
 ### 14.9 Assets resolve via `import.meta.url`
 
-`app.js` must find `app.css`, `i18n/*.json` and `audit.js` wherever the host page lives
+`app.js` must find `app.css`, `i18n/*.json`, `audit.js` and `read-document.js` wherever the host page lives
 and whatever CDN path serves it. `document.currentScript` is `null` inside
 an ES module, so every runtime asset resolves via
 `new URL('./…', import.meta.url)` and `app.js` injects its own stylesheet
@@ -2851,3 +2865,41 @@ principle, not a list of tweaks:
   — the same reasoning that moved the search budget in-page: driven over the
   wire, the steps are CDP round-trips and rAF-paced checks, a third of the
   budget on a CI runner, and a budget decided by the harness is not a budget.
+
+### 14.21 A document is read tolerantly, only when the strict read fails
+
+An author who opens a broken file needs to hear what is wrong in it, and a
+parser that stops at the first error says "could not be parsed" and nothing
+else. So the loader has two reads, and the second is only ever reached
+through the first:
+
+- **The strict read is unchanged**: `JSON.parse` on the text in hand, else
+  ref-parser's YAML parser. A healthy schema never meets the second read, and
+  pays nothing for it — not a byte, not a millisecond.
+- **The tolerant read** (`src/openapi/read-document.js`, the `yaml` package)
+  runs when the strict one failed, on the same text. Text that looks like
+  JSON (`[` or `{` first) and is not goes there directly — ref-parser would
+  read it as YAML without a word, and a trailing comma would pass unseen — and
+  comes back through YAML, which reads past what makes JSON invalid; its
+  problem is the JSON parser's, at the position it reports. Otherwise every
+  YAML error is a problem, at its line and column: a duplicate key (the last
+  value wins, as everywhere), a tab, a missing bracket, a second document in
+  the stream (the first is read). An alias to no anchor reads as null, and
+  alias expansion is capped (the "billion laughs"). A byte-order mark is
+  dropped silently. One problem per place.
+- **What comes back decides.** A mapping goes on through overlays,
+  conversion and dereference like any document, its `problems` returned next
+  to the model for the audit to report (`document-syntax`). Anything else —
+  nothing, a list, a sentence — stops the load with what the file holds, and
+  the page's error state lists the problems, each at its line and column.
+- **A file of its own.** The reader carries a second YAML parser, so it is
+  `dist/read-document.js`, built by its own pass (`vite.reader.config.js`) and
+  imported through `import.meta.url` like the audit (§14.8, §14.9);
+  `check:dist` fails if it reappears in `app.js`. The CLI bundles it, and
+  reads a schema file itself, handing the loader its text: the core never
+  touches the disk.
+- **The audit reports on anything it could open** (`docs/audit.md` §8): a
+  version the app does not read is graded with the newest rules
+  (`buildModel`'s `anyVersion`, the CLI's alone), and a file holding no
+  mapping gets a report of its own (`document-openapi`). The page keeps
+  refusing a version it cannot render, naming it.

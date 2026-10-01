@@ -19,8 +19,8 @@ Arazzo, Overlay).
 Supported: **OpenAPI 3.0.x, 3.1.x, 3.2.x**, JSON and YAML, by URL and
 inline alike, plus **Swagger 2.0** converted to 3.0.4 upstream of everything
 (`src/openapi/swagger2.js`, §4.5). Version gate: `buildModel` in
-`src/openapi/loader.js`, a regex built from the exported
-`SUPPORTED_OPENAPI_VERSIONS` — the same list the About dialog advertises, so
+`src/openapi/loader.js`, a regex built from `SUPPORTED_OPENAPI_VERSIONS`
+(`src/openapi/versions.js`) — the same list the About dialog advertises, so
 the promise made to the reader and the check that rejects a document cannot
 say different things — applied after the conversion has run, so
 `unsupported-version` fires only for a `swagger` value there is no
@@ -560,8 +560,11 @@ lowercase form.
 
 - Inline YAML: `loadInlineApiModel` tries `JSON.parse`; on failure it
   registers a one-shot resolver for a synthetic `inline:` URL returning
-  the string and lets ref-parser's own YAML parser handle it (no new
-  dependency). Malformed YAML → `malformed`.
+  the string and lets ref-parser's own YAML parser handle it.
+- A text the strict read refuses — inline or fetched — is read tolerantly
+  ([architecture.md](architecture.md) §14.21): a document that comes back
+  opens, its problems reported by the audit; one that does not is
+  `malformed`, each problem listed with its line and column.
 - YAML by URL: nothing of ours chooses the parser — ref-parser picks it
   from the URL's extension (`.yaml`, `.yml`, `.json`). A spec served from
   a route rather than a file (`/v3/api-docs`, `/openapi`) matches no

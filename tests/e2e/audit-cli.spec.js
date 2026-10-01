@@ -45,6 +45,19 @@ test('exits 2 when it cannot run', async () => {
   expect(stderr).toMatch(/^apiglow audit: spec "default" could not be loaded/)
 })
 
+// The bundle reads a file its strict parser refuses through the reader shipped
+// next to it, dist/read-document.js, and reports on it rather than stopping.
+test('reports on a file no strict parser accepts, the error at its line', async () => {
+  const { stdout, stderr, code } = await audit('tests/e2e/fixtures/e2e-api-duplicate-key.yaml')
+  expect(code).toBe(1)
+  expect(stdout).toContain(
+    'The file is not valid YAML at line 12, column 7: Map keys must be unique',
+  )
+  expect(stderr).toContain(
+    'error document-syntax — tests/e2e/fixtures/e2e-api-duplicate-key.yaml:12:7',
+  )
+})
+
 test('reports in French from the catalog shipped next to it', async () => {
   const { stdout, code } = await audit('tests/e2e/fixtures/e2e-api-clean.json', '--language', 'fr')
   expect(code).toBe(0)

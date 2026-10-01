@@ -1,4 +1,4 @@
-import { EVENT_ID, SCALAR_STYLE, getScalarValue, parseEvents } from 'js-yaml'
+import { isAlias, isMap, isScalar, isSeq, parseDocument } from 'yaml'
 import { escapePointerToken, pointerFrom, unescapePointerToken } from '../scenarios/pointer.js'
 
 // Where a finding sits in the file its author edits (docs/audit.md §8.1): a
@@ -7,64 +7,39 @@ import { escapePointerToken, pointerFrom, unescapePointerToken } from '../scenar
 // document; this module maps them back to the text. CLI-only — the page links
 // to the rendered operation instead, and never imports it.
 //
-// One parser for both syntaxes: JSON is YAML, and js-yaml's event stream
-// (`parseEvents`) carries the source offset of every node, keys included.
+// One parser for both syntaxes: JSON is YAML, and the `yaml` package's
+// document keeps the source range of every node, keys included.
 
 // text → { find(pointer) → { offset, exact } }. The offset is the key's (or a
-// sequence item's), which is where an editor puts a cursor for "this field". A
-// pointer to a node the text does not hold — a missing field, a node an
-// overlay added — resolves to its deepest existing ancestor, `exact: false`.
+// sequence item's), which is where an editor puts a cursor for "this field" —
+// on a quoted key its quote, on an alias its star. A pointer to a node the text
+// does not hold — a missing field, a node an overlay added — resolves to its
+// deepest existing ancestor, `exact: false`. Only the first document of a
+// stream is the description.
 export function pointerIndex(text) {
   const offsets = new Map([['', 0]])
-  const input = `${text}\0`
-  const stack = []
-  // Records the node starting now, under the slot its parent is filling.
-  const enter = (start) => {
-    const parent = stack.at(-1)
-    if (!parent) return ''
-    if (parent.kind === 'seq') {
-      const pointer = `${parent.pointer}/${parent.index}`
-      parent.index += 1
-      offsets.set(pointer, start)
-      return pointer
-    }
-    // A complex (non-scalar) key gets no pointer: JSON pointers cannot name it.
-    const pointer =
-      parent.key === undefined ? null : `${parent.pointer}/${escapePointerToken(parent.key)}`
-    if (pointer !== null) offsets.set(pointer, parent.keyStart)
-    parent.key = undefined
-    parent.awaitingKey = true
-    return pointer
-  }
-  for (const event of parseEvents(text)) {
-    const parent = stack.at(-1)
-    if (event.type === EVENT_ID.SCALAR && parent?.kind === 'map' && parent.awaitingKey) {
-      parent.key = String(getScalarValue(input, event))
-      parent.keyStart = scalarStart(event)
-      parent.awaitingKey = false
-      continue
-    }
-    if (event.type === EVENT_ID.MAPPING || event.type === EVENT_ID.SEQUENCE) {
-      if (parent?.kind === 'map' && parent.awaitingKey) {
-        // A collection used as a key: skip it, and the value it keys.
-        stack.push({ kind: 'skip' })
-        continue
+  const doc = parseDocument(text, { uniqueKeys: false, logLevel: 'silent' })
+  // An explicit stack: the text's nesting is the author's, not ours to bound.
+  const pending = [[doc.contents, '']]
+  while (pending.length) {
+    const [node, pointer] = pending.pop()
+    // An alias stands for a node written elsewhere: nothing below it is here.
+    if (!node || isAlias(node)) continue
+    if (isMap(node)) {
+      for (const { key, value } of node.items) {
+        // A complex (non-scalar) key gets no pointer: JSON pointers cannot
+        // name it, and neither can the value it keys.
+        if (!isScalar(key)) continue
+        const at = `${pointer}/${escapePointerToken(key.value === null ? '' : String(key.value))}`
+        offsets.set(at, key.range[0])
+        pending.push([value, at])
       }
-      const pointer = parent?.kind === 'skip' ? null : enter(event.start)
-      stack.push(
-        pointer === null
-          ? { kind: 'skip' }
-          : event.type === EVENT_ID.MAPPING
-            ? { kind: 'map', pointer, awaitingKey: true }
-            : { kind: 'seq', pointer, index: 0 },
-      )
-    } else if (event.type === EVENT_ID.SCALAR || event.type === EVENT_ID.ALIAS) {
-      if (parent && parent.kind !== 'skip') enter(scalarStart(event))
-    } else if (event.type === EVENT_ID.POP && stack.length) {
-      stack.pop()
-    } else if (event.type === EVENT_ID.DOCUMENT && stack.length) {
-      // Only the first document of a stream is the description.
-      break
+    } else if (isSeq(node)) {
+      for (const [index, item] of node.items.entries()) {
+        const at = `${pointer}/${index}`
+        if (item?.range) offsets.set(at, item.range[0])
+        pending.push([item, at])
+      }
     }
   }
   return {
@@ -146,13 +121,4 @@ function safeDecode(text) {
   } catch {
     return text
   }
-}
-
-// A quoted scalar's value starts after its quote, an alias's name after its
-// `*`: the cursor belongs on the quote or the star.
-function scalarStart(event) {
-  if (event.type === EVENT_ID.ALIAS) return event.anchorStart - 1
-  const quoted =
-    event.style === SCALAR_STYLE.SINGLE_QUOTED || event.style === SCALAR_STYLE.DOUBLE_QUOTED
-  return quoted ? event.valueStart - 1 : event.valueStart
 }

@@ -40,12 +40,32 @@ test('schema URL returning 404 shows the http error state', async ({ page }) => 
   await expect(page.getByRole('alert')).toContainText('HTTP 404')
 })
 
-test('unparseable schema shows the malformed error state', async ({ page }) => {
+// docs/architecture.md §14.21: what cannot be opened says what is wrong in it,
+// each problem at its line and column.
+test('unparseable schema shows the malformed error state, each problem placed', async ({
+  page,
+}) => {
   await page.route('**/tests/e2e/fixtures/e2e-api.json', (r) =>
     r.fulfill({ status: 200, contentType: 'application/json', body: '{ this is not json' }),
   )
   await page.goto(APP_PAGE)
-  await expect(page.getByRole('alert')).toContainText('could not be parsed')
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('could not be parsed')
+  // The message is the browser's JSON parser's own, and so is the column it
+  // reports, when it reports one: only the frame is portable.
+  await expect(alert.getByRole('listitem')).toHaveCount(1)
+  await expect(alert.getByRole('listitem')).toHaveText(/^Line 1, column \d+: \S/)
+})
+
+// The reader that reads past such errors is a file of its own: a schema that
+// parses never pays for it.
+test('a schema that parses never fetches the tolerant reader', async ({ page }) => {
+  const reader = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('/read-document.js')) reader.push(request.url())
+  })
+  await gotoApp(page)
+  expect(reader).toEqual([])
 })
 
 // 2.0 itself is read by conversion (`swagger2.spec.js`): what is left

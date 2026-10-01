@@ -19,7 +19,8 @@ npx --yes apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
   audits several, each under its own path. `--config apidoc.config.json`
   audits what a documentation site built on apiglow shows instead.
 - Exit status: `0` every check passed, `1` a check failed, `2` the audit
-  could not run (read stderr — a bad option, an unreadable schema).
+  could not run (read stderr — a bad option, a schema it cannot reach). A
+  file it can open always gets a report, broken JSON or YAML included.
 - `--min-severity` trims what the report lists, never the verdict. Start with
   `warning`; drop to `info` once those are done.
 
@@ -44,8 +45,10 @@ JSON.
 
 ## Fix, then audit again
 
-1. Fix `error` findings first, then `warning`, then `info`. Work rule by
-   rule: one rule's findings usually share one fix.
+1. Fix `document-syntax` and `document-openapi` first: the rest of the
+   report reads past a broken text, and can change once it is fixed. Then
+   `error` findings, then `warning`, then `info`. Work rule by rule: one
+   rule's findings usually share one fix.
 2. Edit at `position`. Keep the document's own style — indentation, key
    order, quoting — and change nothing a finding does not ask for.
 3. Run the audit again. A fix can uncover the next finding, and the count

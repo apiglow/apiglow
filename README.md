@@ -140,7 +140,7 @@ Full spec: [`docs/scenarios.md`](docs/scenarios.md).
 
 ## Schema audit
 
-The docs already downloaded your schema, so they can also grade it: 135
+The docs already downloaded your schema, so they can also grade it: 137
 rules across seven categories — security and readiness for AI agents
 included — a score each, a letter grade, and a Markdown report for the ticket. In the browser — nothing is sent anywhere.
 

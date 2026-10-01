@@ -60,12 +60,12 @@ export const BUNDLED_CREDITS = [
     url: 'https://github.com/jg-rp/json-p3',
   },
   {
-    id: 'js-yaml',
-    pkg: 'js-yaml',
-    name: 'js-yaml',
-    version: '5.3.0',
-    license: 'MIT',
-    url: 'https://github.com/nodeca/js-yaml',
+    id: 'yaml',
+    pkg: 'yaml',
+    name: 'YAML',
+    version: '2.9.1',
+    license: 'ISC',
+    url: 'https://github.com/eemeli/yaml',
   },
   {
     id: 'highlight',
