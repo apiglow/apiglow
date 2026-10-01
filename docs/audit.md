@@ -662,6 +662,11 @@ npx apiglow audit --config apidoc.config.json
     inline in a config has no file, and its findings no position. Cost on
     the repo's 12 MB schema: about half a second.
 - **`--output <file>`** writes the report to a file instead of stdout.
+- **`--report <format>=<file>`**, repeatable, writes one more report per
+  occurrence from the same run — the JSON for a script, the Markdown for
+  the job summary, without auditing twice. `--format`/`--output` stay the
+  shorthand for the stdout report; with `--report` alone, stdout stays
+  empty. Two reports aimed at one file are refused.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).
   The command's own lines on stderr stay English, like the bake's.

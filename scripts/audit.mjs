@@ -193,6 +193,9 @@ const USAGE = `Usage: apiglow audit <spec> [options]
   --write-baseline   write the current findings to this file and pass
   --format           text | json | markdown (default: text)
   --output           write the report to this file instead of stdout
+  --report           <format>=<file>: also write the report in this format to
+                     this file; repeatable. With --report alone, stdout stays
+                     empty unless --format or --output asks for a report too
   --language         en | fr: language of the report (default: en)
 
 Exit status: 0 passed, 1 a check failed, 2 the audit could not run.`
@@ -223,13 +226,17 @@ export async function main(args) {
   })
   const passed = results.every((result) => result.passed)
 
-  const output = render(results, {
-    format: values.format,
+  const context = {
     passed,
     baseline: Boolean(known),
     tool: { name: 'apiglow', version: await toolVersion() },
-  })
-  if (values.output) await write(values.output, output)
+  }
+  let stdout = ''
+  for (const { format, file } of options.reports) {
+    const output = render(results, { format, ...context })
+    if (file) await write(file, output)
+    else stdout = output.replace(/\n$/, '')
+  }
   const notes = warnings.map((warning) => `warning: ${warning}`)
   if (values['write-baseline']) {
     const baseline = toBaseline(results)
@@ -241,7 +248,7 @@ export async function main(args) {
   }
 
   return {
-    stdout: values.output ? '' : output.replace(/\n$/, ''),
+    stdout,
     stderr: notes.join('\n'),
     code: passed ? 0 : 1,
   }
@@ -260,8 +267,9 @@ function parse(args) {
         'audit-config': { type: 'string' },
         baseline: { type: 'string' },
         'write-baseline': { type: 'string' },
-        format: { type: 'string', default: 'text' },
+        format: { type: 'string' },
         output: { type: 'string' },
+        report: { type: 'string', multiple: true, default: [] },
         language: { type: 'string', default: 'en' },
         help: { type: 'boolean', default: false },
       },
@@ -299,7 +307,37 @@ function checkOptions(values, positionals) {
       refuse(`--min-score must be an integer from 0 to 100, got "${values['min-score']}"`)
     }
   }
-  return { failOn: values['fail-on'], minGrade: values['min-grade'], minScore }
+  return {
+    failOn: values['fail-on'],
+    minGrade: values['min-grade'],
+    minScore,
+    reports: reportTargets(values, refuse),
+  }
+}
+
+// Where each report goes → [{ format, file }], `file: null` for stdout. The
+// stdout one is `--format`/`--output`, the run's default report — kept when
+// either is given, or when no `--report` takes its place.
+function reportTargets(values, refuse) {
+  const targets = []
+  if (values.format !== undefined || values.output !== undefined || !values.report.length) {
+    targets.push({ format: values.format ?? 'text', file: values.output ?? null })
+  }
+  for (const value of values.report) {
+    const at = value.indexOf('=')
+    const format = value.slice(0, at)
+    const file = value.slice(at + 1)
+    if (at < 1 || !file) refuse(`--report takes <format>=<file>, got "${value}"`)
+    if (!FORMATS.includes(format)) {
+      refuse(`--report format must be one of ${FORMATS.join(', ')}, got "${format}"`)
+    }
+    targets.push({ format, file })
+  }
+  // Two reports into one file: the second would silently replace the first.
+  const files = targets.filter((target) => target.file).map((target) => resolvePath(target.file))
+  const twice = files.find((file, i) => files.indexOf(file) !== i)
+  if (twice) refuse(`two reports would be written to ${twice}`)
+  return targets
 }
 
 // A schema named on the command line is the one-spec config the app would boot

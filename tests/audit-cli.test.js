@@ -161,6 +161,20 @@ describe('apiglow audit', () => {
     expect(await readFile(output, 'utf8')).toMatch(/^# Schema audit — Clean E2E API\n/)
   })
 
+  it('writes several reports in one run, stdout kept for --format', async () => {
+    const json = join(dir, 'audit.json')
+    const markdown = join(dir, 'audit.md')
+    const alone = await audit(CLEAN, '--report', `json=${json}`, '--report', `markdown=${markdown}`)
+    expect(alone.code).toBe(0)
+    // Nothing asked for a report on stdout: --report took its place.
+    expect(alone.stdout).toBe('')
+    expect(JSON.parse(await readFile(json, 'utf8')).passed).toBe(true)
+    expect(await readFile(markdown, 'utf8')).toMatch(/^# Schema audit — Clean E2E API\n/)
+
+    const both = await audit(CLEAN, '--format', 'text', '--report', `json=${json}`)
+    expect(both.stdout).toMatch(/^Schema audit — Clean E2E API\n/)
+  })
+
   it('reports in the language it is asked for', async () => {
     const { stdout } = await audit(CLEAN, '--language', 'fr')
     expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
@@ -222,6 +236,9 @@ describe('apiglow audit', () => {
       [[CLEAN, '--min-score', '80%'], /--min-score must be an integer from 0 to 100/],
       [[CLEAN, '--format', 'sarif'], /--format must be one of text, json, markdown/],
       [[CLEAN, '--baseline', 'a', '--write-baseline', 'b'], /do not combine/],
+      [[CLEAN, '--report', 'json'], /--report takes <format>=<file>, got "json"/],
+      [[CLEAN, '--report', 'pdf=x.pdf'], /--report format must be one of/],
+      [[CLEAN, '--output', 'x', '--report', 'json=x'], /two reports would be written to /],
       [[join(dir, 'missing.json')], /spec "default" could not be loaded/],
       [['--config', join(dir, 'missing.json')], /--config .* could not be read/],
       [[CLEAN, '--language', 'xx'], /unknown --language "xx"/],
