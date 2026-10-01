@@ -3,6 +3,7 @@ import {
   BASELINE_FORMAT,
   applyBaseline,
   fingerprinted,
+  prunedBaseline,
   readBaseline,
   toBaseline,
 } from '../src/audit/baseline.js'
@@ -72,6 +73,31 @@ describe('audit baseline', () => {
     expect(
       applyBaseline(report, { 'version-construct': ['/components/schemas/Pet'] }).fresh,
     ).toHaveLength(1)
+  })
+
+  it('returns the entries no finding matched, one per occurrence', () => {
+    const report = reportOf([finding('version-construct', '/components/schemas/Pet')])
+    const { stale } = applyBaseline(report, {
+      'operation-described': ['/paths/~1gone/get'],
+      'version-construct': ['/components/schemas/Pet', '/components/schemas/Pet'],
+    })
+    expect(stale).toEqual([
+      { ruleId: 'operation-described', dataPath: '/paths/~1gone/get' },
+      { ruleId: 'version-construct', dataPath: '/components/schemas/Pet' },
+    ])
+  })
+
+  it('prunes a baseline down to the findings it still knows, adding none', () => {
+    const report = reportOf([
+      finding('operation-described', '/paths/~1pets/post'),
+      finding('operation-described', '/paths/~1pets/delete'),
+    ])
+    const { report: marked } = applyBaseline(report, {
+      'operation-described': ['/paths/~1pets/post', '/paths/~1gone/get'],
+    })
+    expect(prunedBaseline([{ id: 'default', report: marked }]).specs).toEqual({
+      default: { 'operation-described': ['/paths/~1pets/post'] },
+    })
   })
 
   it('knows nothing for a spec the baseline does not list', () => {

@@ -19,8 +19,9 @@ const REPORT_VERSION = 1
 // `results`: [{ id, source, passed, gates, report, fresh, omitted? }] — one per
 // spec, as the CLI computes them; `omitted` counts what `--min-severity` and
 // `--only-new` left out of the report's findings. `baseline`: whether a
-// baseline was applied, which is when `newFindings` means something.
-export function toAuditJson(results, { passed, baseline, tool }) {
+// baseline was applied, which is when `newFindings` means something, and
+// `stale` its entries no finding matched: [{ spec, ruleId, dataPath }].
+export function toAuditJson(results, { passed, baseline, stale, tool }) {
   const fired = new Map()
   const specs = results.map(({ id, source, passed: specPassed, gates, report, fresh, omitted }) => {
     for (const category of report.categories) {
@@ -47,6 +48,14 @@ export function toAuditJson(results, { passed, baseline, tool }) {
       return [ruleId, { category, label, why, fix }]
     }),
   )
-  const report = { format: REPORT_FORMAT, version: REPORT_VERSION, tool, passed, specs, rules }
+  const report = {
+    format: REPORT_FORMAT,
+    version: REPORT_VERSION,
+    tool,
+    passed,
+    ...(baseline ? { staleBaseline: stale ?? [] } : {}),
+    specs,
+    rules,
+  }
   return `${JSON.stringify(report, null, 2)}\n`
 }

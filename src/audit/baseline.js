@@ -61,31 +61,52 @@ export function readBaseline(document) {
 }
 
 // One spec's report against that spec's entry of the baseline (absent: nothing
-// is known) → the report with every known finding marked `known: true`, and
-// the findings that are not, in report order.
+// is known) → the report with every known finding marked `known: true`, the
+// findings that are not, in report order, and the entries no finding matched
+// — `stale`: [{ ruleId, dataPath }], one per occurrence, in baseline order.
 export function applyBaseline(report, known = {}) {
   const remaining = new Map()
   for (const [ruleId, paths] of Object.entries(known)) {
-    for (const path of paths) {
-      const key = identity(ruleId, path)
-      remaining.set(key, (remaining.get(key) ?? 0) + 1)
+    for (const dataPath of paths) {
+      const key = identity(ruleId, dataPath)
+      const entry = remaining.get(key) ?? { ruleId, dataPath, left: 0 }
+      entry.left++
+      remaining.set(key, entry)
     }
   }
   const fresh = []
   const categories = report.categories.map((category) => ({
     ...category,
     findings: category.findings.map((finding) => {
-      const key = identity(finding.ruleId, finding.dataPath)
-      const left = remaining.get(key) ?? 0
-      if (!left) {
+      const entry = remaining.get(identity(finding.ruleId, finding.dataPath))
+      if (!entry?.left) {
         fresh.push(finding)
         return finding
       }
-      remaining.set(key, left - 1)
+      entry.left--
       return { ...finding, known: true }
     }),
   }))
-  return { report: { ...report, categories }, fresh }
+  const stale = [...remaining.values()].flatMap(({ ruleId, dataPath, left }) =>
+    Array.from({ length: left }, () => ({ ruleId, dataPath })),
+  )
+  return { report: { ...report, categories }, fresh, stale }
+}
+
+// What is left of a baseline once its stale entries are dropped: the known
+// findings of each spec the run audited — never a new one, which only
+// `--write-baseline` records. Specs the run did not audit are dropped with it.
+export function prunedBaseline(results) {
+  return toBaseline(
+    results.map(({ id, report }) => ({
+      id,
+      report: {
+        categories: report.categories.map((category) => ({
+          findings: category.findings.filter((finding) => finding.known),
+        })),
+      },
+    })),
+  )
 }
 
 // Every finding gains `fingerprint`: the hash of its baseline identity — spec,

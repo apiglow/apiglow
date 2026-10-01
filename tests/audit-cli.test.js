@@ -111,6 +111,52 @@ describe('apiglow audit', () => {
     )
   })
 
+  // docs/audit.md §8.3: an entry left behind would one day hide a new finding
+  // that happens to land on the same pointer.
+  it('fails on baseline entries that no longer occur, unless pruned or allowed', async () => {
+    const baseline = join(dir, 'audit-baseline.json')
+    await audit(PETSTORE, '--write-baseline', baseline)
+    const document = JSON.parse(await readFile(baseline, 'utf8'))
+    document.specs.default['parameter-described'].push('/paths/~1gone/get/parameters/0')
+    document.specs.retired = { 'operation-described': ['/paths/~1old/get'] }
+    await writeFile(baseline, JSON.stringify(document), 'utf8')
+
+    const stale = await audit(PETSTORE, '--baseline', baseline)
+    expect(stale.code).toBe(1)
+    expect(stale.stderr).toContain(
+      [
+        'FAIL  --baseline: 2 stale entr(ies), findings it lists that no longer occur — drop them with --prune-baseline <file>',
+        '  stale parameter-described — /paths/~1gone/get/parameters/0',
+        '  stale operation-described — [retired] /paths/~1old/get',
+      ].join('\n'),
+    )
+    const json = JSON.parse(
+      (await audit(PETSTORE, '--baseline', baseline, '--format', 'json')).stdout,
+    )
+    expect(json.passed).toBe(false)
+    expect(json.staleBaseline).toEqual([
+      {
+        spec: 'default',
+        ruleId: 'parameter-described',
+        dataPath: '/paths/~1gone/get/parameters/0',
+      },
+      { spec: 'retired', ruleId: 'operation-described', dataPath: '/paths/~1old/get' },
+    ])
+
+    const allowed = await audit(PETSTORE, '--baseline', baseline, '--allow-stale-baseline')
+    expect(allowed.code).toBe(0)
+    expect(allowed.stderr).toContain('— allowed by --allow-stale-baseline')
+
+    const pruned = join(dir, 'pruned.json')
+    const pruning = await audit(PETSTORE, '--baseline', baseline, '--prune-baseline', pruned)
+    expect(pruning.code).toBe(0)
+    expect(pruning.stderr).toMatch(/Baseline pruned of 2 stale entr\(ies\), written to /)
+    const clean = await audit(PETSTORE, '--baseline', pruned, '--fail-on', 'info')
+    expect(clean.code).toBe(0)
+    expect(clean.stderr).toContain('PASS  --baseline: no stale entry')
+    expect(JSON.parse(await readFile(pruned, 'utf8')).specs).not.toHaveProperty('retired')
+  })
+
   it('marks the known findings in the JSON report', async () => {
     const baseline = join(dir, 'audit-baseline.json')
     await audit(PETSTORE, '--write-baseline', baseline)
@@ -308,6 +354,8 @@ describe('apiglow audit', () => {
       [[CLEAN, '--report', 'json'], /--report takes <format>=<file>, got "json"/],
       [[CLEAN, '--min-severity', 'none'], /--min-severity must be one of error, warning, info/],
       [[CLEAN, '--only-new'], /--only-new needs a --baseline/],
+      [[CLEAN, '--prune-baseline', 'x.json'], /--prune-baseline needs a --baseline/],
+      [[CLEAN, '--allow-stale-baseline'], /--allow-stale-baseline needs a --baseline/],
       [
         [CLEAN, '--fail-on', 'info', '--min-severity', 'warning'],
         /--fail-on info would fail on findings/,

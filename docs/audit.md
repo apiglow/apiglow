@@ -699,6 +699,7 @@ npx apiglow audit --config apidoc.config.json
 | `--fail-on error\|warning\|info\|none` | a finding of that severity or a worse one | `error` |
 | `--min-grade A\|B\|C\|D\|F` | the aggregate grade is below it | off |
 | `--min-score 0-100` | the aggregate score is below it | off |
+| `--baseline <file>` | it lists findings that no longer occur (§8.3) | on with a baseline |
 
 Each check is reported on its own line (`PASS` / `FAIL`), and any failing
 check fails the run. A report with no scored category has nothing to
@@ -747,6 +748,16 @@ npx apiglow audit openapi.yaml --baseline audit-baseline.json
 - A file that is not a baseline this version writes is an error (exit
   status 2), never read as empty — which would fail every finding — nor as
   covering everything — which would pass a regression.
+- **Stale entries** — an entry no finding matches any more: the finding
+  was fixed, its rule switched off, its spec removed. They fail the run by
+  default, listed on stderr and in the JSON report
+  (`staleBaseline: [{ spec, ruleId, dataPath }]`): an entry left behind
+  would one day hide a new finding that happens to land on the same
+  pointer.
+  - `--prune-baseline <file>` writes the baseline without them — the known
+    findings of each audited spec, never a new one — and the check passes;
+    the file may be the `--baseline` itself.
+  - `--allow-stale-baseline` lists them and passes.
 
 ### 8.4 Reports for CI platforms
 

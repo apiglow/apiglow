@@ -18,6 +18,7 @@ import {
   applyBaseline,
   findingsOf,
   fingerprinted,
+  prunedBaseline,
   readBaseline,
   toBaseline,
 } from '../src/audit/baseline.js'
@@ -198,6 +199,10 @@ const USAGE = `Usage: apiglow audit <spec> [options]
   --min-score        0-100: fail below this score
   --baseline         a baseline file: --fail-on only counts findings it does not list
   --write-baseline   write the current findings to this file and pass
+  --prune-baseline   with --baseline: write it to this file without the entries
+                     no finding matches any more (stale)
+  --allow-stale-baseline
+                     with --baseline: do not fail on stale entries
   --format           text | json | markdown | sarif | github | codequality
                      (default: text)
   --output           write the report to this file instead of stdout
@@ -233,13 +238,16 @@ export async function main(args) {
     const gates = values['write-baseline']
       ? []
       : gateResults(report, { findings: fresh, ...options })
-    return { id, source, report: marked, fresh, gates, passed: gates.every((g) => g.passed) }
+    const stale = (applied?.stale ?? []).map((entry) => ({ spec: id, ...entry }))
+    return { id, source, report: marked, fresh, gates, passed: gates.every((g) => g.passed), stale }
   })
-  const passed = results.every((result) => result.passed)
+  const staleCheck = known ? checkStale(results, known, values) : null
+  const passed = results.every((result) => result.passed) && (staleCheck?.passed ?? true)
 
   const context = {
     passed,
     baseline: Boolean(known),
+    stale: staleCheck?.stale,
     tool: { name: 'apiglow', ...(await toolManifest()) },
   }
   let stdout = ''
@@ -258,7 +266,15 @@ export async function main(args) {
     const count = results.reduce((sum, result) => sum + findingsOf(result.report).length, 0)
     notes.push(`Baseline of ${count} finding(s) written to ${values['write-baseline']}`)
   } else {
-    notes.push(...verdictLines(results, { multi: results.length > 1, options, known }))
+    const multi = results.length > 1
+    notes.push(...verdictLines(results, { multi, options, known, staleCheck }))
+  }
+  if (values['prune-baseline']) {
+    const pruned = prunedBaseline(results)
+    await write(values['prune-baseline'], `${JSON.stringify(pruned, null, 2)}\n`)
+    notes.push(
+      `Baseline pruned of ${staleCheck.stale.length} stale entr(ies), written to ${values['prune-baseline']}`,
+    )
   }
 
   return {
@@ -281,6 +297,8 @@ function parse(args) {
         'audit-config': { type: 'string' },
         baseline: { type: 'string' },
         'write-baseline': { type: 'string' },
+        'prune-baseline': { type: 'string' },
+        'allow-stale-baseline': { type: 'boolean', default: false },
         format: { type: 'string' },
         output: { type: 'string' },
         report: { type: 'string', multiple: true, default: [] },
@@ -308,6 +326,9 @@ function checkOptions(values, positionals) {
   if (values.baseline && values['write-baseline']) {
     refuse('--baseline and --write-baseline do not combine: writing records every finding')
   }
+  for (const name of ['prune-baseline', 'allow-stale-baseline', 'only-new']) {
+    if (values[name] && !values.baseline) refuse(`--${name} needs a --baseline`)
+  }
   const oneOf = (name, allowed) => {
     if (values[name] !== undefined && !allowed.includes(values[name])) {
       refuse(`--${name} must be one of ${allowed.join(', ')}, got "${values[name]}"`)
@@ -317,8 +338,6 @@ function checkOptions(values, positionals) {
   oneOf('min-grade', GRADE_ORDER)
   oneOf('format', FORMATS)
   oneOf('min-severity', SEVERITIES)
-  if (values['only-new'] && !values.baseline)
-    refuse('--only-new needs a --baseline to tell new findings apart')
   // A check failing on findings the report does not show leaves the reader of
   // a red job with nothing to read.
   const minSeverity = values['min-severity']
@@ -458,11 +477,12 @@ function listing(result, { minSeverity, onlyNew }) {
   return { ...result, report: { ...result.report, categories }, omitted }
 }
 
-function render(results, { format, passed, baseline, tool }) {
+function render(results, { format, passed, baseline, stale, tool }) {
   if (format === 'json') {
     return toAuditJson(results, {
       passed,
       baseline,
+      stale,
       tool: { name: tool.name, version: tool.version },
     })
   }
@@ -483,9 +503,30 @@ function render(results, { format, passed, baseline, tool }) {
     .join('\n')
 }
 
+// Baseline entries no finding matches any more (docs/audit.md §8.3): those of
+// the audited specs, and every entry of a spec the run did not audit. A check
+// of its own, failing by default — an entry left behind would one day hide a
+// new finding that happens to land on the same pointer.
+function checkStale(results, known, values) {
+  const audited = new Set(results.map((result) => result.id))
+  const stale = [
+    ...results.flatMap((result) => result.stale),
+    ...Object.entries(known)
+      .filter(([spec]) => !audited.has(spec))
+      .flatMap(([spec, rules]) =>
+        Object.entries(rules).flatMap(([ruleId, paths]) =>
+          paths.map((dataPath) => ({ spec, ruleId, dataPath })),
+        ),
+      ),
+  ]
+  const pruned = Boolean(values['prune-baseline'])
+  const allowed = values['allow-stale-baseline']
+  return { stale, pruned, allowed, passed: !stale.length || pruned || allowed }
+}
+
 // The run's account on stderr: each check and how it went, then — when
 // `--fail-on` failed — the findings that made it fail.
-function verdictLines(results, { multi, options, known }) {
+function verdictLines(results, { multi, options, known, staleCheck }) {
   const lines = []
   for (const { id, fresh, gates } of results) {
     const prefix = multi ? `[${id}] ` : ''
@@ -506,7 +547,8 @@ function verdictLines(results, { multi, options, known }) {
       lines.push(`${prefix}  … and ${failing.length - LISTED} more, all in the report`)
     }
   }
-  const failed = results.some((result) => !result.passed)
+  if (staleCheck) lines.push(...staleLines(staleCheck, multi ? null : results[0]?.id))
+  const failed = results.some((result) => !result.passed) || staleCheck?.passed === false
   lines.push(failed ? 'Audit failed' : 'Audit passed')
   return lines
 }
@@ -522,6 +564,23 @@ function sarifCapLines(results) {
       ({ id, count }) =>
         `${multi ? `[${id}] ` : ''}sarif: ${SARIF_RESULT_CAP} of ${count} results written, new and most severe first — GitHub reads no more per run`,
     )
+}
+
+// The spec is named unless it is the run's only one.
+function staleLines({ stale, pruned, allowed }, only) {
+  if (!stale.length) return ['PASS  --baseline: no stale entry']
+  const count = `${stale.length} stale entr(ies), findings it lists that no longer occur`
+  const verdict = pruned
+    ? `PASS  --baseline: ${count} — pruned`
+    : allowed
+      ? `PASS  --baseline: ${count} — allowed by --allow-stale-baseline`
+      : `FAIL  --baseline: ${count} — drop them with --prune-baseline <file>`
+  const lines = [verdict]
+  for (const { spec, ruleId, dataPath } of stale.slice(0, LISTED)) {
+    lines.push(`  stale ${ruleId} — ${spec === only ? '' : `[${spec}] `}${dataPath}`)
+  }
+  if (stale.length > LISTED) lines.push(`  … and ${stale.length - LISTED} more`)
+  return lines
 }
 
 function describeGate(gate, known) {
