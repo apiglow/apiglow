@@ -575,6 +575,53 @@ describe('document metadata', () => {
     )
   })
 
+  // OpenAPI 3.1+: a relative URL resolves against the referring document's
+  // URI — its `$self` when it declares one, else where it was read from —
+  // never against the page that happens to show it.
+  it('resolves a relative externalValue against the document, not the page', () => {
+    const doc = (extra = {}) => ({
+      openapi: '3.1.0',
+      info: { title: 'x', version: '1' },
+      ...extra,
+      paths: {
+        '/pets': {
+          get: {
+            responses: {
+              200: {
+                description: 'ok',
+                content: {
+                  'application/json': {
+                    examples: {
+                      near: { externalValue: 'examples/pets.json' },
+                      far: { externalValue: 'https://cdn.example.com/pets.json' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    const examplesOf = (model) =>
+      Object.fromEntries(
+        model.operations[0].responses[0].contents[0].examples.map((ex) => [ex.name, ex.value]),
+      )
+    const read = buildModel(doc(), { documentUrl: 'https://api.example.com/specs/openapi.json' })
+    expect(examplesOf(read)).toEqual({
+      near: 'https://api.example.com/specs/examples/pets.json',
+      far: 'https://cdn.example.com/pets.json',
+    })
+    const self = buildModel(doc(), {
+      baseUri: 'https://mirror.example.com/v2/openapi.json',
+      documentUrl: 'https://api.example.com/specs/openapi.json',
+    })
+    expect(examplesOf(self).near).toBe('https://mirror.example.com/v2/examples/pets.json')
+    // Read off the disk (the CLI): no web address to resolve against.
+    const onDisk = buildModel(doc(), { documentUrl: 'file:///srv/specs/openapi.json' })
+    expect(examplesOf(onDisk).near).toBe('examples/pets.json')
+  })
+
   it('drops a non-http(s) externalDocs url rather than rendering it', async () => {
     const model = await metadata()
     // The tag survives; only the link it could not be trusted with is gone.

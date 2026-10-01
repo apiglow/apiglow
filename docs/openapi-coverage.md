@@ -52,6 +52,12 @@ Normalized and rendered:
   flow, `oauth2MetadataUrl`, security-scheme `deprecated`,
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
   `itemEncoding`, XML `nodeType`.
+- **Relative URLs in the document** — an example's `externalValue`,
+  `externalDocs.url`, `license.url`, `contact.url`, `termsOfService` —
+  resolve against the document's own URI (its `$self`, else the URL it was
+  read from), the 3.1+ rule applied to every version; never against the page
+  showing them. A document the CLI reads off the disk keeps them as written
+  (`externalUrl` in `src/openapi/model.js`).
 - **Enum value descriptions**: `x-enum-descriptions` (openapi-generator's
   list parallel to `enum`) and `x-enumDescriptions` (Redocly's map from value
   to text), either read in either shape, and the JSON Schema idiom — a

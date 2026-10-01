@@ -286,7 +286,7 @@ export async function loadApiModel(url, options = {}) {
   // Stage boundaries around normalization (`loaded` runs it): dereference,
   // normalize and the caller's first render each get their own task.
   await nextTask()
-  const result = loaded(sourceOf, dereferenced, { ...options, baseUri }, overlays)
+  const result = loaded(sourceOf, dereferenced, { ...options, baseUri, documentUrl: url }, overlays)
   await nextTask()
   return result
 }

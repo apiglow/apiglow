@@ -144,6 +144,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A relative link in the schema — an external example (`externalValue`), an
+  `externalDocs`, license or contact URL — now points next to the schema, as
+  OpenAPI 3.1 says, instead of next to the documentation page.
 - A `[link](#errors)` in a description or a docs page now scrolls to the
   element with that id, on the page you are reading. It used to send you back
   to the home page.

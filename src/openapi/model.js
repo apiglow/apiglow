@@ -50,7 +50,8 @@ export function* pathItemOperations(pathItem) {
 // `baseUri`: the document's own URI, resolved by the loader from 3.2's `$self`
 // (absent when the document declares none) — the model carries it so the shell
 // resolves relative servers against it without ever reading the raw document.
-export function normalizeDocument(raw, { hide, baseUri } = {}) {
+// `documentUrl`: where the loader read the document from (absent inline).
+export function normalizeDocument(raw, { hide, baseUri, documentUrl } = {}) {
   const hidden = compileHideRules(hide)
   // A hidden tag hides all operations that carry it: it's the
   // most economical way to remove an entire family of internal endpoints.
@@ -88,6 +89,9 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     // operation exists: a link points at an operation as often forward as
     // backward, and the first pass only knows what it has already built.
     links: [],
+    // What a relative URL in the document resolves against (OpenAPI 3.1+: the
+    // referring document's URI, not the page showing it).
+    linkBase: linkBase(baseUri ?? documentUrl ?? globalThis.location?.href),
   }
 
   // What hiding removed, counted as it happens. A hidden operation leaves no
@@ -149,7 +153,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
 
   resolveLinkTargets(ctx.links, raw, [...operations, ...webhooks])
 
-  const tags = collectTags(raw, operations, hiddenTags)
+  const tags = collectTags(raw, operations, hiddenTags, ctx.linkBase)
   attachLabels(tags, [...operations, ...webhooks])
 
   return prune({
@@ -167,8 +171,8 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     // from — a relative `$self` means "next to me", and only the loader knows
     // where that is.
     baseUri: baseUri ?? undefined,
-    info: normalizeInfo(raw.info),
-    externalDocs: normalizeExternalDocs(raw.externalDocs),
+    info: normalizeInfo(raw.info, ctx.linkBase),
+    externalDocs: normalizeExternalDocs(raw.externalDocs, ctx.linkBase),
     servers: objectsOf(raw.servers).map(normalizeServer),
     tags,
     groups: buildGroups(tags, operations),
@@ -186,7 +190,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
 
 // Who publishes this API, under what terms, and where to ask. `summary` is
 // 3.1; everything else exists since 3.0 and was simply dropped until now.
-function normalizeInfo(raw) {
+function normalizeInfo(raw, base) {
   const info = raw && typeof raw === 'object' ? raw : {}
   const contact = info.contact && typeof info.contact === 'object' ? info.contact : null
   const license = info.license && typeof info.license === 'object' ? info.license : null
@@ -199,11 +203,11 @@ function normalizeInfo(raw) {
     version: info.version ?? '',
     summary: info.summary,
     description: info.description,
-    termsOfService: externalUrl(info.termsOfService),
+    termsOfService: externalUrl(info.termsOfService, base),
     contact: contact
       ? orUndefined({
           name: textOrUndefined(contact.name),
-          url: externalUrl(contact.url),
+          url: externalUrl(contact.url, base),
           email: textOrUndefined(contact.email),
         })
       : undefined,
@@ -211,7 +215,7 @@ function normalizeInfo(raw) {
       ? orUndefined({
           name: textOrUndefined(license.name),
           identifier,
-          url: identifier ? undefined : externalUrl(license.url),
+          url: identifier ? undefined : externalUrl(license.url, base),
         })
       : undefined,
   })
@@ -220,24 +224,38 @@ function normalizeInfo(raw) {
 // External Documentation Object, at any of the four levels that declares one
 // (root, tag, operation, schema). No URL, nothing to render: the description
 // alone points nowhere.
-function normalizeExternalDocs(raw) {
+function normalizeExternalDocs(raw, base) {
   if (!raw || typeof raw !== 'object') return undefined
-  const url = externalUrl(raw.url)
+  const url = externalUrl(raw.url, base)
   return url ? prune({ description: textOrUndefined(raw.description), url }) : undefined
 }
+
+const ABSOLUTE_URL = /^[a-z][a-z\d+.-]*:/i
 
 // Outbound URLs are restricted to http(s) (rule 5): a `javascript:` or `data:`
 // href in a rendered link is script execution smuggled through a description
 // field. Anything else is dropped silently here.
-function externalUrl(value) {
+// A relative one comes back resolved against `base`, the document's own URL:
+// left relative, the link would resolve against the page showing it. Without
+// an http(s) base (a schema read off the disk by the CLI), it stays as written.
+function externalUrl(value, base = null) {
   if (typeof value !== 'string' || !value.trim()) return undefined
+  const text = value.trim()
   try {
-    // Base only settles relative URLs, which an anchor would resolve against
-    // the page anyway; the placeholder keeps the model pure in Node.
-    const url = new URL(value, globalThis.location?.href ?? 'https://schema.invalid/')
-    return url.protocol === 'http:' || url.protocol === 'https:' ? value.trim() : undefined
+    const url = new URL(text, 'https://schema.invalid/')
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined
+    return base && !ABSOLUTE_URL.test(text) ? new URL(text, base).href : text
   } catch {
     return undefined
+  }
+}
+
+function linkBase(candidate) {
+  try {
+    const url = new URL(candidate, globalThis.location?.href)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
   }
 }
 
@@ -272,7 +290,7 @@ function reverseAllOf(raw) {
 
 // Tags declared first (schema order), then tags referenced by
 // operations without being declared, in encounter order.
-function collectTags(raw, operations, hiddenTags) {
+function collectTags(raw, operations, hiddenTags, base) {
   const seen = new Set()
   const tags = []
   for (const tag of objectsOf(raw.tags)) {
@@ -287,7 +305,7 @@ function collectTags(raw, operations, hiddenTags) {
         description: tag.description,
         parent: textOrUndefined(tag.parent),
         kind: textOrUndefined(tag.kind),
-        externalDocs: normalizeExternalDocs(tag.externalDocs),
+        externalDocs: normalizeExternalDocs(tag.externalDocs, base),
       }),
     )
   }
@@ -446,7 +464,7 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
     summary: op.summary,
     description: op.description,
     deprecated: op.deprecated === true || undefined,
-    externalDocs: normalizeExternalDocs(op.externalDocs),
+    externalDocs: normalizeExternalDocs(op.externalDocs, ctx.linkBase),
     tags: listOf(op.tags),
     parameters,
     requestBody: op.requestBody ? normalizeRequestBody(op.requestBody, ctx) : null,
@@ -533,7 +551,7 @@ function normalizeParameter(raw, ctx) {
     deprecated: raw.deprecated === true || undefined,
     description: raw.description,
     schema: normalizeSchema(schemaRaw, ctx),
-    examples: normalizeExamples(raw, schemaRaw),
+    examples: normalizeExamples(raw, schemaRaw, ctx.linkBase),
     mediaType: viaContent?.[0],
   })
 }
@@ -555,7 +573,7 @@ function normalizeContent(content, ctx) {
       // `itemSchema` describes ONE element of the stream, not the whole body; it can
       // coexist with `schema` or replace it.
       itemSchema: mt?.itemSchema !== undefined ? normalizeSchema(mt.itemSchema, ctx) : undefined,
-      examples: normalizeExamples(mt, mt?.schema),
+      examples: normalizeExamples(mt, mt?.schema, ctx.linkBase),
       ...normalizeEncodings(mt, ctx),
     }),
   )
@@ -616,7 +634,7 @@ function normalizeEncodingHeaders(raw, ctx) {
     .filter(([name, h]) => h && typeof h === 'object' && name.toLowerCase() !== 'content-type')
     .map(([name, h]) => {
       const schema = normalizeSchema(h.schema, ctx)
-      const examples = normalizeExamples(h, h.schema)
+      const examples = normalizeExamples(h, h.schema, ctx.linkBase)
       return prune({
         name,
         description: h.description,
@@ -756,7 +774,7 @@ export function pointerTarget(raw, ref) {
 // Unifies the example sources, by decreasing priority: named `examples`
 // (media type / parameter — map in both versions), single `example`,
 // then at schema level: `examples` array (3.1) and `example` (3.0).
-function normalizeExamples(container, schemaRaw) {
+function normalizeExamples(container, schemaRaw, base) {
   if (
     container?.examples &&
     typeof container.examples === 'object' &&
@@ -776,7 +794,7 @@ function normalizeExamples(container, schemaRaw) {
         // malformed schemas.
         value:
           exampleKind(ex) === 'external'
-            ? externalUrl(ex.externalValue)
+            ? externalUrl(ex.externalValue, base)
             : firstDefined(ex?.value, ex?.dataValue, ex?.serializedValue),
         // Which form it came from, because the value's JS type cannot say it
         // and rendering it wrong is not cosmetic: a `serializedValue` is text
@@ -956,7 +974,7 @@ function buildSchemaNode(node, raw, ctx) {
   node.deprecated = raw.deprecated === true || undefined
   node.readOnly = raw.readOnly === true || undefined
   node.writeOnly = raw.writeOnly === true || undefined
-  node.externalDocs = normalizeExternalDocs(raw.externalDocs)
+  node.externalDocs = normalizeExternalDocs(raw.externalDocs, ctx.linkBase)
 
   // 3.1: `const` ≡ single-value enum — unified into `enum`.
   // A non-array `enum` (seen in the wild: PHP FQCN as a string) is ignored — letting
