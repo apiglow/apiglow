@@ -1,5 +1,11 @@
 import { t } from '../i18n/index.js'
-import { identityLines, profileLines, scopeLines, severityLine } from './audit-markdown.js'
+import {
+  identityLines,
+  omittedLines,
+  profileLines,
+  scopeLines,
+  severityLine,
+} from './audit-markdown.js'
 
 // The audit report as `apiglow audit` prints it in a terminal or a CI log
 // (docs/audit.md §8). Folded by rule like the page rather than listed like the
@@ -8,7 +14,8 @@ import { identityLines, profileLines, scopeLines, severityLine } from './audit-m
 // log of two thousand findings stays two thousand lines rather than six.
 // Resolved through `t()` for the same reason as the Markdown export: every
 // message and every rationale exists only as an i18n string.
-export function toAuditText(report) {
+// `omitted`: as for the Markdown export.
+export function toAuditText(report, { omitted } = {}) {
   const title = report.api.title
   const lines = [`${t('audit.title')}${title ? ` — ${title}` : ''}`]
   lines.push(
@@ -25,6 +32,7 @@ export function toAuditText(report) {
     ...scopeLines(report),
     ...profileLines(report),
     severityLine(report.counts) || t('audit.noFinding'),
+    ...omittedLines(omitted),
     '',
   )
 

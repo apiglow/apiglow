@@ -16,12 +16,13 @@ import { t } from '../i18n/index.js'
 const REPORT_FORMAT = 'apiglow-audit-report'
 const REPORT_VERSION = 1
 
-// `results`: [{ id, source, passed, gates, report, fresh }] — one per spec, as
-// the CLI computes them. `baseline`: whether a baseline was applied, which is
-// when `newFindings` means something.
+// `results`: [{ id, source, passed, gates, report, fresh, omitted? }] — one per
+// spec, as the CLI computes them; `omitted` counts what `--min-severity` and
+// `--only-new` left out of the report's findings. `baseline`: whether a
+// baseline was applied, which is when `newFindings` means something.
 export function toAuditJson(results, { passed, baseline, tool }) {
   const fired = new Map()
-  const specs = results.map(({ id, source, passed: specPassed, gates, report, fresh }) => {
+  const specs = results.map(({ id, source, passed: specPassed, gates, report, fresh, omitted }) => {
     for (const category of report.categories) {
       for (const finding of category.findings) fired.set(finding.ruleId, finding)
     }
@@ -31,6 +32,7 @@ export function toAuditJson(results, { passed, baseline, tool }) {
       passed: specPassed,
       gates,
       ...(baseline ? { newFindings: fresh.length } : {}),
+      ...(omitted ? { omitted } : {}),
       report,
     }
   })

@@ -24,6 +24,7 @@ import {
 import { readAuditConfig } from '../src/audit/config.js'
 import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.js'
 import { auditSchema } from '../src/audit/engine.js'
+import { SEVERITIES } from '../src/audit/constants.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
 import { hostConfig } from '../src/config.js'
 import {
@@ -203,6 +204,9 @@ const USAGE = `Usage: apiglow audit <spec> [options]
   --report           <format>=<file>: also write the report in this format to
                      this file; repeatable. With --report alone, stdout stays
                      empty unless --format or --output asks for a report too
+  --min-severity     error | warning | info: list only the findings this severe
+                     or worse, in every report (default: info)
+  --only-new         with --baseline: list only the findings it does not know
   --language         en | fr: language of the report (default: en)
 
 Exit status: 0 passed, 1 a check failed, 2 the audit could not run.`
@@ -239,14 +243,15 @@ export async function main(args) {
     tool: { name: 'apiglow', ...(await toolManifest()) },
   }
   let stdout = ''
+  const listed = results.map((result) => listing(result, options))
   for (const { format, file } of options.reports) {
-    const output = render(results, { format, ...context })
+    const output = render(listed, { format, ...context })
     if (file) await write(file, output)
     else stdout = output.replace(/\n$/, '')
   }
   const notes = warnings.map((warning) => `warning: ${warning}`)
   if (options.reports.some((target) => target.format === 'sarif'))
-    notes.push(...sarifCapLines(results))
+    notes.push(...sarifCapLines(listed))
   if (values['write-baseline']) {
     const baseline = toBaseline(results)
     await write(values['write-baseline'], `${JSON.stringify(baseline, null, 2)}\n`)
@@ -279,6 +284,8 @@ function parse(args) {
         format: { type: 'string' },
         output: { type: 'string' },
         report: { type: 'string', multiple: true, default: [] },
+        'min-severity': { type: 'string' },
+        'only-new': { type: 'boolean', default: false },
         language: { type: 'string', default: 'en' },
         help: { type: 'boolean', default: false },
       },
@@ -309,6 +316,22 @@ function checkOptions(values, positionals) {
   oneOf('fail-on', FAIL_ON)
   oneOf('min-grade', GRADE_ORDER)
   oneOf('format', FORMATS)
+  oneOf('min-severity', SEVERITIES)
+  if (values['only-new'] && !values.baseline)
+    refuse('--only-new needs a --baseline to tell new findings apart')
+  // A check failing on findings the report does not show leaves the reader of
+  // a red job with nothing to read.
+  const minSeverity = values['min-severity']
+  const failOn = values['fail-on']
+  if (
+    minSeverity &&
+    failOn !== 'none' &&
+    SEVERITIES.indexOf(failOn) > SEVERITIES.indexOf(minSeverity)
+  ) {
+    refuse(
+      `--fail-on ${failOn} would fail on findings --min-severity ${minSeverity} leaves out of the report`,
+    )
+  }
   let minScore
   if (values['min-score'] !== undefined) {
     minScore = Number(values['min-score'])
@@ -317,9 +340,11 @@ function checkOptions(values, positionals) {
     }
   }
   return {
-    failOn: values['fail-on'],
+    failOn,
     minGrade: values['min-grade'],
     minScore,
+    minSeverity,
+    onlyNew: values['only-new'],
     reports: reportTargets(values, refuse),
   }
 }
@@ -413,6 +438,26 @@ async function write(path, content) {
   }
 }
 
+// What the reports list under `--min-severity` and `--only-new`, and how many
+// findings each filter left out. The counts, the grade and the checks keep
+// reading the whole report: a filter changes what is shown, never the verdict.
+function listing(result, { minSeverity, onlyNew }) {
+  if (!minSeverity && !onlyNew) return result
+  const floor = SEVERITIES.indexOf(minSeverity ?? 'info')
+  const omitted = { lessSevere: 0, known: 0 }
+  const kept = (finding) => {
+    if (SEVERITIES.indexOf(finding.severity) > floor) omitted.lessSevere++
+    else if (onlyNew && finding.known) omitted.known++
+    else return true
+    return false
+  }
+  const categories = result.report.categories.map((category) => ({
+    ...category,
+    findings: category.findings.filter(kept),
+  }))
+  return { ...result, report: { ...result.report, categories }, omitted }
+}
+
 function render(results, { format, passed, baseline, tool }) {
   if (format === 'json') {
     return toAuditJson(results, {
@@ -426,8 +471,11 @@ function render(results, { format, passed, baseline, tool }) {
   if (format === 'codequality') return toAuditCodeQuality(results)
   const multi = results.length > 1
   return results
-    .map(({ id, report }) => {
-      const body = format === 'markdown' ? toAuditMarkdown(report) : toAuditText(report)
+    .map(({ id, report, omitted }) => {
+      const body =
+        format === 'markdown'
+          ? toAuditMarkdown(report, { omitted })
+          : toAuditText(report, { omitted })
       // A multi-spec install's reports follow one another: the spec id is what
       // the config, the baseline and the routes call each of them.
       return multi ? `${format === 'markdown' ? `<!-- spec: ${id} -->` : `[${id}]`}\n${body}` : body

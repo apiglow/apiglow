@@ -34,7 +34,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   One run writes several of them with `--report <format>=<file>`, including
   the formats CI platforms display themselves: SARIF for GitHub code
   scanning, GitHub annotations on the pull request's diff, GitLab Code
-  Quality for the merge-request widget.
+  Quality for the merge-request widget. `--min-severity` and `--only-new`
+  trim what a report lists without changing the verdict.
   Every finding is placed at `file:line:column` in the file you edit, through
   `$ref`s into other files too;
   `--config` audits what your documentation shows, overlays and multi-spec

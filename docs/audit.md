@@ -646,6 +646,7 @@ npx apiglow audit --config apidoc.config.json
     finding needs nothing but the file.
   - `newFindings` is present only with `--baseline`, and so is
     `known: true` on the findings the baseline lists.
+  - `omitted` is present only with `--min-severity` or `--only-new`.
 - **Positions**: every finding of a schema read from a file carries
   `position: { file, line, column }` — where its node sits in the file the
   author edits — printed as `file:line:column` in the text and Markdown
@@ -668,6 +669,18 @@ npx apiglow audit --config apidoc.config.json
   the job summary, without auditing twice. `--format`/`--output` stay the
   shorthand for the stdout report; with `--report` alone, stdout stays
   empty. Two reports aimed at one file are refused.
+- **What a report lists**, in every format: `--min-severity
+  error|warning|info` keeps the findings that severe or worse — the
+  GitHub REST schema yields some 33 600 findings, 32 500 of them `info`;
+  `--only-new`, with `--baseline`, keeps those the baseline does not list.
+  - The counts, the scores, the grade and every check still read the whole
+    report: a filter changes what is shown, never the verdict. Text and
+    Markdown say how many findings each filter left out; JSON has it as
+    `omitted: { lessSevere, known }` on each spec.
+  - Fingerprints are computed before any filter, so a finding keeps its id
+    whatever the run lists.
+  - `--fail-on` less severe than `--min-severity` is refused: a job would
+    fail on findings its report does not show.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).
   The command's own lines on stderr stay English, like the bake's.

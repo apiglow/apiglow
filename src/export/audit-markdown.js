@@ -14,7 +14,9 @@ import { t } from '../i18n/index.js'
 // `at` is the moment the report is handed over, injected rather than read here:
 // the generator stays a pure function of its arguments, which is what makes it
 // snapshot-testable like the others.
-export function toAuditMarkdown(report, { at = new Date() } = {}) {
+// `omitted`: what the CLI's `--min-severity` / `--only-new` left out of the
+// listing (docs/audit.md §8.4) — the counts above it still cover everything.
+export function toAuditMarkdown(report, { at = new Date(), omitted } = {}) {
   const title = report.api.title
   const lines = [`# ${t('audit.title')}${title ? ` — ${title}` : ''}`, '']
 
@@ -42,6 +44,8 @@ export function toAuditMarkdown(report, { at = new Date() } = {}) {
 
   const counts = severityLine(report.counts)
   lines.push(counts || t('audit.noFinding'), '')
+  const unlisted = omittedLines(omitted)
+  if (unlisted.length) lines.push(...unlisted, '')
 
   for (const category of report.categories) {
     const scored = t('audit.scoreOf', {
@@ -118,6 +122,13 @@ export function profileDetail(profile) {
     rules: Object.keys(profile.rules).length,
     overrides: profile.overrides,
   })
+}
+
+export function omittedLines({ lessSevere = 0, known = 0 } = {}) {
+  return [
+    lessSevere ? t('audit.omitted.lessSevere', { n: lessSevere }) : null,
+    known ? t('audit.omitted.known', { n: known }) : null,
+  ].filter(Boolean)
 }
 
 export function severityLine(counts) {

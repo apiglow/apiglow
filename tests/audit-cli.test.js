@@ -198,6 +198,52 @@ describe('apiglow audit', () => {
     })
   })
 
+  it('lists only what --min-severity keeps, the verdict still on the whole report', async () => {
+    const full = JSON.parse((await audit(PETSTORE, '--format', 'json')).stdout).specs[0]
+    const { stdout, code } = await audit(PETSTORE, '--format', 'json', '--min-severity', 'warning')
+    const [spec] = JSON.parse(stdout).specs
+    const listed = spec.report.categories.flatMap((category) => category.findings)
+    expect(listed.length).toBeGreaterThan(0)
+    expect(listed.every((finding) => finding.severity === 'warning')).toBe(true)
+    expect(spec.omitted).toEqual({ lessSevere: full.report.counts.info, known: 0 })
+    // The counts and the grade describe the document, not the listing.
+    expect(spec.report.counts).toEqual(full.report.counts)
+    expect(spec.report.grade).toBe(full.report.grade)
+    expect(code).toBe(0)
+
+    const text = (await audit(PETSTORE, '--min-severity', 'warning')).stdout
+    expect(text).toContain(
+      `${full.report.counts.info} less severe finding(s) not listed in this report.`,
+    )
+    expect(text).not.toContain('[property-described]')
+  })
+
+  it('lists only the new findings with --only-new, fingerprints unchanged', async () => {
+    const baseline = join(dir, 'audit-baseline.json')
+    await audit(PETSTORE, '--write-baseline', baseline)
+    const changed = JSON.parse(await readFile(PETSTORE, 'utf8'))
+    changed.paths['/pets'].get.parameters.push({
+      name: 'sort',
+      in: 'query',
+      schema: { type: 'string' },
+    })
+    const next = join(dir, 'next.json')
+    await writeFile(next, JSON.stringify(changed), 'utf8')
+
+    const all = JSON.parse((await audit(next, '--format', 'json', '--baseline', baseline)).stdout)
+    const only = JSON.parse(
+      (await audit(next, '--format', 'json', '--baseline', baseline, '--only-new')).stdout,
+    )
+    const findingsOf = (json) => json.specs[0].report.categories.flatMap((c) => c.findings)
+    const fresh = findingsOf(all).filter((finding) => !finding.known)
+    expect(findingsOf(only)).toEqual(fresh)
+    expect(only.specs[0].omitted.known).toBe(findingsOf(all).length - 1)
+    const text = (await audit(next, '--baseline', baseline, '--only-new')).stdout
+    expect(text).toMatch(
+      /\d+ finding\(s\) the baseline already accepts not listed in this report\./,
+    )
+  })
+
   it('reports in the language it is asked for', async () => {
     const { stdout } = await audit(CLEAN, '--language', 'fr')
     expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
@@ -260,6 +306,12 @@ describe('apiglow audit', () => {
       [[CLEAN, '--format', 'pdf'], /--format must be one of text, json, markdown, sarif/],
       [[CLEAN, '--baseline', 'a', '--write-baseline', 'b'], /do not combine/],
       [[CLEAN, '--report', 'json'], /--report takes <format>=<file>, got "json"/],
+      [[CLEAN, '--min-severity', 'none'], /--min-severity must be one of error, warning, info/],
+      [[CLEAN, '--only-new'], /--only-new needs a --baseline/],
+      [
+        [CLEAN, '--fail-on', 'info', '--min-severity', 'warning'],
+        /--fail-on info would fail on findings/,
+      ],
       [[CLEAN, '--report', 'pdf=x.pdf'], /--report format must be one of/],
       [[CLEAN, '--output', 'x', '--report', 'json=x'], /two reports would be written to /],
       [[join(dir, 'missing.json')], /spec "default" could not be loaded/],

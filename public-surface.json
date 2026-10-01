@@ -127,6 +127,8 @@
     "audit.intro",
     "audit.jump",
     "audit.noFinding",
+    "audit.omitted.known",
+    "audit.omitted.lessSevere",
     "audit.open",
     "audit.profile.custom",
     "audit.profile.detail",
