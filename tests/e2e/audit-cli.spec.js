@@ -4,6 +4,7 @@
 // dependencies from node_modules and its catalogs from dist/i18n/, and only
 // here is the exit status a real process's.
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
@@ -12,6 +13,7 @@ import { expect, test } from '@playwright/test'
 const exec = promisify(execFile)
 const repo = fileURLToPath(new URL('../../', import.meta.url))
 const CLI = join(repo, 'dist/cli.js')
+const pkg = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'))
 
 // → { stdout, stderr, code }, whatever the exit status: a failing check is an
 // outcome under test here, not an error.
@@ -74,3 +76,11 @@ test('explains its rules from the bundle, in the shipped catalogs too', async ()
   expect(explained.stdout).toContain('Comment corriger')
 })
 
+// The skill file an agent installs to run the audit loop (docs/audit.md §8.5)
+// is part of the package: a skill the tarball does not carry is a dead link in
+// the docs.
+test('ships the agent skill in the package', async ({ request }) => {
+  const skill = await request.get(`/npm/${pkg.name}@${pkg.version}/skills/apiglow-audit/SKILL.md`)
+  expect(skill.status()).toBe(200)
+  expect(await skill.text()).toMatch(/^---\nname: apiglow-audit\n/)
+})

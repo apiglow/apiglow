@@ -104,6 +104,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   fix it, its severity and options — and `--list-rules` prints them all as
   JSON. The JSON report now carries each rule's message template next to
   its rationale and fix.
+- The npm package ships an agent skill, `skills/apiglow-audit/SKILL.md`:
+  drop it where your coding agent reads skills and it runs the audit, fixes
+  the findings and audits again — without inventing what your API does, and
+  without silencing a rule on its own.
 - An audit rule can take options, set next to its severity:
   `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
 - Every audit rule now says how to fix what it found, next to why it matters:

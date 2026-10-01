@@ -1493,3 +1493,12 @@ audit, fix, audit again until every check passes; with a baseline,
 npx apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
 ```
 
+The package ships that loop as an agent skill —
+`skills/apiglow-audit/SKILL.md`, in the Agent Skills format (a `SKILL.md`
+with a `name` and a `description` in its front matter). Copy the folder
+where the agent reads skills (`.claude/skills/` for Claude Code, for
+instance) from `node_modules/apiglow/skills/`, or from the repository. Beyond
+the commands, it holds what an agent must not do on its own: invent what
+the API does to fill a description or an example, or make the run pass by
+switching a rule off, writing a baseline or lowering `--fail-on` — each is
+the owner's decision.

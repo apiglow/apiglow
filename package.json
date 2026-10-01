@@ -26,7 +26,8 @@
     "url": "https://github.com/apiglow/apiglow/issues"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "exports": {
     ".": "./dist/app.js",
