@@ -9,9 +9,11 @@ import { pointer } from '../pointer.js'
 // value silently does nothing.
 //
 // A field a LATER version introduced is `version-construct`'s, which says which
-// version to declare; a Schema Object is open to unknown keywords in 3.1, and
-// a misspelled one is `schema-keyword-typo`'s; a Reference Object's extra keys
-// are `ref-siblings`'; a Header's `name` and `in` `header-object-fields`'.
+// version to declare — a Media Type's `$ref` before 3.2 included (the walk
+// types it a Reference of that version); a Schema Object is open to unknown
+// keywords in 3.1, and a misspelled one is `schema-keyword-typo`'s; a Reference
+// Object's extra keys are `ref-siblings`'; a Header's `name` and `in`
+// `header-object-fields`'.
 // One check per unknown field, none otherwise.
 export const unknownField = {
   id: 'unknown-field',
@@ -24,7 +26,7 @@ export const unknownField = {
       const fields = OBJECTS[type]
       for (const key of Object.keys(node)) {
         if (key.startsWith('x-')) continue
-        const field = fields[key]
+        const field = Object.hasOwn(fields, key) ? fields[key] : undefined
         if (field && (inVersion(field, minor) || (field.since ?? 0) > minor)) continue
         // A Header's `name` / `in`: `header-object-fields`, whose fix says where
         // the name goes.

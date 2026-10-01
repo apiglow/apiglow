@@ -119,7 +119,7 @@ export function toAuditRuleText(rule) {
   if (options.length) {
     lines.push('', `${t('audit.options')}:`)
     for (const [name, { default: value, min, max }] of options) {
-      lines.push(`  ${name} = ${value} (${min}–${max ?? '∞'})`)
+      lines.push(`  ${name} = ${value} (${min}–${max})`)
     }
   }
   return `${lines.join('\n')}\n`

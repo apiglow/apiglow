@@ -152,6 +152,34 @@ describe('sensitive-field-exposure', () => {
     expect(result.checks).toBe(0)
   })
 
+  it('finds a password under patternProperties, unevaluatedProperties, a conditional or a dependent schema', () => {
+    const result = run(
+      sensitiveFieldExposure,
+      doc({
+        paths: {
+          '/vault': returning({
+            type: 'object',
+            patternProperties: { '^key-': password },
+            if: { required: ['kind'] },
+            // biome-ignore lint/suspicious/noThenProperty: JSON Schema keyword.
+            then: { properties: { pin: { ...password } } },
+            else: { properties: { code: { ...password } } },
+            dependentSchemas: { user: { properties: { secret: { ...password } } } },
+            unevaluatedProperties: { ...password },
+          }),
+        },
+      }),
+    )
+    const root = '/paths/~1vault/get/responses/200/content/application~1json/schema'
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      `${root}/patternProperties/^key-`,
+      `${root}/dependentSchemas/user/properties/secret`,
+      `${root}/unevaluatedProperties`,
+      `${root}/then/properties/pin`,
+      `${root}/else/properties/code`,
+    ])
+  })
+
   it('leaves webhook and callback responses to the integrator', () => {
     const response = { 200: { description: 'OK', content: json({ properties: { password } }) } }
     const result = run(
@@ -269,6 +297,24 @@ describe('unbounded-input', () => {
     expect(result.findings[0]).toMatchObject({ severity: 'info', dataPath: '/paths/~1search/post' })
   })
 
+  it('reads unevaluated properties and items as values of their own', () => {
+    const result = run(
+      unboundedInput,
+      doc({
+        paths: {
+          '/things': postJson({
+            type: 'object',
+            properties: {
+              list: { type: 'array', maxItems: 3, unevaluatedItems: { type: 'string' } },
+            },
+            unevaluatedProperties: { type: 'string' },
+          }),
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.params)).toEqual([{ count: 2, names: 'list[], *' }])
+  })
+
   it('leaves parameters to the limits servers put on URLs and headers', () => {
     const result = run(
       unboundedInput,
@@ -357,6 +403,96 @@ describe('unbounded-input', () => {
     expect(result.findings.map((f) => [f.location, f.params.names])).toEqual([
       ['POST /a', 'text'],
       ['PUT /b', 'text'],
+    ])
+  })
+
+  it('leaves out a 3.1 file part, by its binary contentMediaType', () => {
+    const result = run(
+      unboundedInput,
+      doc({
+        paths: {
+          '/upload': {
+            post: {
+              requestBody: {
+                content: {
+                  'multipart/form-data': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        avatar: { type: 'string', contentMediaType: 'image/png' },
+                        caption: { type: 'string', maxLength: 80 },
+                      },
+                    },
+                  },
+                },
+              },
+              responses: okResponse,
+            },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('reads an untyped branch as constraining the type of the schema it belongs to', () => {
+    const result = run(
+      unboundedInput,
+      doc({
+        paths: {
+          '/things': postJson({
+            type: 'object',
+            properties: {
+              id: { type: 'string', anyOf: [{ maxLength: 5 }, { format: 'uuid' }] },
+              code: {
+                type: ['string', 'integer'],
+                anyOf: [{ type: 'string', maxLength: 5 }, { type: 'integer' }],
+              },
+              maybe: { type: ['string', 'null'], anyOf: [{ maxLength: 5 }, { type: 'null' }] },
+              loose: { type: 'string', anyOf: [{ maxLength: 5 }, { minLength: 1 }] },
+            },
+          }),
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.params)).toEqual([{ count: 1, names: 'loose' }])
+  })
+
+  it('skips a property made readOnly by an allOf member', () => {
+    const result = run(
+      unboundedInput,
+      doc({
+        paths: {
+          '/items': postJson({
+            type: 'object',
+            properties: {
+              id: { allOf: [{ type: 'string' }, { readOnly: true }] },
+              label: { type: 'string', maxLength: 40 },
+            },
+          }),
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('counts a shared component once per place it takes in the body', () => {
+    const result = runRefs(
+      unboundedInput,
+      doc({
+        paths: {
+          '/orders': postJson({
+            type: 'object',
+            properties: { billing: ref('Address'), shipping: ref('Address') },
+          }),
+        },
+        components: {
+          schemas: { Address: { type: 'object', properties: { street: { type: 'string' } } } },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.params)).toEqual([
+      { count: 2, names: 'billing.street, shipping.street' },
     ])
   })
 

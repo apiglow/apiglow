@@ -1,6 +1,6 @@
 import { pointer } from '../pointer.js'
 import { hasText } from '../text.js'
-import { isSpdxExpression } from './license-identifier-spdx.js'
+import { isSpdxExpression } from '../spdx.js'
 
 // Who to ask when the API misbehaves, and under what terms it may be used. Two
 // fields, filled once for the life of the document, and the only ones that

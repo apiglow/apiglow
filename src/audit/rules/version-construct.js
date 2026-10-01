@@ -1,6 +1,7 @@
 import { placeOf } from '../locate.js'
 import { fieldSpelling, OBJECTS, PATTERNED } from '../openapi-objects.js'
 import { pointer } from '../pointer.js'
+import { DRAFT_ERA_KEYWORDS, SCHEMA_KEYWORDS, SCHEMA_KEYWORDS_30 } from '../schema-keywords.js'
 
 // Constructs used ahead of the version the document declares (docs/audit.md
 // §4.6): 3.1 keywords in a 3.0 document, 3.2 ones in anything older. This app
@@ -11,26 +12,14 @@ import { pointer } from '../pointer.js'
 // The check is one per occurrence and it passes as soon as the declared version
 // covers it, so an honest 3.2 document is scored 100 % on the constructs it
 // legitimately uses.
-// JSON Schema 2020-12 keywords a 3.0 Schema Object does not have: its subset
-// stops at draft-04 plus the OpenAPI adjustments. `not` is deliberately absent
-// from the list — 3.0 already carries it, alongside allOf/oneOf/anyOf.
-const KEYWORDS_31 = [
-  'if',
-  'then',
-  'else',
-  '$defs',
-  'patternProperties',
-  'propertyNames',
-  'dependentRequired',
-  'dependentSchemas',
-  'unevaluatedProperties',
-  'unevaluatedItems',
-  'contains',
-  'minContains',
-  'maxContains',
-  'contentEncoding',
-  'contentMediaType',
-]
+//
+// JSON Schema 2020-12 keywords a 3.0 Schema Object does not have — `const`,
+// `prefixItems`, `$id`, `$comment`, `examples`… Its subset stops at draft-04
+// plus the OpenAPI adjustments (so `not` is 3.0's). A spelling of the drafts in
+// between is no version's, and nothing a later version introduced.
+const KEYWORDS_31 = [...SCHEMA_KEYWORDS].filter(
+  (keyword) => !SCHEMA_KEYWORDS_30.has(keyword) && !DRAFT_ERA_KEYWORDS.has(keyword),
+)
 
 export const versionConstruct = {
   id: 'version-construct',
@@ -47,7 +36,15 @@ export const versionConstruct = {
     // structural rules share (openapi-objects.js): `info.summary`, `$self`,
     // `pathItem.query`, `mediaType.itemSchema`, `in: querystring`…
     // A Reference Object's 3.1 `summary` / `description` are `ref-siblings`'.
-    for (const { type, node, dataPath } of ctx.objects) {
+    for (const { type, expected, since: refSince, node, dataPath } of ctx.objects) {
+      // A Reference where only some versions allow one: a Media Type's.
+      if (type === 'Reference' && refSince) {
+        const at = `${dataPath}/$ref`
+        const target = covers(refSince)
+          ? { dataPath: at }
+          : { ...placeOf(ctx.operations, at), dataPath: at }
+        report(refSince, fieldSpelling(expected, '$ref'), target)
+      }
       if (type === 'Schema' || type === 'Reference' || PATTERNED.has(type)) continue
       for (const [key, field] of Object.entries(OBJECTS[type])) {
         if (node[key] === undefined) continue
@@ -67,9 +64,6 @@ export const versionConstruct = {
     for (const { schema, dataPath, op, location } of ctx.schemas) {
       if (Array.isArray(schema.type)) {
         report(1, 'type: [...]', { op, location, dataPath: `${dataPath}/type` })
-      }
-      if (schema.const !== undefined) {
-        report(1, 'const', { op, location, dataPath: `${dataPath}/const` })
       }
       for (const keyword of KEYWORDS_31) {
         if (schema[keyword] === undefined) continue

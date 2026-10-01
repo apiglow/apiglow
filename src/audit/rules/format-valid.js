@@ -2,8 +2,9 @@ import { declaredTypes } from '../schema-keywords.js'
 
 // A `format` that cannot do anything where it is: one the declared type cannot
 // carry (`date-time` on an integer, `int32` on a string — a format describes
-// values of one type and is ignored on the others), or a known misspelling of
-// a registered format (`datetime`, `date_time`, `e-mail`). Either way
+// values of one type and is ignored on the others; `int64` on a string is the
+// exception below), or a known misspelling of a registered format
+// (`datetime`, `date_time`, `e-mail`). Either way
 // validators skip it and code generators fall back to the bare type: a date
 // arrives as a plain string, an int32 as an unbounded number. This
 // documentation shows the format as written next to the type.
@@ -13,15 +14,19 @@ import { declaredTypes } from '../schema-keywords.js'
 // that misfires, none otherwise.
 
 const NUMERIC = ['number', 'integer']
+// A 64-bit integer also travels as a string: past 2^53 a JSON number loses
+// digits in JavaScript, so the proto3 JSON mapping (and every Google API)
+// writes `int64` / `uint64` values as strings.
+const INT64 = [...NUMERIC, 'string']
 const FORMAT_TYPES = {
   int8: NUMERIC,
   int16: NUMERIC,
   int32: NUMERIC,
-  int64: NUMERIC,
+  int64: INT64,
   uint8: NUMERIC,
   uint16: NUMERIC,
   uint32: NUMERIC,
-  uint64: NUMERIC,
+  uint64: INT64,
   float: NUMERIC,
   double: NUMERIC,
   date: ['string'],

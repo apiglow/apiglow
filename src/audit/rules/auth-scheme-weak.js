@@ -1,11 +1,14 @@
 import { isCleartext } from '../../openapi/mixed-content.js'
+import { SEVERITY_WEIGHT } from '../constants.js'
 import { effectiveSecurity, operationServerUrls, schemeNamed } from '../security.js'
 import { toolOperations } from '../tool-inputs.js'
 
 // A credential that needs TLS, sent to a plain http server. The security that
 // applies (the operation's, else the document's) names the scheme in any
 // alternative, and one of the servers the operation goes to (its own, else its
-// Path Item's, else the document's, variables at their defaults) is cleartext:
+// Path Item's, else the document's, as the try-it sends to it: variables at
+// their defaults, a relative URL resolved against the document's `$self`,
+// `serverDefaultUrl`) is cleartext:
 //
 // - a bearer token — `http` `bearer`, and the access token of an `oauth2` or
 //   `openIdConnect` scheme, which the try-it sends as `Authorization: Bearer`
@@ -26,8 +29,6 @@ import { toolOperations } from '../tool-inputs.js'
 // severe one; the finding names that scheme and the first cleartext server.
 // `server-https` reports the server itself, once; this rule reports what each
 // operation exposes on it. An undeclared scheme is `security-scheme-declared`'s.
-const SEVERITY = { warning: 1, error: 2 }
-
 export const authSchemeWeak = {
   id: 'auth-scheme-weak',
   category: 'security',
@@ -38,7 +39,7 @@ export const authSchemeWeak = {
       for (const alternative of effectiveSecurity(ctx, entry).alternatives) {
         for (const name of Object.keys(alternative)) {
           const severity = transportSeverity(schemeNamed(ctx, name))
-          if (severity && (!worst || SEVERITY[severity] > SEVERITY[worst.severity]))
+          if (severity && (!worst || SEVERITY_WEIGHT[severity] > SEVERITY_WEIGHT[worst.severity]))
             worst = { name, severity }
         }
       }

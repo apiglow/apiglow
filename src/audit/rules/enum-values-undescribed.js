@@ -1,7 +1,9 @@
 import { enumOf } from '../../openapi/model.js'
 import { placeInput } from '../input-shape.js'
 import { isSubstantive } from '../text.js'
-import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { SCHEMA_DEPTH } from '../schema-walk.js'
+import { payloadChildren, toolInputs, toolOperations } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // An input enum whose values are not all explained: the agent sees `S`, `M`,
 // `XL`, or `1`, `2`, `3`, and has to guess which one the user's request means.
@@ -20,6 +22,12 @@ import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../
 // recommended form: OpenAI strict mode keeps standard keywords only and drops
 // the `x-` extensions, while the description travels everywhere.
 //
+// A schema held in several places — a component under two parameters, or
+// under a described array and as a bare property — is explained by that prose
+// only when every place's names the value: each tool carries its own, and the
+// agent behind the least explicit one guesses. Whatever order the operations
+// come in, the verdict is the same.
+//
 // One check per input enum of two values or more, each schema object once —
 // a component's at the component, where it is fixed for every operation.
 // `null` is the nullable marker, not a choice to explain, and a boolean enum
@@ -31,34 +39,48 @@ export const enumValuesUndescribed = {
   category: 'agent',
   severity: 'info',
   run(ctx, check) {
-    const seen = new Set()
-    for (const entry of toolOperations(ctx)) {
-      for (const input of toolInputs(entry)) {
-        // The prose inherited by a schema from what holds it.
-        const context = new Map()
-        if (isSchemaObject(input.schema) && input.kind === 'parameter') {
-          context.set(input.schema, [input.param.description])
-        }
-        walkInputSchema(
-          input.schema,
-          input.dataPath,
-          (schema, dataPath) => {
-            const texts = [schema.description, ...(context.get(schema) ?? [])]
-            for (const holder of heldSchemas(schema)) {
-              if (!context.has(holder)) context.set(holder, texts)
-            }
-            const missing = unexplained(schema, texts)
-            if (!missing) return
-            check(!missing.list.length, {
-              ...placeInput(ctx, entry, schema, dataPath),
-              params: { count: missing.count, missing: abbreviate(missing.list) },
-            })
-          },
-          seen,
-        )
+    // schema → { entry, dataPath, contexts }: where it was first met, and the
+    // prose each place holding it carries, keyed by its texts.
+    const reached = new Map()
+    const reach = (schema, dataPath, depth, inherited, entry) => {
+      if (!isObject(schema) || depth > SCHEMA_DEPTH) return
+      let site = reached.get(schema)
+      if (!site) {
+        site = { entry, dataPath, contexts: new Map() }
+        reached.set(schema, site)
+      }
+      const key = inherited.join('\u0000')
+      if (site.contexts.has(key)) return
+      site.contexts.set(key, inherited)
+      const passed = withText(inherited, schema.description)
+      const held = new Set(heldSchemas(schema))
+      for (const [child, childPath] of payloadChildren(schema, dataPath)) {
+        reach(child, childPath, depth + 1, held.has(child) ? passed : [], entry)
       }
     }
+    for (const entry of toolOperations(ctx)) {
+      for (const input of toolInputs(entry)) {
+        const inherited = input.kind === 'parameter' ? withText([], input.param.description) : []
+        reach(input.schema, input.dataPath, 0, inherited, entry)
+      }
+    }
+    for (const [schema, { entry, dataPath, contexts }] of reached) {
+      const missing = unexplained(schema, [...contexts.values()])
+      if (!missing) continue
+      check(!missing.list.length, {
+        ...placeInput(ctx, entry, schema, dataPath),
+        params: { count: missing.count, missing: abbreviate(missing.list) },
+      })
+    }
   },
+}
+
+// The prose a place carries, lowercased, each text once and in a fixed order:
+// a cycle through `items` or composition adds nothing new, and ends there.
+function withText(texts, text) {
+  if (typeof text !== 'string' || !text.trim()) return texts
+  const lower = text.toLowerCase()
+  return texts.includes(lower) ? texts : [...texts, lower].sort()
 }
 
 // Schemas that stand for the same value as their holder, or for its elements:
@@ -68,25 +90,24 @@ function heldSchemas(schema) {
   for (const keyword of ['allOf', 'oneOf', 'anyOf', 'prefixItems']) {
     if (Array.isArray(schema[keyword])) held.push(...schema[keyword])
   }
-  return held.filter(isSchemaObject)
+  return held.filter(isObject)
 }
 
 // → null when the schema is no enum worth a check, else { count, list } of
-// the values nothing explains.
-function unexplained(schema, texts) {
+// the values nothing explains. `contexts`: the prose of each place holding it.
+function unexplained(schema, contexts) {
   const read = enumOf(schema)
   if (!read) return null
   const entries = read.values
     .map((value, index) => ({ value, description: read.descriptions?.[index] }))
     .filter(({ value }) => value !== null)
   if (entries.length < 2 || entries.every(({ value }) => typeof value === 'boolean')) return null
-  const prose = texts
-    .filter((text) => typeof text === 'string' && text.trim())
-    .map((text) => text.toLowerCase())
+  const own = withText([], schema.description)
   const list = entries
     .filter(({ value, description }) => {
       if (isSubstantive(description, { name: spelled(value) })) return false
-      return !prose.some((text) => namesValue(text, value))
+      if (own.some((text) => namesValue(text, value))) return false
+      return !contexts.every((texts) => texts.some((text) => namesValue(text, value)))
     })
     .map(({ value }) => spelled(value))
   return { count: entries.length, list }

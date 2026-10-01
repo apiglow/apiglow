@@ -1,4 +1,5 @@
 import { pointer } from '../pointer.js'
+import { isObject } from '../value-check.js'
 
 // A QUERY operation with nothing to query by. QUERY (RFC 10008, which OpenAPI
 // 3.2's `query` field points to) is GET with content: "The content of the
@@ -32,8 +33,4 @@ export const queryMethodBody = {
       })
     }
   },
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

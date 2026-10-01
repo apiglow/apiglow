@@ -1,7 +1,12 @@
-import { parseImfFixdate } from '../deprecation-headers.js'
+import {
+  headerExampleSites,
+  headerSchemaSite,
+  parseImfFixdate,
+  writtenPointer,
+} from '../deprecation-headers.js'
 import { placeOf } from '../locate.js'
-import { pointer } from '../pointer.js'
-import { internalTarget, nodeAt } from '../ref-pointer.js'
+import { internalTarget, lastToken, nodeAt } from '../ref-pointer.js'
+import { isObject } from '../value-check.js'
 
 // A response header whose value HTTP makes a date, declared as some other
 // kind of date or as a number. `Retry-After` (RFC 9110 §10.2.3),
@@ -18,17 +23,19 @@ import { internalTarget, nodeAt } from '../ref-pointer.js'
 //
 // Fails on the first of: a schema `format` of `date-time` or `date`; a
 // numeric `type` (every declared type numeric — `Retry-After` excepted); an
-// example — the Header's `example` and `examples`, the schema's `example` and
-// `examples` — that is a string but no IMF-fixdate (nor, for `Retry-After`,
-// digits), or a number (an integer of seconds is fine for `Retry-After`).
+// example — the Header's `example` and `examples`, its `content` entry's, the
+// schema's `example` and `examples` — that is a string but no IMF-fixdate
+// (nor, for `Retry-After`, digits), or a number (an integer of seconds is
+// fine for `Retry-After`). The schema is `schema`, or the one of the Header's
+// `content` entry.
 // Other kinds of example are `example-type-mismatch`'s. `format: http-date`
 // (OpenAPI Format Registry) with no example passes: nothing contradicts it.
 //
-// One check per Header Object with a schema under one of these names: in a
-// response's `headers` map (names compared without case), and a
-// `components.headers` entry once — named after the key a response
-// references it under, or its own key when that already is one of these
-// names. Part headers of a multipart `encoding` are not response headers.
+// One check per Header Object with a schema or an example under one of these
+// names: in a response's `headers` map (names compared without case), and a
+// `components.headers` entry once — named after the first of these names a
+// response references it under, or after its own key when no response
+// references it. Part headers of a multipart `encoding` are not response headers.
 // `Deprecation` is a Structured Field date, not an HTTP-date:
 // `deprecation-header-format`'s.
 const DATE_HEADERS = new Set(['retry-after', 'last-modified', 'expires', 'sunset'])
@@ -45,16 +52,21 @@ export const httpDateHeaders = {
     const referencedAs = componentHeaderNames(ctx)
     for (const { type, node, dataPath } of ctx.objects) {
       if (type !== 'Header') continue
-      const key = lastToken(dataPath)
-      let header = null
-      if (RESPONSE_HEADER.test(dataPath)) header = key
-      else if (COMPONENT_HEADER.test(dataPath)) header = referencedAs.get(dataPath) ?? key
-      if (header === null || !DATE_HEADERS.has(header.toLowerCase())) continue
+      let names = []
+      if (RESPONSE_HEADER.test(dataPath)) names = [lastToken(dataPath)]
+      else if (COMPONENT_HEADER.test(dataPath)) {
+        names = referencedAs.get(dataPath) ?? [lastToken(dataPath)]
+      }
+      const header = names.find((name) => DATE_HEADERS.has(name.toLowerCase()))
+      if (header === undefined) continue
       const resolved = nodeAt(ctx.document, dataPath) ?? node
-      if (!isObject(resolved) || !isObject(resolved.schema)) continue
+      if (!isObject(resolved)) continue
+      const schema = headerSchemaSite(resolved)
+      const examples = headerExampleSites(resolved)
+      if (!schema && !examples.length) continue
       const delay = header.toLowerCase() === 'retry-after'
-      const at = offence(node, resolved, dataPath, delay)
-      const target = at ?? dataPath
+      const at = offence(schema, examples, delay)
+      const target = at === null ? dataPath : writtenPointer(node, dataPath, at)
       check(at === null, {
         ...placeOf(ctx.operations, target),
         dataPath: target,
@@ -64,57 +76,29 @@ export const httpDateHeaders = {
   },
 }
 
-// `components.headers` pointer → the header name a response's `headers` map
-// gives it, for the date headers only; the first use wins.
+// `components.headers` pointer → every name a response's `headers` map gives
+// it, in document order.
 function componentHeaderNames(ctx) {
   const names = new Map()
   for (const { type, expected, node, dataPath } of ctx.objects) {
     if (type !== 'Reference' || expected !== 'Header' || !RESPONSE_HEADER.test(dataPath)) continue
-    const name = lastToken(dataPath)
-    if (!DATE_HEADERS.has(name.toLowerCase())) continue
     const target = internalTarget(node.$ref)
-    if (target !== null && COMPONENT_HEADER.test(target) && !names.has(target)) {
-      names.set(target, name)
-    }
+    if (target === null || !COMPONENT_HEADER.test(target)) continue
+    const known = names.get(target)
+    if (known) known.push(lastToken(dataPath))
+    else names.set(target, [lastToken(dataPath)])
   }
   return names
 }
 
-// → the pointer of the first thing declaring another kind of value, or null.
-// Pointers stop at a `$ref`: what lies behind one is not written here.
-function offence(source, header, dataPath, delay) {
-  const schema = header.schema
-  const inlineSchema = isObject(source.schema) && typeof source.schema.$ref !== 'string'
-  const inSchema = (...at) => `${dataPath}${pointer('schema', ...(inlineSchema ? at : []))}`
-  if (RFC3339_FORMATS.has(schema.format)) return inSchema('format')
-  if (!delay && isNumericType(schema.type)) return inSchema('type')
-  for (const [value, at] of examples(source, header, dataPath, inSchema)) {
-    if (!isHttpDateValue(value, delay)) return at
+// → the path, within the Header, of the first thing declaring another kind
+// of value, or null.
+function offence(site, examples, delay) {
+  if (site) {
+    if (RFC3339_FORMATS.has(site.schema.format)) return [...site.at, 'format']
+    if (!delay && isNumericType(site.schema.type)) return [...site.at, 'type']
   }
-  return null
-}
-
-function* examples(source, header, dataPath, inSchema) {
-  if (header.example !== undefined) yield [header.example, `${dataPath}${pointer('example')}`]
-  if (isObject(header.examples)) {
-    for (const [name, example] of Object.entries(header.examples)) {
-      if (!isObject(example)) continue
-      const written = source.examples?.[name]
-      const inline = isObject(written) && typeof written.$ref !== 'string'
-      for (const field of ['value', 'dataValue', 'serializedValue']) {
-        if (example[field] === undefined) continue
-        const at = pointer('examples', name, ...(inline ? [field] : []))
-        yield [example[field], `${dataPath}${at}`]
-      }
-    }
-  }
-  const schema = header.schema
-  if (schema.example !== undefined) yield [schema.example, inSchema('example')]
-  if (Array.isArray(schema.examples)) {
-    for (const [index, value] of schema.examples.entries()) {
-      yield [value, inSchema('examples', index)]
-    }
-  }
+  return examples.find(({ value }) => !isHttpDateValue(value, delay))?.at ?? null
 }
 
 // Strings and numbers only: an example of another kind is no verdict here.
@@ -127,15 +111,4 @@ function isHttpDateValue(value, delay) {
 function isNumericType(type) {
   const types = (Array.isArray(type) ? type : [type]).filter((t) => t !== 'null')
   return types.length > 0 && types.every((t) => NUMERIC.has(t))
-}
-
-function lastToken(dataPath) {
-  return dataPath
-    .slice(dataPath.lastIndexOf('/') + 1)
-    .replaceAll('~1', '/')
-    .replaceAll('~0', '~')
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

@@ -1,7 +1,9 @@
 import { listOf } from '../../openapi/model.js'
 import { isObjectSchema } from '../input-shape.js'
-import { inputChildren } from '../tool-inputs.js'
-import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { payloadChildren } from '../tool-inputs.js'
+import { toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
+import { SCHEMA_DEPTH } from '../schema-walk.js'
 
 // A request body too big for the limits agents' tool schemas live under:
 // - Semantic Kernel's OpenAPI plugin skips an operation whose body nests deeper
@@ -22,7 +24,6 @@ import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../
 // it is reached. A cycle stops the depth where it closes: recursion is
 // `recursive-input`'s.
 const LIMITS = { depth: 10, properties: 5000, enumValues: 1000 }
-const MAX_HOPS = 24
 
 export const inputComplexity = {
   id: 'input-complexity',
@@ -49,12 +50,12 @@ export const inputComplexity = {
 }
 
 function depthOf(schema, memo, ancestors, hops) {
-  if (!isSchemaObject(schema) || ancestors.has(schema) || hops > MAX_HOPS) return 0
+  if (!isObject(schema) || ancestors.has(schema) || hops > SCHEMA_DEPTH) return 0
   if (memo.has(schema)) return memo.get(schema)
   ancestors.add(schema)
   let below = 0
   let same = 0
-  for (const [child, , nested] of inputChildren(schema, '')) {
+  for (const [child, , nested] of payloadChildren(schema, '')) {
     const depth = depthOf(child, memo, ancestors, hops + 1)
     if (nested) below = Math.max(below, depth)
     else same = Math.max(same, depth)
@@ -69,7 +70,7 @@ function counts(schema, dataPath) {
   let properties = 0
   let enumValues = 0
   walkInputSchema(schema, dataPath, (node) => {
-    if (isSchemaObject(node.properties)) {
+    if (isObject(node.properties)) {
       properties += Object.values(node.properties).filter((sub) => sub?.readOnly !== true).length
     }
     enumValues += listOf(node.enum).length

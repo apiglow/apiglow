@@ -72,9 +72,8 @@ function prune(obj) {
 // A bridge talks to the API over plain HTTP requests, so a scheme whose
 // credential does not travel in a header (`apiKey` in a query or a cookie,
 // `mutualTLS`) has nothing to put here — the caller reports it rather than
-// emitting a header the API will ignore. The audit's `bridge-degradation` rule
-// asks this same function, so what it reports is what this export does.
-export function credentialHeader(scheme) {
+// emitting a header the API will ignore.
+function credentialHeader(scheme) {
   if (scheme.type === 'http') {
     if (scheme.scheme === 'basic')
       return { name: 'Authorization', value: 'Basic BASE64_CREDENTIALS' }
@@ -97,6 +96,7 @@ export function credentialHeader(scheme) {
 function authHeaders(schemes) {
   const headers = []
   const unsupported = []
+  const carried = []
   for (const scheme of schemes) {
     // A deprecated scheme is not what a new integration should be wired to.
     if (scheme.deprecated) continue
@@ -110,8 +110,17 @@ function authHeaders(schemes) {
     // one. Silently emitting both would produce a config that fails at runtime.
     if (headers.some((h) => h.name.toLowerCase() === header.name.toLowerCase())) continue
     headers.push(header)
+    carried.push(scheme.name)
   }
-  return { headers, unsupported }
+  return { headers, unsupported, carried }
+}
+
+// The names of the schemes whose credential the generated config holds: a
+// deprecated scheme, one with no header form and one whose header an earlier
+// scheme already took are not among them. The audit's `bridge-degradation`
+// rule reads this, so what it reports is what this export does.
+export function carriedSchemes(schemes) {
+  return new Set(authHeaders(schemes).carried)
 }
 
 // → { config, warnings, headers } — `config` null when there is nothing to

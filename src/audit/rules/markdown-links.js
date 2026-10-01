@@ -19,26 +19,32 @@ import {
 //
 // A lone fragment (`#pagination`) is fine — here it scrolls to the element
 // with that id and never changes the route — and a protocol-relative `//host`
-// names its host. Inline links and images, the reference definitions a
-// reference uses, raw `<a href>`, `<area href>`, and the `src` of `<img>` and
-// of the media elements (an `<iframe src>` is stripped whole: `markdown-unsafe`'s). Code spans and blocks are
-// not links. One check per CommonMark field with a link; the finding names
-// the first relative target.
+// names its host. Inline links and images, autolinks, the reference
+// definitions a reference uses (in a field rendered as a block: inline
+// rendering has none), raw `<a href>`, `<area href>`, and the `src` of `<img>`
+// and of the media elements (an `<iframe src>` is stripped whole:
+// `markdown-unsafe`'s). Fields are read as this documentation renders them
+// (`markdownFields`): code spans and blocks are not links, and a description
+// shown as plain text links nowhere. One check per rendered field with a
+// link; the finding names the first relative target, in any of the views
+// showing it.
 export const markdownLinks = {
   id: 'markdown-links',
   category: 'readiness',
   severity: 'warning',
   run(ctx, check) {
-    for (const { dataPath, code } of markdownFields(ctx)) {
-      const targets = [
-        ...linksIn(code),
-        ...openTags(code).flatMap((tag) => {
-          const attribute = LINK_ATTRIBUTES[tag.name.toLowerCase()]
-          return tag.attributes
-            .filter(({ name, value }) => value !== null && name.toLowerCase() === attribute)
-            .map(({ value }) => ({ target: value, index: tag.index }))
-        }),
-      ].sort((a, b) => a.index - b.index)
+    for (const { dataPath, renders } of markdownFields(ctx)) {
+      const targets = renders.flatMap(({ inline, code }) =>
+        [
+          ...linksIn(code, inline),
+          ...openTags(code).flatMap((tag) => {
+            const attribute = LINK_ATTRIBUTES[tag.name.toLowerCase()]
+            return tag.attributes
+              .filter(({ name, value }) => value !== null && name.toLowerCase() === attribute)
+              .map(({ value }) => ({ target: value, index: tag.index }))
+          }),
+        ].sort((a, b) => a.index - b.index),
+      )
       if (!targets.length) continue
       const relative = targets.find(({ target }) => isRelativeTarget(target))
       check(!relative, {

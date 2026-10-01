@@ -1,34 +1,66 @@
-import { OBJECTS } from './openapi-objects.js'
-
-// The CommonMark fields of a document, read the way a Markdown renderer reads
-// them — for the rules that judge what a rendered description shows
+// The CommonMark fields of a document, read the way this documentation's
+// Markdown renderer reads them — for the rules that judge what a rendered description shows
 // (`markdown-unsafe`, `markdown-links`). No Markdown library: the audit bundle
 // must not carry `marked` (docs/architecture.md §14.8), and the two rules only
 // need to know where raw HTML and link targets sit, and which text is code.
 
-// Every `description` the specification declares CommonMark ("Throughout the
-// specification description fields are noted as supporting CommonMark", Rich
-// Text Formatting), schema descriptions included — each node once, at the
-// place it is written: `ctx.objects` already types every Schema of the source,
-// which `ctx.schemas` (the dereferenced document, reached from operations and
-// `components.schemas` only) would report under each operation using it.
-// → [{ type, dataPath, text, code }], `code` the text with its code blanked
-// (`blankCode`). Cached per context: two rules read the same fields.
+// Every `description` this documentation renders as Markdown, read the way it
+// renders it — each node once, at the place it is written: `ctx.objects`
+// already types every Schema of the source, where `ctx.schemas` (the
+// dereferenced document) reports one brought in by another component — a
+// parameter, a response — once, under the first operation using it. A field is read as a block
+// (`markdownBlock`: paragraphs, code blocks, reference definitions) or inline
+// (`markdownInline`, marked's `parseInline`: none of those — an indented line
+// is text, a fence is a code span, `[label]: url` defines nothing), or both
+// when two views show it. A description shown as plain text (a tag's tooltip,
+// a server's, an External Documentation's label) or not shown at all (a
+// Server Variable's, an Example's, a Path Item's) has nothing stripped and no
+// link: it is not read. → [{ type, dataPath, text, renders: [{ inline, code
+// }] }], `code` the text with its code blanked (`blankCode`). Cached per
+// context: two rules read the same fields.
+const RENDERS = {
+  // shell/views.js, api-endpoint-doc.js — a callback's operation is inline.
+  Info: [false],
+  Operation: [false],
+  // auth-overview.js as a block, an operation's security box inline.
+  SecurityScheme: [false, true],
+  // api-endpoint-doc.js, schema-view.js.
+  Parameter: [true],
+  RequestBody: [true],
+  Response: [true],
+  Header: [true],
+  Link: [true],
+  Schema: [true],
+}
 const fieldsByContext = new WeakMap()
 
 export function markdownFields(ctx) {
   let fields = fieldsByContext.get(ctx)
   if (fields) return fields
   fields = []
-  for (const { type, node, dataPath } of ctx.objects) {
-    if (type !== 'Schema' && !OBJECTS[type]?.description) continue
+  const callbacks = []
+  // A 3.1 Schema `$ref` with siblings is typed twice, Reference and Schema.
+  const taken = new Set()
+  for (const { type, expected, node, dataPath } of ctx.objects) {
+    if (type === 'Callback') callbacks.push(`${dataPath}/`)
+    let modes = RENDERS[type === 'Reference' ? expected : type]
+    if (!modes || taken.has(node)) continue
+    taken.add(node)
+    if (type === 'Operation' && callbacks.some((prefix) => dataPath.startsWith(prefix))) {
+      modes = [true]
+    }
     const text = node.description
     if (
       typeof text !== 'string' ||
       (!text.includes('<') && !text.includes('](') && !text.includes(']:'))
     )
       continue
-    fields.push({ type, dataPath: `${dataPath}/description`, text, code: blankCode(text) })
+    fields.push({
+      type,
+      dataPath: `${dataPath}/description`,
+      text,
+      renders: modes.map((inline) => ({ inline, code: blankCode(text, inline) })),
+    })
   }
   fieldsByContext.set(ctx, fields)
   return fields
@@ -37,16 +69,19 @@ export function markdownFields(ctx) {
 // The text with what a renderer shows verbatim — fenced and indented code
 // blocks, code spans — and HTML comments replaced by spaces, offsets and line
 // breaks kept. A `<script>` between backticks is printed, not stripped, and a
-// link in a code block is no link. Indented code is taken broadly (a paragraph
-// continued inside a list item reads as code here): erring toward code can
-// only hide a finding, never invent one.
-export function blankCode(text) {
+// link in a code block is no link. Inline (`inline`), there are no blocks: a
+// fence is a code span like any other backtick run, and an indented line is
+// text. As a block, an indented line opens code only where no paragraph is
+// open — after a blank line, a heading, a thematic break or a fence, never
+// under a paragraph's text, which it continues. A paragraph continued inside a
+// list item still reads as code here: erring toward code can only hide a
+// finding, never invent one.
+export function blankCode(text, inline = false) {
+  if (inline) return blankInline(text, false)
   const lines = text.split('\n')
   let fence = null
-  let indented = false
-  let previousBlank = true
+  let paragraph = false
   for (const [index, line] of lines.entries()) {
-    const blank = !line.trim()
     if (fence) {
       const close = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line)
       if (close && close[1][0] === fence[0] && close[1].length >= fence.length) fence = null
@@ -56,30 +91,40 @@ export function blankCode(text) {
     const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
     if (open && !(open[1][0] === '`' && open[2].includes('`'))) {
       fence = open[1]
-      indented = false
+      paragraph = false
       lines[index] = spaces(line)
-      previousBlank = false
       continue
     }
-    if (!blank && indentOf(line) >= 4 && (previousBlank || indented)) {
-      indented = true
-      lines[index] = spaces(line)
-    } else if (!blank) indented = false
-    previousBlank = blank
+    if (!line.trim()) paragraph = false
+    else if (indentOf(line) >= 4) {
+      if (!paragraph) lines[index] = spaces(line)
+    } else {
+      paragraph = !(
+        ATX_HEADING.test(line) ||
+        THEMATIC_BREAK.test(line) ||
+        (paragraph && SETEXT_UNDERLINE.test(line))
+      )
+    }
   }
-  return blankInline(lines.join('\n'))
+  return blankInline(lines.join('\n'), true)
 }
+
+const ATX_HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/
+const THEMATIC_BREAK = /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/
 
 // Code spans and HTML comments, in one left-to-right pass. A backslash escapes
 // a backtick outside code; a code span ends at the next run of exactly as many
-// backticks, and never past the paragraph's end (a blank line).
-function blankInline(text) {
+// backticks — as a block (`paragraphs`), never past the paragraph's end (a
+// blank line); inline, anywhere further on.
+function blankInline(text, paragraphs) {
   let out = ''
   let i = 0
   // The end of the paragraph `i` is in: positions only grow, so the blank line
   // found for one code span serves every later one before it.
   let paragraphEnd = -1
   const limitFrom = (from) => {
+    if (!paragraphs) return text.length
     if (from > paragraphEnd) {
       BLANK_LINE.lastIndex = from
       paragraphEnd = BLANK_LINE.exec(text)?.index ?? text.length
@@ -152,10 +197,9 @@ function indentOf(line) {
 // makes it text.
 const OPEN_TAG =
   /<([A-Za-z][A-Za-z0-9-]*)((?:\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^']*'|"[^"]*"))?)*)\s*\/?>/g
-const CLOSE_TAG = /<\/[A-Za-z][A-Za-z0-9-]*\s*>/
 const ATTRIBUTE = /([A-Za-z_:][\w.:-]*)(?:\s*=\s*([^\s"'=<>`]+|'[^']*'|"[^"]*"))?/g
 
-// → [{ name, raw, index, attributes: [{ name, value }] }], open tags in text
+// → [{ name, index, attributes: [{ name, value }] }], open tags in text
 // order. `value` is null for an attribute written without one.
 export function openTags(code) {
   const tags = []
@@ -165,13 +209,9 @@ export function openTags(code) {
     for (const [, name, value] of match[2].matchAll(ATTRIBUTE)) {
       attributes.push({ name, value: value === undefined ? null : unquote(value) })
     }
-    tags.push({ name: match[1], raw: match[0], index: match.index, attributes })
+    tags.push({ name: match[1], index: match.index, attributes })
   }
   return tags
-}
-
-export function hasRawHtml(code) {
-  return openTags(code).length > 0 || CLOSE_TAG.test(code)
 }
 
 function escaped(text, index) {
@@ -186,49 +226,61 @@ function unquote(value) {
 
 // Link and image targets written in Markdown syntax → [{ target, index, image }],
 // in text order: inline links and images (`[text](target "title")`, the target
-// possibly in angle brackets) and the link reference definitions some
-// reference uses (`[label]: target`). A definition must open its own block —
-// it cannot interrupt a paragraph — and one nothing refers to renders nothing.
-// `[^1]:` is left alone: it is how footnotes are written, whatever CommonMark
-// makes of it.
+// possibly in angle brackets), autolinks (`<scheme:…>`, which marked turns into
+// an `<a href>` like any link) and — as a block only (`inline` false) — the
+// link reference definitions some reference uses (`[label]: target`). A
+// definition must open its own block — it cannot interrupt a paragraph — and
+// one nothing refers to renders nothing. `[^1]:` is left alone: it is how
+// footnotes are written, whatever CommonMark makes of it.
+//
+// One forward pass: each unescaped `]` closes the last `[` still open — as a
+// block, in its own paragraph — and makes a link when `(target)` follows; a
+// `]` with no `[` open is text.
 const INLINE_LINK =
-  /\]\(\s*(<[^<>\n]*>|[^\s()<>]*(?:\([^\s()]*\)[^\s()<>]*)*)(?:\s+(?:"[^"]*"|'[^']*'|\([^()]*\)))?\s*\)/g
+  /\]\(\s*(<[^<>\n]*>|[^\s()<>]*(?:\([^\s()]*\)[^\s()<>]*)*)(?:\s+(?:"[^"]*"|'[^']*'|\([^()]*\)))?\s*\)/y
+// biome-ignore lint/suspicious/noControlCharactersInRegex: marked's own autolink grammar.
+const AUTOLINK = /<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>\x00-\x1f]*)>/y
+const BLANK_LINE_AT = /\n[ \t]*\n/y
 const DEFINITION =
-  /^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*(?:\n[ \t]*)?(<[^<>\n]*>|\S+)[ \t]*(?:\n?[ \t]*(?:"[^"]*"|'[^']*'|\([^()]*\)))?[ \t]*$/gm
+  /^ {0,3}\[([^\]^[][^[\]]*)\]:[ \t]*(?:\n[ \t]*)?(<[^<>\n]*>|\S+)[ \t]*(?:\n?[ \t]*(?:"[^"]*"|'[^']*'|\([^()]*\)))?[ \t]*$/gm
 
-export function markdownLinks(code) {
+export function markdownLinks(code, inline = false) {
   const links = []
-  for (const match of code.matchAll(INLINE_LINK)) {
-    if (escaped(code, match.index)) continue
-    const open = openingBracket(code, match.index)
-    links.push({
-      target: stripAngles(match[1]),
-      index: open < 0 ? match.index : open,
-      image: open > 0 && code[open - 1] === '!',
-    })
-  }
-  const labels = bracketLabels(code)
-  for (const match of code.matchAll(DEFINITION)) {
-    if (!opensBlock(code, match.index)) continue
-    const label = normalizeLabel(match[1])
-    if ((labels.get(label) ?? 0) < 2) continue
-    links.push({ target: stripAngles(match[2]), index: match.index, image: false })
-  }
-  return links.sort((a, b) => a.index - b.index)
-}
-
-// The `[` a link text opens with, nested brackets counted; -1 when the `]` closes
-// nothing on its line.
-function openingBracket(code, close) {
-  let depth = 0
-  for (let i = close - 1; i >= 0 && code[i] !== '\n'; i -= 1) {
-    if (code[i] === ']' && !escaped(code, i)) depth += 1
-    else if (code[i] === '[' && !escaped(code, i)) {
-      if (!depth) return i
-      depth -= 1
+  let openers = []
+  for (let i = 0; i < code.length; i += 1) {
+    const char = code[i]
+    if (char === '\\') i += 1
+    else if (char === '\n' && !inline) {
+      BLANK_LINE_AT.lastIndex = i
+      if (BLANK_LINE_AT.test(code)) openers = []
+    } else if (char === '[') openers.push(i)
+    else if (char === ']') {
+      const open = openers.pop()
+      if (open === undefined) continue
+      INLINE_LINK.lastIndex = i
+      const match = INLINE_LINK.exec(code)
+      if (!match) continue
+      const image = open > 0 && code[open - 1] === '!' && !escaped(code, open - 1)
+      links.push({ target: stripAngles(match[1]), index: open, image })
+      i = INLINE_LINK.lastIndex - 1
+    } else if (char === '<') {
+      AUTOLINK.lastIndex = i
+      const match = AUTOLINK.exec(code)
+      if (!match) continue
+      links.push({ target: match[1], index: i, image: false })
+      i = AUTOLINK.lastIndex - 1
     }
   }
-  return -1
+  if (!inline && code.includes(']:')) {
+    let labels = null
+    for (const match of code.matchAll(DEFINITION)) {
+      if (!opensBlock(code, match.index)) continue
+      labels ??= bracketLabels(code)
+      if ((labels.get(normalizeLabel(match[1])) ?? 0) < 2) continue
+      links.push({ target: stripAngles(match[2]), index: match.index, image: false })
+    }
+  }
+  return links.sort((a, b) => a.index - b.index)
 }
 
 function stripAngles(target) {
@@ -236,10 +288,11 @@ function stripAngles(target) {
 }
 
 // How often each bracketed text appears, the definition's own label included:
-// a reference (`[text][label]`, `[label][]`, `[label]`) is a second one.
+// a reference (`[text][label]`, `[label][]`, `[label]`) is a second one. An
+// inline link's text (`[label](…)`) refers to no definition.
 function bracketLabels(code) {
   const counts = new Map()
-  for (const [, label] of code.matchAll(/\[([^\]\n]+)\]/g)) {
+  for (const [, label] of code.matchAll(/\[([^[\]\n]+)\](?!\()/g)) {
     const key = normalizeLabel(label)
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
@@ -252,8 +305,7 @@ function normalizeLabel(label) {
 
 function opensBlock(code, index) {
   if (index === 0) return true
-  const before = code.slice(0, index - 1)
-  const previous = before.slice(before.lastIndexOf('\n') + 1)
+  const previous = code.slice(code.lastIndexOf('\n', index - 2) + 1, index - 1)
   return !previous.trim() || DEFINITION_LINE.test(previous)
 }
 

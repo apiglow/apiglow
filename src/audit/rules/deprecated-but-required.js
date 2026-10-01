@@ -1,7 +1,8 @@
 import { listOf } from '../../openapi/model.js'
-import { placeOf } from '../locate.js'
+import { componentNames, placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
-import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // A request input the API both deprecates and requires. A deprecated
 // parameter "SHOULD be transitioned out of usage" (OpenAPI, Parameter Object);
@@ -23,7 +24,7 @@ export const deprecatedButRequired = {
   category: 'deprecation',
   severity: 'warning',
   run(ctx, check) {
-    const components = componentParameters(ctx)
+    const components = componentNames(ctx.document, 'parameters')
     const seenParameters = new Set()
     const requestSchemas = new Set()
     for (const entry of toolOperations(ctx)) {
@@ -49,10 +50,10 @@ export const deprecatedButRequired = {
     // `ctx.schemas` places each schema where it is written, a component's at
     // the component.
     for (const { schema, dataPath, op, location } of ctx.schemas) {
-      if (!requestSchemas.has(schema) || !isSchemaObject(schema.properties)) continue
+      if (!requestSchemas.has(schema) || !isObject(schema.properties)) continue
       const required = new Set(listOf(schema.required))
       for (const [name, property] of Object.entries(schema.properties)) {
-        if (!isSchemaObject(property) || property.deprecated !== true) continue
+        if (!isObject(property) || property.deprecated !== true) continue
         if (property.readOnly === true) continue
         check(!required.has(name), {
           op,
@@ -63,15 +64,4 @@ export const deprecatedButRequired = {
       }
     }
   },
-}
-
-// Parameter object → its name under `components.parameters`.
-function componentParameters(ctx) {
-  const names = new Map()
-  const declared = ctx.document.components?.parameters
-  if (!isSchemaObject(declared)) return names
-  for (const [name, param] of Object.entries(declared)) {
-    if (isSchemaObject(param) && !names.has(param)) names.set(param, name)
-  }
-  return names
 }

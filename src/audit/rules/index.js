@@ -84,6 +84,7 @@ import { headerNameToken } from './header-name-token.js'
 import { parameterStyleValid } from './parameter-style-valid.js'
 import { querystringParameter } from './querystring-parameter.js'
 import { additionalOperationMethod } from './additional-operation-method.js'
+import { serverUrlForm } from './server-url-form.js'
 import { serverVariables } from './server-variables.js'
 import { refSiblings } from './ref-siblings.js'
 import { refTargetKind } from './ref-target-kind.js'
@@ -198,6 +199,7 @@ export const RULES = [
   querystringParameter,
   additionalOperationMethod,
   serverVariables,
+  serverUrlForm,
   refSiblings,
   refTargetKind,
   refResolves,

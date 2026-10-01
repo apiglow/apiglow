@@ -13,7 +13,10 @@ const RULES = [
   { id: 'b' },
   {
     id: 'c',
-    options: { maxLength: { default: 64, min: 1 }, depth: { default: 3, min: 1, max: 9 } },
+    options: {
+      maxLength: { default: 64, min: 1, max: 128 },
+      depth: { default: 3, min: 1, max: 9 },
+    },
   },
 ]
 const read = (raw) => readAuditConfig(raw, RULES)
@@ -86,7 +89,10 @@ describe('readAuditConfig', () => {
         a: { maxLength: 3 },
         b: { severity: 'loud' },
       },
-      overrides: [{ paths: ['/x'], rules: { c: { maxLength: 9 } } }],
+      overrides: [
+        { paths: ['/x'], rules: { c: { maxLength: 9 } } },
+        { paths: ['/y'], rules: { c: { severity: 'error' } } },
+      ],
     })
     expect(errors).toEqual([
       'audit.rules.c.depth: expected an integer, 1 to 9',
@@ -96,8 +102,9 @@ describe('readAuditConfig', () => {
     ])
     expect(config.rules).toEqual({ c: 'warning' })
     expect(config.options).toEqual({ c: { maxLength: 128 } })
+    expect(config.overrides.map((entry) => entry.rules)).toEqual([{ c: 'error' }])
     expect(read({ rules: { c: { maxLength: 0 } } }).errors).toEqual([
-      'audit.rules.c.maxLength: expected an integer, 1 or more',
+      'audit.rules.c.maxLength: expected an integer, 1 to 128',
     ])
   })
 
@@ -268,5 +275,18 @@ describe('per-spec rule configuration', () => {
     const { audit } = resolveSpecConfig(config, spec, { multi: true }).config
     expect(audit.rules).toEqual({ a: 'off', b: 'error' })
     expect(audit.overrides.map((entry) => entry.paths[0])).toEqual(['/x', '/y'])
+  })
+
+  it('merges a rule in the object form field by field, a string standing for its severity', () => {
+    const config = hostConfig({
+      audit: { rules: { c: { maxLength: 128 }, a: 'off', b: { severity: 'info', depth: 5 } } },
+    })
+    const spec = { id: 'billing', audit: { rules: { c: 'warning', a: { severity: 'info' } } } }
+    const { audit } = resolveSpecConfig(config, spec, { multi: true }).config
+    expect(audit.rules).toEqual({
+      c: { maxLength: 128, severity: 'warning' },
+      a: { severity: 'info' },
+      b: { severity: 'info', depth: 5 },
+    })
   })
 })

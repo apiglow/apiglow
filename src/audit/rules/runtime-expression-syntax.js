@@ -1,3 +1,4 @@
+import { isToken } from '../http-token.js'
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
 
@@ -14,9 +15,6 @@ import { pointer } from '../pointer.js'
 // and `requestBody` when they are strings — a whole string starting with `$`,
 // or `{$…}` parts embedded in one; any other string is a constant. One check
 // per malformed expression.
-
-// RFC 9110 token: what a header name is made of.
-const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 
 export const runtimeExpressionSyntax = {
   id: 'runtime-expression-syntax',
@@ -69,7 +67,7 @@ function isExpression(text) {
   const match = /^\$(request|response)\.(.*)$/s.exec(text)
   if (!match) return false
   const source = match[2]
-  if (source.startsWith('header.')) return TOKEN.test(source.slice('header.'.length))
+  if (source.startsWith('header.')) return isToken(source.slice('header.'.length))
   // `name = *char`: any JSON string character.
   if (source.startsWith('query.') || source.startsWith('path.')) return true
   if (source === 'body') return true

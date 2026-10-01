@@ -1,7 +1,8 @@
-import { listOf } from '../../openapi/model.js'
-import { isConstant, placeInput, valueTypes } from '../input-shape.js'
+import { enumOf, listOf } from '../../openapi/model.js'
+import { placeInput, valueTypes } from '../input-shape.js'
 import { hasText } from '../text.js'
-import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // An input `oneOf` / `anyOf` whose branches an agent cannot tell apart: two of
 // them take the same JSON type, and neither carries a `title` or a
@@ -19,11 +20,15 @@ import { isSchemaObject, toolInputs, toolOperations, walkInputSchema } from '../
 // (`properties` → object, `items` → array), else its `allOf` members'; `integer`
 // and `number` are one JSON type. Not ambiguous:
 // - a branch that is a single constant: it names itself; a union made only of
-//   constants is an enum, `enum-values-undescribed`'s;
+//   constants, as this documentation reads one (`enumOf`), is an enum,
+//   `enum-values-undescribed`'s;
 // - two object branches that each require a key the other does not declare
 //   (`{ subject_digests }` or `{ attestation_ids }`): the key is the
 //   discriminator, left implicit, and its name and description say which
 //   branch a payload is;
+// - two object branches that both require a key whose values they hold apart
+//   (`kind: { const: a }` and `kind: { const: b }`, or `data_type` enums with
+//   no value in common): the key's value says which branch a payload is;
 // - two array branches whose items are of different types;
 // - a branch with no type at all: `untyped-input`'s.
 // Annotations on a branch's `allOf` members count — the tool carries them with
@@ -44,8 +49,8 @@ export const unionAmbiguous = {
           (schema, dataPath) => {
             for (const keyword of ['oneOf', 'anyOf']) {
               const branches = listOf(schema[keyword])
-              if (branches.length < 2 || branches.every(isConstant)) continue
-              const clash = isSchemaObject(schema.discriminator) ? null : firstClash(branches)
+              if (branches.length < 2 || enumOf(schema)?.union) continue
+              const clash = isObject(schema.discriminator) ? null : firstClash(branches)
               check(!clash, {
                 ...placeInput(ctx, entry, schema, dataPath),
                 params: { keyword, ...clash },
@@ -74,7 +79,9 @@ function firstClash(branches) {
     for (const b of candidates.slice(at + 1)) {
       if (tellsApart(a.texts, b.texts) || tellsApart(b.texts, a.texts)) continue
       const type = [...a.kinds].find((kind) => b.kinds.has(kind))
-      if (!type || (type === 'object' && keyed(a.keys, b.keys) && keyed(b.keys, a.keys))) continue
+      if (!type) continue
+      if (type === 'object' && keyed(a.keys, b.keys) && keyed(b.keys, a.keys)) continue
+      if (type === 'object' && valueKeyed(a.keys, b.keys)) continue
       if (type === 'array' && disjoint(a.itemKinds, b.itemKinds)) continue
       return { first: a.index, second: b.index, type }
     }
@@ -94,6 +101,23 @@ function keyed(keys, others) {
   return [...keys.required].some((name) => !others.declared.has(name))
 }
 
+// A key both object branches require, each with its own values for it and none
+// in common: the value is the discriminator.
+function valueKeyed(keys, others) {
+  return [...keys.required].some((name) => {
+    const values = keys.values.get(name)
+    const otherValues = others.values.get(name)
+    if (!values || !otherValues || !others.required.has(name)) return false
+    return ![...values].some((value) => otherValues.has(value))
+  })
+}
+
+// A schema that stands for one value: `const`, or a one-value `enum`.
+function isConstant(schema) {
+  if (!isObject(schema)) return false
+  return schema.const !== undefined || (Array.isArray(schema.enum) && schema.enum.length === 1)
+}
+
 // A title or a description one branch has and the other lacks. Text both share
 // — a common base's description, inherited through `allOf` — names neither.
 function tellsApart(texts, others) {
@@ -102,18 +126,28 @@ function tellsApart(texts, others) {
 
 function kindsOf(schema, depth) {
   const kinds = new Set(valueTypes(schema).map((type) => (type === 'integer' ? 'number' : type)))
-  if (kinds.size || depth >= MAX_MEMBER_DEPTH || !isSchemaObject(schema)) return kinds
+  if (kinds.size || depth >= MAX_MEMBER_DEPTH || !isObject(schema)) return kinds
   for (const member of listOf(schema.allOf)) {
     for (const kind of kindsOf(member, depth + 1)) kinds.add(kind)
   }
   return kinds
 }
 
-function keysOf(schema, depth, keys = { required: new Set(), declared: new Set() }) {
-  if (!isSchemaObject(schema)) return keys
+// `values`: for a property held to constants (`const` or `enum`), those
+// values, as JSON — the first declaration of the name wins.
+function keysOf(
+  schema,
+  depth,
+  keys = { required: new Set(), declared: new Set(), values: new Map() },
+) {
+  if (!isObject(schema)) return keys
   for (const name of listOf(schema.required)) keys.required.add(name)
-  if (isSchemaObject(schema.properties)) {
-    for (const name of Object.keys(schema.properties)) keys.declared.add(name)
+  if (isObject(schema.properties)) {
+    for (const [name, property] of Object.entries(schema.properties)) {
+      keys.declared.add(name)
+      const values = constants(property)
+      if (values && !keys.values.has(name)) keys.values.set(name, values)
+    }
   }
   if (depth < MAX_MEMBER_DEPTH) {
     for (const member of listOf(schema.allOf)) keysOf(member, depth + 1, keys)
@@ -121,8 +155,14 @@ function keysOf(schema, depth, keys = { required: new Set(), declared: new Set()
   return keys
 }
 
+function constants(schema) {
+  if (!isObject(schema)) return null
+  const values = schema.const !== undefined ? [schema.const] : schema.enum
+  return Array.isArray(values) ? new Set(values.map((value) => JSON.stringify(value))) : null
+}
+
 function textsOf(schema, depth, texts = new Set()) {
-  if (!isSchemaObject(schema)) return texts
+  if (!isObject(schema)) return texts
   for (const text of [schema.title, schema.description]) {
     if (hasText(text)) texts.add(text.trim())
   }

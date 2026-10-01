@@ -1,8 +1,10 @@
 import { bodyKind } from '../../openapi/body-kind.js'
-import { placeInput } from '../input-shape.js'
+import { componentNames } from '../locate.js'
 import { pointer } from '../pointer.js'
-import { carriesFile } from '../schema-walk.js'
-import { inputPayloads, judgeValues, toolInputSchemas, untypedState } from '../untyped.js'
+import { forbidsContent } from '../response-sites.js'
+import { carriesFile, operationContents } from '../schema-walk.js'
+import { toolInputs, toolOperations, walkInputSchema } from '../tool-inputs.js'
+import { inputPayloads, judgeUntyped } from '../untyped.js'
 
 // `untyped-input`'s question asked of what the API sends: a value whose schema
 // says nothing about it — `{}`, `true`, annotations only — in a response body
@@ -19,45 +21,52 @@ import { inputPayloads, judgeValues, toolInputSchemas, untypedState } from '../u
 // root. A schema `untyped-input` walks — any tool input, a component shared by
 // a request and a response included — is that rule's, and only its children
 // that are not inputs get a verdict here. A response media type with no schema
-// at all is `response-content-schema`'s; a file has no type to give.
+// at all is `response-content-schema`'s; a file has no type to give; a status
+// or a method that allows no content (204, a HEAD response) is
+// `bodyless-status`', which asks for the content to go. A response written
+// once under `components.responses` is judged once, at the component.
 export const typeMissing = {
   id: 'type-missing',
   category: 'readiness',
   severity: 'info',
   run(ctx, check) {
-    const state = untypedState(toolInputSchemas(ctx))
-    for (const entry of ctx.operations) {
-      const report = (schema, dataPath, verdicts) => {
-        const place = schema ? placeInput(ctx, entry, schema, dataPath) : { op: entry, dataPath }
-        for (const [segments, untyped] of verdicts) {
-          check(!untyped, { ...place, dataPath: `${place.dataPath}${pointer(...segments)}` })
-        }
+    const inputs = new Set()
+    for (const entry of toolOperations(ctx)) {
+      for (const input of toolInputs(entry)) {
+        walkInputSchema(input.schema, input.dataPath, () => {}, inputs)
       }
-      if (entry.kind !== 'operation') {
-        for (const payload of inputPayloads(entry)) judgeValues(payload, 'request', state, report)
-      }
-      for (const payload of responsePayloads(entry)) judgeValues(payload, 'response', state, report)
     }
+    const components = componentNames(ctx.document, 'responses')
+    const done = new Set()
+    const payloads = []
+    for (const entry of ctx.operations) {
+      if (entry.kind !== 'operation') payloads.push(...inputPayloads(entry))
+      payloads.push(...responsePayloads(entry, components, done))
+    }
+    judgeUntyped(ctx, payloads, check, inputs)
   },
 }
 
-function* responsePayloads(entry) {
-  const responses = entry.op.responses
-  if (!isObject(responses)) return
-  for (const [status, response] of Object.entries(responses)) {
-    if (!isObject(response) || !isObject(response.content)) continue
-    for (const [mediaType, media] of Object.entries(response.content)) {
-      if (!isObject(media) || carriesFile({ mediaType, content: media })) continue
-      const judgeRoot = bodyKind({ mediaType }) === 'json'
-      const base = `${entry.pointer}${pointer('responses', status, 'content', mediaType)}`
-      for (const key of ['schema', 'itemSchema']) {
-        if (media[key] === undefined) continue
-        yield { schema: media[key], dataPath: `${base}/${key}`, judgeRoot, blankAt: null }
+// `done`: the media types of shared response components already yielded.
+function* responsePayloads(entry, components, done) {
+  for (const { kind, status, mediaType, content, dataPath } of operationContents(entry)) {
+    if (kind !== 'response' || done.has(content) || forbidsContent(status, entry.method)) continue
+    if (carriesFile({ mediaType, content })) continue
+    const name = components.get(entry.op.responses[status])
+    if (name !== undefined) done.add(content)
+    const base =
+      name === undefined ? dataPath : pointer('components', 'responses', name, 'content', mediaType)
+    const judgeRoot = bodyKind({ mediaType }) === 'json'
+    for (const key of ['schema', 'itemSchema']) {
+      if (content[key] === undefined) continue
+      yield {
+        entry: name === undefined ? entry : null,
+        side: 'response',
+        schema: content[key],
+        dataPath: `${base}/${key}`,
+        judgeRoot,
+        blankAt: null,
       }
     }
   }
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

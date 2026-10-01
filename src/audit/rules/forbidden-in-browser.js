@@ -1,5 +1,5 @@
 import { isForbiddenMethod, isForbiddenRequestHeader } from '../../openapi/forbidden.js'
-import { placeOf } from '../locate.js'
+import { placeOf, sentByTheApi } from '../locate.js'
 import { nodeAt } from '../ref-pointer.js'
 
 // What a browser refuses to put on a request, by the Fetch standard: a
@@ -44,11 +44,6 @@ export const forbiddenInBrowser = {
       })
     }
   },
-}
-
-// Inside a webhook or a callback, Path Item level included.
-function sentByTheApi(dataPath) {
-  return dataPath.startsWith('/webhooks/') || dataPath.includes('/callbacks/')
 }
 
 // The values the header is documented to carry, and `undefined` for "any":

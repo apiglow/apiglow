@@ -141,6 +141,25 @@ describe('untyped-input', () => {
       opRef: null,
     })
   })
+
+  it('judges a schema that holds a value anywhere, whatever the order of the paths', () => {
+    const paths = {
+      '/a': jsonBody({ allOf: [{ $ref: '#/components/schemas/Note' }, { type: 'object' }] }),
+      '/b': post({
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { note: { $ref: '#/components/schemas/Note' } } },
+          },
+        },
+      }),
+    }
+    const components = { schemas: { Note: { description: 'Free text' } } }
+    for (const order of [paths, { '/b': paths['/b'], '/a': paths['/a'] }]) {
+      const result = runRefs(untypedInput, doc({ components, paths: order }))
+      expect(result).toMatchObject({ checks: 3 })
+      expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/Note'])
+    }
+  })
 })
 
 describe('free-form-input', () => {
@@ -204,6 +223,53 @@ describe('free-form-input', () => {
       }),
     )
     expect(result).toMatchObject({ checks: 0, findings: [] })
+  })
+
+  it('judges the branches of a union with no shape of its own', () => {
+    const result = run(
+      freeFormInput,
+      doc({
+        paths: {
+          '/things': jsonBody({
+            oneOf: [{ type: 'object' }, { type: 'object', properties: { a: { type: 'string' } } }],
+          }),
+          '/contacts': post({
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { email: { type: 'string' }, phone: { type: 'string' } },
+                  oneOf: [
+                    { type: 'object', required: ['email'] },
+                    { type: 'object', required: ['phone'] },
+                  ],
+                },
+              },
+            },
+          }),
+        },
+      }),
+    )
+    expect(result.checks).toBe(3)
+    expect(result.findings.map((f) => f.dataPath)).toEqual([`${BODY}/oneOf/0`])
+  })
+
+  it('judges a schema reached through a judged position anywhere, whatever the order', () => {
+    const paths = {
+      '/a': jsonBody({ allOf: [{ $ref: '#/components/schemas/Bag' }] }),
+      '/b': post({
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { bag: { $ref: '#/components/schemas/Bag' } } },
+          },
+        },
+      }),
+    }
+    const components = { schemas: { Bag: { type: 'object' } } }
+    for (const order of [paths, { '/b': paths['/b'], '/a': paths['/a'] }]) {
+      const result = runRefs(freeFormInput, doc({ components, paths: order }))
+      expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/Bag'])
+    }
   })
 })
 
@@ -306,10 +372,57 @@ describe('union-ambiguous', () => {
     )
     expect(result).toMatchObject({ checks: 0, findings: [] })
   })
+
+  it('passes object branches a required key tells apart by its values', () => {
+    const tagged = (values, extra = {}) => ({
+      type: 'object',
+      required: ['name', 'data_type'],
+      properties: { name: { type: 'string' }, data_type: values, ...extra },
+    })
+    const result = run(
+      unionAmbiguous,
+      doc({
+        paths: {
+          '/things': jsonBody({
+            type: 'object',
+            properties: {
+              consts: { oneOf: [tagged({ const: 'a' }), tagged({ const: 'b' })] },
+              enums: {
+                oneOf: [
+                  tagged({ enum: ['text', 'number', 'date'] }),
+                  tagged({ enum: ['single_select'] }),
+                  tagged({ enum: ['iteration'] }),
+                ],
+              },
+              overlapping: {
+                oneOf: [tagged({ enum: ['text', 'date'] }), tagged({ enum: ['date'] })],
+              },
+            },
+          }),
+        },
+      }),
+    )
+    expect(result.checks).toBe(3)
+    expect(result.findings.map((f) => f.dataPath)).toEqual([`${BODY}/properties/overlapping`])
+  })
+
+  it('grades a union of constants that is no enum: a branch says more than its value', () => {
+    const result = run(
+      unionAmbiguous,
+      doc({
+        paths: {
+          '/things': jsonBody({
+            oneOf: [{ const: 'a', format: 'x' }, { const: 'b' }],
+          }),
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
 })
 
 describe('input-root-shape', () => {
-  it('passes object roots: declared, nullable, inferred, an allOf of objects', () => {
+  it('passes object roots: declared, nullable, inferred, an allOf of objects, one holding a union', () => {
     const result = run(
       inputRootShape,
       doc({
@@ -320,10 +433,15 @@ describe('input-root-shape', () => {
           '/d': jsonBody({
             allOf: [{ type: 'object' }, { properties: { a: { type: 'string' } } }],
           }),
+          '/e': jsonBody({
+            type: 'object',
+            properties: { email: { type: 'string' }, phone: { type: 'string' } },
+            oneOf: [{ required: ['email'] }, { required: ['phone'] }],
+          }),
         },
       }),
     )
-    expect(result).toMatchObject({ checks: 4, findings: [] })
+    expect(result).toMatchObject({ checks: 5, findings: [] })
   })
 
   it('flags an array, a scalar and a choice at the root, naming the shape', () => {
@@ -450,6 +568,27 @@ describe('recursive-input', () => {
       dataPath: `${BODY}/properties/filter/properties/and/items`,
       params: { name: 'filter' },
     })
+  })
+
+  it('names an inline cycle at the root after its title, else the input', () => {
+    const node = () => {
+      const schema = { type: 'object', properties: {} }
+      schema.properties.next = { type: 'array', items: schema }
+      return schema
+    }
+    const titled = { ...node(), title: 'Step' }
+    titled.properties = { next: { type: 'array', items: titled } }
+    const result = run(
+      recursiveInput,
+      doc({
+        paths: {
+          '/things': jsonBody(node()),
+          '/steps': jsonBody(titled),
+          '/search': withParams({ name: 'where', in: 'query', schema: node() }),
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.params.name)).toEqual(['application/json', 'Step', 'where'])
   })
 })
 

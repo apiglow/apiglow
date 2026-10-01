@@ -1,5 +1,3 @@
-import { describeValue } from '../value-check.js'
-
 // Spellings a later version replaced, kept in a document that declares that
 // later version (docs/audit.md §4.6). Most are silent failures: a 3.1 reader
 // has no `nullable` keyword, so the field simply stops being nullable; a
@@ -16,7 +14,9 @@ import { describeValue } from '../value-check.js'
 // constructs PASS in the version they belong to. `since` is the version that
 // replaced the spelling — the older ones therefore differ per construct, which
 // is why it travels with each (`x-nullable` never belonged to any 3.x).
-// `replacement` is the exact rewrite, built from the schema's own values.
+// `replacement` is the exact rewrite, built from the schema's own values — an
+// `example` too long for the one line a fix is elided as `[...]`, the same
+// stand-in the null rewrite uses for a composition's existing branches.
 //
 // A spelling that only restates the default — `nullable: false`, a `false`
 // XML boolean, a boolean bound with no `minimum` / `maximum` beside it — said
@@ -72,7 +72,7 @@ function* legacyConstructs(schema, modern) {
   if (schema.example !== undefined) {
     yield {
       construct: 'example',
-      replacement: `examples: [${describeValue(schema.example)}]`,
+      replacement: `examples: [${inline(schema.example)}]`,
       severity: 'info',
     }
   }
@@ -96,6 +96,13 @@ function* legacyConstructs(schema, modern) {
       severity: 'info',
     }
   }
+}
+
+const INLINE_LIMIT = 200
+
+function inline(value) {
+  const text = JSON.stringify(value)
+  return text !== undefined && text.length <= INLINE_LIMIT ? text : '...'
 }
 
 // The 3.1 spelling of "this, or null": `null` joins the type list; with no

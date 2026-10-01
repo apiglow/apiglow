@@ -4,10 +4,7 @@ import { componentKeyFormat } from '../src/audit/rules/component-key-format.js'
 import { exclusiveFields } from '../src/audit/rules/exclusive-fields.js'
 import { extensionReservedPrefix } from '../src/audit/rules/extension-reserved-prefix.js'
 import { headerObjectFields } from '../src/audit/rules/header-object-fields.js'
-import {
-  isSpdxExpression,
-  licenseIdentifierSpdx,
-} from '../src/audit/rules/license-identifier-spdx.js'
+import { licenseIdentifierSpdx } from '../src/audit/rules/license-identifier-spdx.js'
 import { mediaTypeKeySyntax } from '../src/audit/rules/media-type-key-syntax.js'
 import { parameterSchemaOrContent } from '../src/audit/rules/parameter-schema-or-content.js'
 import { selfUri } from '../src/audit/rules/self-uri.js'
@@ -15,6 +12,7 @@ import { statusCodeValid } from '../src/audit/rules/status-code-valid.js'
 import { tagParent } from '../src/audit/rules/tag-parent.js'
 import { tagUnique } from '../src/audit/rules/tag-unique.js'
 import { unknownField } from '../src/audit/rules/unknown-field.js'
+import { isSpdxExpression } from '../src/audit/spdx.js'
 import { uriForm } from '../src/audit/rules/uri-form.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
@@ -67,6 +65,14 @@ describe('parameter-schema-or-content', () => {
     ])
     expect(result.findings[3]).toMatchObject({ params: { object: 'Header' }, opRef: 'get-pets' })
   })
+
+  it('counts an x- key of content as an entry, the map taking no extension', () => {
+    const result = run(
+      parameterSchemaOrContent,
+      withParameters([{ name: 'a', in: 'query', content: { 'text/plain': {}, 'x-note': {} } }]),
+    )
+    expect(paths(result)).toEqual(['/paths/~1pets/get/parameters/0'])
+  })
 })
 
 describe('exclusive-fields', () => {
@@ -97,6 +103,7 @@ describe('exclusive-fields', () => {
               Both: { value: 1, externalValue: 'https://ex.example/1.json' },
               Data: { dataValue: 1, value: 1 },
               Serialized: { serializedValue: '1', externalValue: 'https://ex.example/1' },
+              Literal: { serializedValue: '1', value: 1 },
             },
             links: { Next: { operationId: 'a', operationRef: '#/paths/~1pets/get' } },
           },
@@ -108,6 +115,7 @@ describe('exclusive-fields', () => {
       '/components/examples/Both/externalValue',
       '/components/examples/Data/value',
       '/components/examples/Serialized/externalValue',
+      '/components/examples/Literal/value',
       '/components/links/Next/operationId',
     ])
     // 3.0 has no SPDX identifier and no dataValue / serializedValue: those are
@@ -173,6 +181,18 @@ describe('component-key-format', () => {
       location: 'components.schemas.Pet Store',
       params: { section: 'schemas', name: 'Pet Store' },
     })
+  })
+
+  it('reads only the maps the declared version has', () => {
+    const components = {
+      pathItems: { 'Pet Item': {} },
+      mediaTypes: { 'Pet Media': {} },
+    }
+    const sections = (openapi) =>
+      run(componentKeyFormat, doc({ openapi, components })).findings.map((f) => f.params.section)
+    expect(sections('3.0.3')).toEqual([])
+    expect(sections('3.1.0')).toEqual(['pathItems'])
+    expect(sections('3.2.0')).toEqual(['pathItems', 'mediaTypes'])
   })
 })
 

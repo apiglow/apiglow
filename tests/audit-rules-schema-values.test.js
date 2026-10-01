@@ -41,12 +41,33 @@ describe('enum-valid', () => {
     })
   })
 
+  it('takes two objects with the same members in another order for one entry', () => {
+    const result = run(enumValid, {
+      Pair: {
+        type: 'object',
+        enum: [
+          { a: 1, b: { c: 2, d: 3 } },
+          { b: { d: 3, c: 2 }, a: 1 },
+        ],
+      },
+    })
+    expect(details(result)).toEqual([
+      ['/components/schemas/Pair/enum/1', { detail: '{"b":{"d":3,"c":2},"a":1} ×2' }],
+    ])
+  })
+
   it('accepts null in a 3.0 enum the schema declares nullable', () => {
     const result = run(
       enumValid,
       { S: { type: 'string', nullable: true, enum: ['a', null] } },
       '3.0.3',
     )
+    expect(result.findings).toEqual([])
+  })
+
+  // OAS 3.0.4: `nullable` takes effect only next to a `type`.
+  it('reads no type into a 3.0 nullable with no type beside it', () => {
+    const result = run(enumValid, { S: { nullable: true, enum: ['a', 'b'] } }, '3.0.3')
     expect(result.findings).toEqual([])
   })
 })
@@ -118,10 +139,10 @@ describe('constraint-type-mismatch', () => {
       Tags: { type: 'array', items: { type: 'string' }, required: ['x'] },
     })
     expect(details(result)).toEqual([
-      ['/components/schemas/Count/maxLength', { keyword: 'maxLength', type: 'integer' }],
-      ['/components/schemas/Name/minimum', { keyword: 'minimum', type: 'string' }],
-      ['/components/schemas/Name/items', { keyword: 'items', type: 'string' }],
-      ['/components/schemas/Tags/required', { keyword: 'required', type: 'array' }],
+      ['/components/schemas/Count/maxLength', { keyword: 'maxLength' }],
+      ['/components/schemas/Name/minimum', { keyword: 'minimum' }],
+      ['/components/schemas/Name/items', { keyword: 'items' }],
+      ['/components/schemas/Tags/required', { keyword: 'required' }],
     ])
   })
 })
@@ -227,6 +248,9 @@ describe('format-valid', () => {
       B: { type: 'integer', format: 'int64' },
       C: { type: 'string', format: 'phone-number' },
       D: { format: 'date' },
+      // The proto3 JSON mapping: a 64-bit integer as a string.
+      E: { type: 'string', format: 'int64' },
+      F: { type: 'string', format: 'uint64' },
     })
     expect(result.findings).toEqual([])
   })
@@ -251,6 +275,21 @@ describe('schema-keyword-typo', () => {
       A: { type: 'string', nullable: true, 'x-go-type': 'string', unit: 'cm', $comment: 'ok' },
     })
     expect(result.findings).toEqual([])
+  })
+
+  it('reads the siblings of a 3.1 $ref, which apply there', () => {
+    const result = run(schemaKeywordTypo, {
+      Pet: { type: 'object' },
+      Named: {
+        $ref: '#/components/schemas/Pet',
+        descripton: 'A named pet',
+        properties: { name: { maxLenght: 3 } },
+      },
+    })
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      '/components/schemas/Named/descripton',
+      '/components/schemas/Named/properties/name/maxLenght',
+    ])
   })
 
   it('flags a near miss of a keyword, and required: true on a property', () => {

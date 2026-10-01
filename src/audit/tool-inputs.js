@@ -1,6 +1,7 @@
 import { listOf } from '../openapi/model.js'
-import { carriesFile } from './schema-walk.js'
+import { carriesFile, SCHEMA_DEPTH } from './schema-walk.js'
 import { pointer } from './pointer.js'
+import { isObject } from './value-check.js'
 
 // What an agent sees of an operation when a tool is built from it — an
 // OpenAPI→MCP bridge, a GPT Action, Semantic Kernel's OpenAPI plugin. The
@@ -41,51 +42,60 @@ export function* toolInputs(entry) {
 
 // Every schema an agent fills in, below and including `root`: the properties
 // it sends (a `readOnly` one is never sent), array items, composition branches
-// — the edges `inputChildren` lists. Each schema object once — a cycle the
+// — the edges `payloadChildren` lists. Each schema object once — a cycle the
 // dereference materialized ends there — and within a depth budget (rule 7).
 // `visit(schema, dataPath, depth)`.
 export function walkInputSchema(root, dataPath, visit, seen = new Set()) {
   const walk = (schema, path, depth) => {
-    if (!isSchemaObject(schema) || depth > MAX_DEPTH || seen.has(schema)) return
+    if (!isObject(schema) || depth > SCHEMA_DEPTH || seen.has(schema)) return
     seen.add(schema)
     visit(schema, path, depth)
-    for (const [child, childPath] of inputChildren(schema, path)) walk(child, childPath, depth + 1)
+    for (const [child, childPath] of payloadChildren(schema, path))
+      walk(child, childPath, depth + 1)
   }
   walk(root, dataPath, 0)
 }
 
-// The schemas an input schema leads to, as `[child, dataPath, nested]`: what
+// The schemas a payload schema leads to, as `[child, dataPath, nested]`: what
 // `walkInputSchema` descends into, and what the rules needing the path back to
 // an ancestor (a cycle) or a longest path (nesting) — which a walk visiting
 // each schema once cannot give — walk themselves. `nested`: the child is the value of
 // one of the object's keys, a level down, rather than an item of the same array
-// or another description of the same value.
-export function* inputChildren(schema, dataPath) {
-  if (isSchemaObject(schema.properties)) {
+// or another description of the same value. `side`: `request` follows what a
+// client sends (a `readOnly` property never is), `response` what the API
+// returns (a `writeOnly` one never is).
+export function* payloadChildren(schema, dataPath, side = 'request') {
+  const unsent = side === 'request' ? 'readOnly' : 'writeOnly'
+  if (isObject(schema.properties)) {
     for (const [name, sub] of Object.entries(schema.properties)) {
-      if (isSchemaObject(sub) && sub.readOnly !== true) {
+      if (isObject(sub) && sub[unsent] !== true) {
         yield [sub, `${dataPath}${pointer('properties', name)}`, true]
       }
     }
   }
-  if (isSchemaObject(schema.additionalProperties)) {
-    yield [schema.additionalProperties, `${dataPath}/additionalProperties`, true]
-  }
-  if (isSchemaObject(schema.items)) yield [schema.items, `${dataPath}/items`, false]
-  for (const keyword of ['allOf', 'oneOf', 'anyOf', 'prefixItems']) {
-    for (const [index, sub] of listOf(schema[keyword]).entries()) {
-      if (isSchemaObject(sub)) yield [sub, `${dataPath}${pointer(keyword, index)}`, false]
+  for (const keyword of ['patternProperties', 'dependentSchemas']) {
+    if (!isObject(schema[keyword])) continue
+    for (const [name, sub] of Object.entries(schema[keyword])) {
+      if (isObject(sub))
+        yield [sub, `${dataPath}${pointer(keyword, name)}`, keyword !== 'dependentSchemas']
     }
   }
-}
-
-// Same budget as the shared schema walk (schema-walk.js).
-const MAX_DEPTH = 24
-
-export function isSchemaObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+  for (const keyword of ['additionalProperties', 'unevaluatedProperties']) {
+    if (isObject(schema[keyword])) yield [schema[keyword], `${dataPath}/${keyword}`, true]
+  }
+  for (const keyword of ['items', 'unevaluatedItems']) {
+    if (isObject(schema[keyword])) yield [schema[keyword], `${dataPath}/${keyword}`, false]
+  }
+  for (const keyword of ['allOf', 'oneOf', 'anyOf', 'prefixItems']) {
+    for (const [index, sub] of listOf(schema[keyword]).entries()) {
+      if (isObject(sub)) yield [sub, `${dataPath}${pointer(keyword, index)}`, false]
+    }
+  }
+  for (const keyword of ['then', 'else']) {
+    if (isObject(schema[keyword])) yield [schema[keyword], `${dataPath}/${keyword}`, false]
+  }
 }
 
 function objectOrEmpty(value) {
-  return isSchemaObject(value) ? value : {}
+  return isObject(value) ? value : {}
 }

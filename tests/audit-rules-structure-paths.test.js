@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runRule } from '../src/audit/engine.js'
+import { createAuditContext, runRule } from '../src/audit/engine.js'
 import { additionalOperationMethod } from '../src/audit/rules/additional-operation-method.js'
 import { headerNameToken } from '../src/audit/rules/header-name-token.js'
 import { headerParameterIgnored } from '../src/audit/rules/header-parameter-ignored.js'
@@ -9,12 +9,18 @@ import { pathSyntax } from '../src/audit/rules/path-syntax.js'
 import { pathsAmbiguous } from '../src/audit/rules/paths-ambiguous.js'
 import { pathsIdentical } from '../src/audit/rules/paths-identical.js'
 import { querystringParameter } from '../src/audit/rules/querystring-parameter.js'
+import { serverUrlForm } from '../src/audit/rules/server-url-form.js'
 import { serverVariables } from '../src/audit/rules/server-variables.js'
+import { loadInlineApiModel } from '../src/openapi/loader.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
 // The structural rules of docs/audit.md §4.1 on paths, parameters and servers.
 
 const run = (rule, document, options) => runRule(rule, auditContext(document, options))
+// Through the loader, for fixtures carrying a `$ref`: the rules read the
+// dereferenced document next to the source.
+const loaded = async (rule, document) =>
+  runRule(rule, createAuditContext(await loadInlineApiModel(document)))
 const get = (extra = {}) => ({ get: { responses: okResponse, ...extra } })
 const paths = (...keys) => doc({ paths: Object.fromEntries(keys.map((key) => [key, get()])) })
 const flagged = (result) => result.findings.map((f) => f.params.path ?? f.dataPath)
@@ -76,6 +82,11 @@ describe('paths-identical', () => {
       { path: '/pets/{petId}', other: '/pets/{id}' },
     ])
   })
+
+  it('leaves the keys path-syntax rejects to it', () => {
+    const result = run(pathsIdentical, paths('pets', 'orders', '/a/{x', '/a/{y'))
+    expect(result.findings).toEqual([])
+  })
 })
 
 describe('paths-ambiguous', () => {
@@ -93,6 +104,11 @@ describe('paths-ambiguous', () => {
       { path: '/books/{id}', other: '/{entity}/me' },
     ])
     expect(result.findings[0].severity).toBe('info')
+  })
+
+  it('leaves the keys path-syntax rejects to it', () => {
+    const result = run(pathsAmbiguous, paths('/{a}/me{', '/books/{id}', '/{entity}/me?x'))
+    expect(result.findings).toEqual([])
   })
 })
 
@@ -137,6 +153,21 @@ describe('parameters-unique', () => {
       ['/paths/~1pets/get/parameters/2', { name: 'limit', in: 'query' }],
       ['/paths/~1pets/get/parameters/3', { name: 'x-trace', in: 'header' }],
     ])
+  })
+
+  it('checks a referenced Path Item once, where it is declared', async () => {
+    const result = await loaded(
+      parametersUnique,
+      doc({
+        paths: { '/a': { $ref: '#/components/pathItems/A' } },
+        components: {
+          pathItems: {
+            A: { parameters: [param('q'), param('q')], get: { responses: okResponse } },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/pathItems/A/parameters/1'])
   })
 })
 
@@ -184,6 +215,37 @@ describe('header-parameter-ignored', () => {
       '/paths/~1a/get/parameters/0',
       '/paths/~1a/get/parameters/1',
       '/paths/~1a/get/responses/200/headers/Content-Type',
+    ])
+  })
+
+  it("flags a multipart part's Content-Type header, and only that one", () => {
+    const result = run(
+      headerParameterIgnored,
+      doc({
+        paths: {
+          '/a': {
+            post: {
+              requestBody: {
+                content: {
+                  'multipart/form-data': {
+                    schema: { type: 'object', properties: { file: {} } },
+                    encoding: {
+                      file: {
+                        contentType: 'image/png',
+                        headers: { 'content-type': { schema: {} }, Authorization: { schema: {} } },
+                      },
+                    },
+                  },
+                },
+              },
+              responses: okResponse,
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1a/post/requestBody/content/multipart~1form-data/encoding/file/headers/content-type',
     ])
   })
 })
@@ -314,6 +376,53 @@ describe('querystring-parameter', () => {
       ['/paths/~1a/get/parameters/0', { name: 'q', conflict: 'limit' }],
     ])
   })
+
+  it('flags each field for use with schema once, at a shared declaration', async () => {
+    const use = { $ref: '#/components/parameters/Q' }
+    const result = await loaded(
+      querystringParameter,
+      doc({
+        openapi: '3.2.0',
+        paths: {
+          '/a': {
+            get: { parameters: [use], responses: okResponse },
+            post: { parameters: [use], responses: okResponse },
+          },
+        },
+        components: {
+          parameters: {
+            Q: qs('q', { schema: { type: 'string' }, explode: true, allowReserved: true }),
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => [f.dataPath, f.params.conflict])).toEqual([
+      ['/components/parameters/Q/schema', 'schema'],
+      ['/components/parameters/Q/explode', 'explode'],
+      ['/components/parameters/Q/allowReserved', 'allowReserved'],
+    ])
+  })
+
+  it('leaves older documents to version-construct', () => {
+    const result = run(
+      querystringParameter,
+      doc({
+        paths: {
+          '/a': {
+            get: {
+              parameters: [
+                qs('q', { schema: {} }),
+                qs('r'),
+                { name: 's', in: 'query', schema: {} },
+              ],
+              responses: okResponse,
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings).toEqual([])
+  })
 })
 
 describe('additional-operation-method', () => {
@@ -374,17 +483,74 @@ describe('server-variables', () => {
     ])
   })
 
-  it('reads servers at every level, and lets 3.0 keep an empty enum', () => {
+  it('reads servers at every level, and lets 3.0 keep an empty enum or a default outside it', () => {
     const result = run(
       serverVariables,
       doc({
         openapi: '3.0.3',
-        servers: [{ url: 'https://api.example.com', variables: { v: { default: 'x', enum: [] } } }],
+        servers: [
+          {
+            url: 'https://{w}.example.com/{v}',
+            variables: { v: { default: 'x', enum: [] }, w: { default: 'ap', enum: ['eu'] } },
+          },
+        ],
         paths: { '/a': { get: { servers: [{ url: 'https://{host}' }], responses: okResponse } } },
       }),
     )
     expect(result.findings.map((f) => [f.dataPath, f.opRef])).toEqual([
       ['/paths/~1a/get/servers/0/url', 'get-a'],
+    ])
+  })
+
+  it('reports an undeclared variable once, however often the URL uses it', () => {
+    const result = server({ url: 'https://{h}/{h}/{x}/{x}', variables: { h: { default: 'a' } } })
+    expect(result.findings.map((f) => [f.dataPath, f.params.name])).toEqual([
+      ['/servers/0/url', 'x'],
+    ])
+  })
+})
+
+describe('server-url-form', () => {
+  const url = (value, openapi = '3.1.0') =>
+    run(
+      serverUrlForm,
+      doc({ openapi, servers: [{ url: value, variables: { v: { default: 'x' } } }] }),
+    )
+
+  it('passes a URL once its variables are set aside, absolute or relative', () => {
+    for (const value of [
+      'https://{v}.example.com/api',
+      '/{v}',
+      '{v}',
+      'https://a.example.com/%7E',
+    ]) {
+      expect(url(value), value).toMatchObject({ checks: 0, findings: [] })
+    }
+  })
+
+  it('flags a URL that is no URL once its variables are set aside', () => {
+    for (const value of [
+      'see our website',
+      'https://api.example.com/v1 beta',
+      'https://api.example.com/{v}/a|b',
+      'https://{v.example.com',
+      'https://api.example.com/{}',
+      '',
+    ]) {
+      const { findings } = url(value)
+      expect(findings, value).toHaveLength(1)
+      expect(findings[0]).toMatchObject({
+        dataPath: '/servers/0/url',
+        severity: 'error',
+        params: { url: value },
+      })
+    }
+  })
+
+  it('flags a variable used twice from 3.2', () => {
+    expect(url('https://{v}/{v}', '3.1.0').findings).toEqual([])
+    expect(url('https://{v}/{v}', '3.2.0').findings.map((f) => f.dataPath)).toEqual([
+      '/servers/0/url',
     ])
   })
 })

@@ -71,6 +71,72 @@ describe('walkObjects', () => {
       dataPath: '/paths/~1a/get/parameters/0',
     })
   })
+
+  const typedPaths = (entries) =>
+    entries.map(({ type, expected, dataPath }) =>
+      expected ? `${type}<${expected}> ${dataPath}` : `${type} ${dataPath}`,
+    )
+
+  it('follows a Path Item split into another file, and types it a Path Item', () => {
+    const source = doc({ paths: { '/a': { $ref: './a.yaml' } } })
+    const document = structuredClone(source)
+    document.paths['/a'] = { get: { descripton: 'typo', responses: okResponse } }
+    expect(typedPaths(walkObjects(source, document, 1))).toEqual(
+      expect.arrayContaining(['PathItem /paths/~1a', 'Operation /paths/~1a/get']),
+    )
+    const result = run(unknownField, document, { source })
+    expect(result.findings.map((f) => f.dataPath)).toEqual(['/paths/~1a/get/descripton'])
+  })
+
+  it('keeps an unread Path Item file as the $ref, for ref-resolves', () => {
+    const source = doc({ paths: { '/a': { $ref: './missing.yaml' } } })
+    const entries = walkObjects(source, structuredClone(source), 1)
+    expect(entries.find((e) => e.dataPath === '/paths/~1a')).toMatchObject({
+      type: 'PathItem',
+      node: { $ref: './missing.yaml' },
+    })
+  })
+
+  it('never takes a whole list or map for a Reference', () => {
+    const source = doc({
+      paths: {
+        '/a': {
+          get: { parameters: { $ref: '#/components/parameters/P' }, responses: okResponse },
+        },
+      },
+    })
+    const typed = typedPaths(walkObjects(source, source, 1))
+    expect(typed.some((entry) => entry.includes('/parameters'))).toBe(false)
+  })
+
+  it('types a 3.1 Schema $ref with siblings as a Schema too, and walks them', () => {
+    const schema = {
+      $ref: '#/components/schemas/Pet',
+      properties: { name: { maxLenght: 3 } },
+    }
+    const source = doc({ components: { schemas: { Pet: { type: 'object' }, Named: schema } } })
+    expect(typedPaths(walkObjects(source, source, 1))).toEqual(
+      expect.arrayContaining([
+        'Reference<Schema> /components/schemas/Named',
+        'Schema /components/schemas/Named',
+        'Schema /components/schemas/Named/properties/name',
+      ]),
+    )
+    // 3.0 ignores a `$ref`'s siblings: a Reference only.
+    expect(
+      typedPaths(walkObjects(source, source, 0)).filter((entry) => entry.includes('/Named')),
+    ).toEqual(['Reference<Schema> /components/schemas/Named'])
+  })
+
+  it('types a Media Type $ref as a Reference of the version that allows it', () => {
+    const content = { 'application/json': { $ref: '#/components/mediaTypes/Json' } }
+    const source = doc({
+      paths: { '/a': { get: { responses: { 200: { description: 'OK', content } } } } },
+    })
+    expect(walkObjects(source, source, 1)).toContainEqual(
+      expect.objectContaining({ type: 'Reference', expected: 'MediaType', since: 2 }),
+    )
+  })
 })
 
 describe('unknown-field', () => {
@@ -111,6 +177,20 @@ describe('unknown-field', () => {
       ],
     ])
     expect(result.findings[0]).toMatchObject({ opRef: 'get-pets', severity: 'error' })
+  })
+
+  it('flags a key named like an Object.prototype member', () => {
+    const result = run(unknownField, doc({ info: { title: 'T', version: '1', constructor: 'x' } }))
+    expect(result.findings.map((f) => f.dataPath)).toEqual(['/info/constructor'])
+  })
+
+  it('leaves a 3.1 Media Type $ref to version-construct', () => {
+    const content = { 'application/json': { $ref: '#/components/mediaTypes/Json' } }
+    const result = run(
+      unknownField,
+      doc({ paths: { '/a': { get: { responses: { 200: { description: 'OK', content } } } } } }),
+    )
+    expect(result.findings).toEqual([])
   })
 
   it('leaves a field of a later version to version-construct, and schemas alone', () => {
@@ -237,6 +317,81 @@ describe('field-value-kind', () => {
       '/paths/~1pets/get/parameters/1/style "comma" → matrix | label | simple | form | spaceDelimited | pipeDelimited | deepObject',
       '/components/securitySchemes/key/type "bearer" → apiKey | http | oauth2 | openIdConnect',
       '/security/0/key "read" → array of strings',
+    ])
+  })
+
+  it('accepts a boolean schema from 3.1 on', () => {
+    const boolean = (openapi) =>
+      doc({
+        openapi,
+        paths: {
+          '/a': {
+            get: {
+              responses: {
+                200: { description: 'OK', content: { 'application/json': { schema: true } } },
+              },
+            },
+          },
+        },
+        components: { schemas: { Never: false } },
+      })
+    expect(run(fieldValueKind, boolean('3.1.0')).findings).toEqual([])
+    expect(run(fieldValueKind, boolean('3.0.3')).findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1a/get/responses/200/content/application~1json/schema',
+      '/components/schemas/Never',
+    ])
+  })
+
+  it('flags list and map members that are not objects, at the member', () => {
+    const result = run(
+      fieldValueKind,
+      doc({
+        security: ['api_key'],
+        tags: ['pets'],
+        paths: {
+          '/pets': { get: { parameters: ['id'], responses: { 200: 'OK', 'x-note': 'n' } } },
+          '/owners': 'TODO',
+        },
+      }),
+    )
+    expect(
+      result.findings.map((f) => `${f.dataPath} ${f.params.field} ${f.params.object}`),
+    ).toEqual([
+      '/security/0 security[0] OpenAPI',
+      '/tags/0 tags[0] OpenAPI',
+      '/paths/~1owners /owners Paths',
+      '/paths/~1pets/get/parameters/0 parameters[0] Operation',
+      '/paths/~1pets/get/responses/200 200 Responses',
+    ])
+  })
+
+  it('leaves a null map member to field-without-value, and names a key unescaped', () => {
+    const result = run(
+      fieldValueKind,
+      doc({
+        security: [{ 'a/b': 'read', key: null }],
+        components: {
+          securitySchemes: {
+            oauth: {
+              type: 'oauth2',
+              flows: { implicit: { authorizationUrl: 'https://a.b', scopes: { read: null } } },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => [f.dataPath, f.params.field])).toEqual([
+      ['/security/0/a~1b', 'a/b'],
+    ])
+  })
+
+  it('flags items written as a list', () => {
+    const result = run(
+      fieldValueKind,
+      doc({ components: { schemas: { Pair: { type: 'array', items: [{}, {}] } } } }),
+    )
+    expect(result.findings.map((f) => [f.dataPath, f.params.expected])).toEqual([
+      ['/components/schemas/Pair/items', 'object'],
     ])
   })
 

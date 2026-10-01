@@ -90,25 +90,25 @@ describe('operation-unsecured', () => {
         },
       }),
     )
-    const byMethod = Object.fromEntries(
-      result.findings.map((finding) => [finding.params.method, finding.severity]),
+    const byLocation = Object.fromEntries(
+      result.findings.map((finding) => [finding.location, finding.severity]),
     )
-    expect(byMethod).toEqual({
-      GET: 'info',
-      HEAD: 'info',
-      OPTIONS: 'info',
-      TRACE: 'info',
-      QUERY: 'info',
-      SEARCH: 'info',
-      POST: 'warning',
-      PUT: 'warning',
-      PATCH: 'warning',
-      DELETE: 'warning',
-      PURGE: 'warning',
+    expect(byLocation).toEqual({
+      'GET /a': 'info',
+      'HEAD /a': 'info',
+      'OPTIONS /a': 'info',
+      'TRACE /a': 'info',
+      'QUERY /a': 'info',
+      'SEARCH /a': 'info',
+      'POST /a': 'warning',
+      'PUT /a': 'warning',
+      'PATCH /a': 'warning',
+      'DELETE /a': 'warning',
+      'PURGE /a': 'warning',
     })
     expect(result.checks).toBe(12)
     expect(result.findings.every((finding) => finding.params.access === 'omitted')).toBe(true)
-    expect(result.findings.find((finding) => finding.params.method === 'PURGE')).toMatchObject({
+    expect(result.findings.find((finding) => finding.location === 'PURGE /a')).toMatchObject({
       dataPath: '/paths/~1a/additionalOperations/PURGE',
     })
   })
@@ -130,25 +130,75 @@ describe('operation-unsecured', () => {
         severity: 'info',
         location: 'POST /login',
         dataPath: '/paths/~1login/post/security',
-        params: { method: 'POST', access: 'declared' },
+        params: { access: 'declared' },
       }),
       expect.objectContaining({
         severity: 'info',
         location: 'DELETE /feed',
-        params: { method: 'DELETE', access: 'declared' },
+        params: { access: 'declared' },
       }),
     ])
   })
 
-  it('reads a root security: [] as public by declaration, at the operation', () => {
-    const result = run(operationUnsecured, doc({ security: [], paths: { '/a': { put: op() } } }))
+  it('reads a root security: [] as an omission, not a statement about any operation', () => {
+    const result = run(
+      operationUnsecured,
+      doc({
+        components: { securitySchemes: schemes },
+        security: [],
+        paths: { '/a': { get: op(), put: op() } },
+      }),
+    )
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        location: 'GET /a',
+        severity: 'info',
+        params: { access: 'omitted' },
+      }),
+      expect.objectContaining({
+        location: 'PUT /a',
+        severity: 'warning',
+        params: { access: 'omitted' },
+      }),
+    ])
+    // With no scheme either, the document documents no authentication at all.
+    const bare = run(operationUnsecured, doc({ security: [], paths: { '/a': { put: op() } } }))
+    expect(bare.findings).toEqual([
+      expect.objectContaining({
+        dataPath: '/components/securitySchemes',
+        params: { access: 'omitted' },
+      }),
+    ])
+  })
+
+  it('reads a root {} alternative as optional authentication, declared', () => {
+    const result = run(
+      operationUnsecured,
+      doc({
+        components: { securitySchemes: schemes },
+        security: [{}, { key: [] }],
+        paths: { '/a': { put: op() } },
+      }),
+    )
     expect(result.findings).toEqual([
       expect.objectContaining({
         severity: 'info',
         dataPath: '/paths/~1a/put',
-        params: { method: 'PUT', access: 'declared' },
+        params: { access: 'declared' },
       }),
     ])
+  })
+
+  it('falls back to the root on a security that is not a list', () => {
+    const result = run(
+      operationUnsecured,
+      doc({
+        components: { securitySchemes: schemes },
+        security: [{ key: [] }],
+        paths: { '/a': { post: op({ security: {} }) } },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
   it('checks hidden operations, without a link, and leaves webhooks and callbacks out', () => {
@@ -258,7 +308,7 @@ describe('secured-op-errors', () => {
       expect.objectContaining({
         location: 'GET /a',
         dataPath: '/paths/~1a/get/responses/401',
-        params: { status: '401', missing: 'WWW-Authenticate' },
+        params: { missing: 'WWW-Authenticate' },
       }),
     ])
   })
@@ -286,7 +336,9 @@ describe('secured-op-errors', () => {
       },
     })
     const result = run(securedOpErrors, document)
-    const challenges = result.findings.filter((finding) => finding.params.status === '401')
+    const challenges = result.findings.filter(
+      (finding) => finding.params.missing === 'WWW-Authenticate',
+    )
     expect(challenges).toEqual([
       expect.objectContaining({
         location: 'components.responses.Unauthorized',

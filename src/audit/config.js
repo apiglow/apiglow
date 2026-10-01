@@ -1,5 +1,6 @@
 import { SEVERITIES } from './constants.js'
 import { RULES } from './rules/index.js'
+import { isObject } from './value-check.js'
 
 // The audit's rule configuration (docs/audit.md §2.2, §3): which rules run, at
 // which severity, and where. The host declares it under `audit` — root and
@@ -36,7 +37,7 @@ export function readAuditConfig(raw, rules = RULES) {
   const errors = []
   const config = { rules: {}, options: {}, overrides: [] }
   if (raw == null) return { config, errors }
-  if (!isPlainObject(raw)) return { config, errors: ['audit: expected an object'] }
+  if (!isObject(raw)) return { config, errors: ['audit: expected an object'] }
 
   config.rules = readRules(raw.rules, 'audit.rules', known, errors, config.options)
   if (raw.overrides !== undefined && !Array.isArray(raw.overrides)) {
@@ -44,7 +45,7 @@ export function readAuditConfig(raw, rules = RULES) {
   }
   for (const [index, entry] of (Array.isArray(raw.overrides) ? raw.overrides : []).entries()) {
     const at = `audit.overrides[${index}]`
-    if (!isPlainObject(entry)) {
+    if (!isObject(entry)) {
       errors.push(`${at}: expected an object`)
       continue
     }
@@ -73,26 +74,30 @@ export function readAuditConfig(raw, rules = RULES) {
 }
 
 // `options` is where the object form's options go — absent, as under an
-// override, the object form is refused.
+// override, an object form setting any is refused; its severity alone is read.
 function readRules(raw, at, known, errors, options = null) {
   const rules = {}
   if (raw === undefined) return rules
-  if (!isPlainObject(raw)) {
+  if (!isObject(raw)) {
     errors.push(`${at}: expected an object`)
     return rules
   }
   for (const [id, setting] of Object.entries(raw)) {
     const rule = known.get(id)
     if (!rule) errors.push(`${at}: unknown rule "${id}"`)
-    else if (isPlainObject(setting) && options) {
+    else if (isObject(setting)) {
       const { severity, ...values } = setting
       if (severity !== undefined && !SETTINGS.includes(severity)) {
         errors.push(`${at}.${id}.severity: "${severity}" is not one of ${SETTINGS.join(', ')}`)
       } else if (severity !== undefined) rules[id] = severity
+      if (!options) {
+        if (Object.keys(values).length) {
+          errors.push(`${at}.${id}: options are set under audit.rules, for the whole document`)
+        }
+        continue
+      }
       const read = readOptions(rule, values, `${at}.${id}`, errors)
       if (Object.keys(read).length) options[id] = read
-    } else if (isPlainObject(setting)) {
-      errors.push(`${at}.${id}: options are set under audit.rules, for the whole document`)
     } else if (!SETTINGS.includes(setting)) {
       errors.push(`${at}.${id}: "${setting}" is not one of ${SETTINGS.join(', ')}`)
     } else rules[id] = setting
@@ -113,9 +118,8 @@ function readOptions(rule, values, at, errors) {
       errors.push(
         `${at}.${name}: unknown option — ${known.length ? `this rule takes ${known.join(', ')}` : 'this rule takes none'}`,
       )
-    } else if (!Number.isInteger(value) || value < spec.min || value > (spec.max ?? Infinity)) {
-      const range = spec.max === undefined ? `${spec.min} or more` : `${spec.min} to ${spec.max}`
-      errors.push(`${at}.${name}: expected an integer, ${range}`)
+    } else if (!Number.isInteger(value) || value < spec.min || value > spec.max) {
+      errors.push(`${at}.${name}: expected an integer, ${spec.min} to ${spec.max}`)
     } else read[name] = value
   }
   return read
@@ -183,6 +187,3 @@ function pointerMatcher(pattern) {
 }
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-const isPlainObject = (value) =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)

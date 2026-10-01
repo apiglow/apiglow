@@ -24,14 +24,18 @@
 //
 // `required` knows the direction of the value: a `readOnly` property is not
 // required in a request, a `writeOnly` one not in a response, and a value with
-// no direction (a component's own example) owes neither.
+// no direction (a component's own example) owes neither. The flag counts
+// wherever the property is declared among the schemas applied to the same
+// value through `allOf`: `required` beside an `allOf` names what a member
+// declares.
 //
 // A `null` where `nullable: true` stands gets no verdict: whether the rest of
 // the schema then rejects it is `nullable-enum-null`'s and, without a `type`,
 // `constraint-type-mismatch`'s.
 
-import { isAbsoluteUri } from './uri.js'
-import { deepEqual, numericBounds } from './value-check.js'
+import { compilePattern, declaredTypes } from './schema-keywords.js'
+import { isAbsoluteUri, isEmail } from './uri.js'
+import { deepEqual, isObject, numericBounds, valueIsType } from './value-check.js'
 
 // Nesting of value and schema together. A real example is a few levels deep;
 // the cap bounds a composition that refers to itself.
@@ -42,6 +46,7 @@ const BUDGET = 50_000
 
 const NONE = { checked: false, failure: null }
 const PASS = { checked: true, failure: null }
+const NO_EXEMPTION = new Set()
 
 // → { checked, failure } — `checked` false when no keyword gave a verdict (the
 // caller then counts no check), `failure` `{ keyword, at, severity }` with `at`
@@ -49,41 +54,52 @@ const PASS = { checked: true, failure: null }
 // the missing member).
 export function validateValue(value, schema, { side = null } = {}) {
   const state = { side, budget: BUDGET }
-  return walk(value, schema, '$', 0, state, null, [])
+  const { checked, failure } = walk(value, schema, ROOT, 0, state, null, [], NO_EXEMPTION)
+  if (!failure) return { checked, failure }
+  const { keyword, at, severity } = failure
+  return { checked, failure: { keyword, at, severity } }
 }
 
-// The direction of a value, from where a rule found it (`{ op, dataPath }`): a
-// component's own — reported with no operation — has none.
+// The direction of a value, from where a rule found it (`{ op, dataPath }`),
+// read off the first segment under the operation: `responses` is the API's
+// answer, anything else (`requestBody`, `parameters`, a Path Item's parameters
+// above the operation) the client's request. A component's own value has no
+// direction, and neither has a webhook's or a callback's: the API sends their
+// request and the client answers it, so the `readOnly` / `writeOnly` contract
+// — written from the client's seat — names neither end.
 export function sideOf({ op, dataPath }) {
-  if (!op) return null
-  const request = Math.max(
-    dataPath.lastIndexOf('/requestBody/'),
-    dataPath.lastIndexOf('/parameters/'),
-  )
-  return dataPath.lastIndexOf('/responses/') > request ? 'response' : 'request'
+  if (!op || op.kind === 'webhook' || op.kind === 'callback') return null
+  if (!dataPath.startsWith(`${op.pointer}/`)) return 'request'
+  const [segment] = dataPath.slice(op.pointer.length + 1).split('/')
+  return segment === 'responses' ? 'response' : 'request'
 }
 
-function walk(value, schema, at, depth, state, via, stack) {
+// A place in the value: its JSONPath and how many members deep it sits — the
+// count `composition` compares, which the text of a quoted key would skew.
+const ROOT = { path: '$', level: 0 }
+
+function walk(value, schema, at, depth, state, via, stack, exempt) {
   if (schema === false) return fail(via, at)
   if (!isObject(schema) || depth > MAX_DEPTH || state.budget <= 0) return NONE
   if (typeof schema.$ref === 'string' || stack.includes(schema)) return NONE
   state.budget -= 1
   if (value === null && schema.nullable === true) return NONE
+  const exempted = isObject(value) ? exemptions(schema, state.side, exempt) : exempt
   const result = { checked: false, failure: null }
   const steps = [typeStep, constantStep, stringStep, numberStep, arrayStep, objectStep, composition]
   for (const step of steps) {
-    absorb(result, step(value, schema, at, depth, state, stack))
+    absorb(result, step(value, schema, at, depth, state, stack, exempted))
     if (result.failure?.severity === 'error') break
   }
   return result
 }
 
 function typeStep(value, schema, at) {
-  const declared = Array.isArray(schema.type) ? schema.type : [schema.type]
-  if (schema.type === undefined || !declared.every((type) => TYPES.has(type))) return NONE
-  const types = schema.nullable === true ? [...declared, 'null'] : declared
+  const types = declaredTypes(schema)
+  // No type, or one that is no JSON type: no verdict.
+  if (!types?.length) return NONE
   return verdict(
-    types.some((type) => isType(value, type)),
+    types.some((type) => valueIsType(value, type)),
     'type',
     at,
   )
@@ -116,7 +132,7 @@ function stringStep(value, schema, at) {
     if (isCount(minLength)) absorb(result, verdict(length >= minLength, 'minLength', at))
     if (isCount(maxLength)) absorb(result, verdict(length <= maxLength, 'maxLength', at))
   }
-  const regex = compile(pattern)
+  const regex = compilePattern(pattern)
   if (regex) absorb(result, verdict(regex.test(value), 'pattern', at))
   const formatCheck = STRING_FORMATS.get(format)
   if (formatCheck) absorb(result, verdict(formatCheck(value), 'format', at, 'warning'))
@@ -156,21 +172,22 @@ function arrayStep(value, schema, at, depth, state) {
     const twice = value.findIndex((item, index) =>
       value.slice(0, index).some((earlier) => deepEqual(earlier, item)),
     )
-    absorb(result, verdict(twice < 0, 'uniqueItems', twice < 0 ? at : `${at}[${twice}]`))
+    absorb(result, verdict(twice < 0, 'uniqueItems', twice < 0 ? at : index(at, twice)))
   }
   const prefix = Array.isArray(schema.prefixItems) ? schema.prefixItems : []
   // A draft-04 tuple `items: [...]` is no 3.x spelling: no verdict.
   const rest = Array.isArray(schema.items) ? undefined : schema.items
-  for (const [index, item] of value.entries()) {
+  for (const [position, item] of value.entries()) {
     if (result.failure?.severity === 'error') break
-    const [sub, via] = index < prefix.length ? [prefix[index], 'prefixItems'] : [rest, 'items']
+    const [sub, via] =
+      position < prefix.length ? [prefix[position], 'prefixItems'] : [rest, 'items']
     if (sub === undefined) continue
-    absorb(result, walk(item, sub, `${at}[${index}]`, depth + 1, state, via, []))
+    absorb(result, walk(item, sub, index(at, position), depth + 1, state, via, [], NO_EXEMPTION))
   }
   return result
 }
 
-function objectStep(value, schema, at, depth, state) {
+function objectStep(value, schema, at, depth, state, _stack, exempt) {
   if (!isObject(value)) return NONE
   const result = { checked: false, failure: null }
   const keys = Object.keys(value)
@@ -183,9 +200,7 @@ function objectStep(value, schema, at, depth, state) {
   }
   if (Array.isArray(schema.required)) {
     for (const name of schema.required) {
-      if (typeof name !== 'string') continue
-      const property = Object.hasOwn(properties, name) ? properties[name] : undefined
-      if (!owes(property, state.side)) continue
+      if (typeof name !== 'string' || exempt.has(name)) continue
       absorb(result, verdict(Object.hasOwn(value, name), 'required', member(at, name)))
       if (result.failure?.severity === 'error') return result
     }
@@ -194,33 +209,49 @@ function objectStep(value, schema, at, depth, state) {
   let patternsKnown = true
   if (isObject(schema.patternProperties)) {
     for (const [source, sub] of Object.entries(schema.patternProperties)) {
-      const regex = compile(source)
+      const regex = compilePattern(source)
       if (regex) patterns.push([regex, sub])
       else patternsKnown = false
     }
   }
-  const additional = schema.additionalProperties
-  // `additionalProperties: false` sees only its own siblings: beside an
-  // `allOf`, the properties a member declares are "additional" to it — a
-  // schema bug, not the example's, and judged nowhere here.
-  const closed = additional === false && !hasComposition(schema)
+  // `additionalProperties` sees only its own siblings: beside an `allOf`, the
+  // properties a member declares are "additional" to it — `false` then rejects
+  // them and a schema judges them, a schema bug rather than the example's, and
+  // judged nowhere here.
+  const additional = hasComposition(schema) ? undefined : schema.additionalProperties
+  const closed = additional === false
   for (const key of keys) {
     const place = member(at, key)
     const declared = Object.hasOwn(properties, key)
     if (declared)
-      absorb(result, walk(value[key], properties[key], place, depth + 1, state, 'properties', []))
+      absorb(
+        result,
+        walk(value[key], properties[key], place, depth + 1, state, 'properties', [], NO_EXEMPTION),
+      )
     let matched = false
     for (const [regex, sub] of patterns) {
       if (!regex.test(key)) continue
       matched = true
-      absorb(result, walk(value[key], sub, place, depth + 1, state, 'patternProperties', []))
+      absorb(
+        result,
+        walk(value[key], sub, place, depth + 1, state, 'patternProperties', [], NO_EXEMPTION),
+      )
     }
     if (!declared && !matched && patternsKnown) {
       if (closed) absorb(result, fail('additionalProperties', place))
       else if (isObject(additional)) {
         absorb(
           result,
-          walk(value[key], additional, place, depth + 1, state, 'additionalProperties', []),
+          walk(
+            value[key],
+            additional,
+            place,
+            depth + 1,
+            state,
+            'additionalProperties',
+            [],
+            NO_EXEMPTION,
+          ),
         )
       }
     }
@@ -229,12 +260,15 @@ function objectStep(value, schema, at, depth, state) {
   return result
 }
 
-function composition(value, schema, at, depth, state, stack) {
+// The schemas applied to the same value inherit the exemptions of the one
+// they are composed into: a branch's `required` may name a parent's
+// `readOnly` property.
+function composition(value, schema, at, depth, state, stack, exempt) {
   const result = { checked: false, failure: null }
   const inner = [...stack, schema]
   if (Array.isArray(schema.allOf)) {
     for (const member of schema.allOf) {
-      absorb(result, walk(value, member, at, depth + 1, state, 'allOf', inner))
+      absorb(result, walk(value, member, at, depth + 1, state, 'allOf', inner, exempt))
       if (result.failure?.severity === 'error') return result
     }
   }
@@ -242,18 +276,24 @@ function composition(value, schema, at, depth, state, stack) {
     const branches = schema[keyword]
     if (!Array.isArray(branches) || !branches.length) continue
     const outcomes = branches.map((branch) =>
-      walk(value, branch, at, depth + 1, state, keyword, inner),
+      walk(value, branch, at, depth + 1, state, keyword, inner, exempt),
     )
     if (outcomes.every((outcome) => outcome.failure)) {
       const failures = outcomes.map((outcome) => outcome.failure)
+      // A branch broken on a format alone is one the value nearly matches: the
+      // whole is graded as that, and named after it.
       const severity = failures.some((failure) => failure.severity === 'warning')
         ? 'warning'
         : 'error'
+      const candidates = failures.filter((failure) => failure.severity === severity)
       // The branch the value got furthest into is the one it meant: its own
       // failure says more than "no branch matches". A tie names the choice.
-      const reach = Math.max(...failures.map((failure) => depthOf(failure.at)))
-      const furthest = failures.filter((failure) => depthOf(failure.at) === reach)
-      const reported = reach > depthOf(at) && furthest.length === 1 ? furthest[0] : { keyword, at }
+      const reach = Math.max(...candidates.map((failure) => failure.level))
+      const furthest = candidates.filter((failure) => failure.level === reach)
+      const reported =
+        reach > at.level && furthest.length === 1
+          ? furthest[0]
+          : { keyword, at: at.path, level: at.level }
       absorb(result, { checked: true, failure: { ...reported, severity } })
     } else if (outcomes.some((outcome) => outcome.checked && !outcome.failure)) {
       absorb(result, PASS)
@@ -262,8 +302,26 @@ function composition(value, schema, at, depth, state, stack) {
   return result
 }
 
-// Whether a missing required property is owed by a value going this way:
-// false when its `readOnly` / `writeOnly` exempts it.
+// The names a value going `side` does not owe: `inherited`, plus the
+// `readOnly` / `writeOnly` properties the schema and its `allOf` members
+// declare, however deep.
+function exemptions(schema, side, inherited) {
+  const names = new Set(inherited)
+  const seen = new Set()
+  const visit = (node, level) => {
+    if (!isObject(node) || seen.has(node) || level > MAX_DEPTH) return
+    seen.add(node)
+    if (isObject(node.properties)) {
+      for (const [name, property] of Object.entries(node.properties)) {
+        if (!owes(property, side)) names.add(name)
+      }
+    }
+    if (Array.isArray(node.allOf)) for (const member of node.allOf) visit(member, level + 1)
+  }
+  visit(schema, 0)
+  return names.size ? names : NO_EXEMPTION
+}
+
 function owes(property, side) {
   if (!isObject(property)) return true
   if (property.readOnly === true && side !== 'response') return false
@@ -289,40 +347,18 @@ function verdict(passed, keyword, at, severity = 'error') {
 }
 
 function fail(keyword, at, severity = 'error') {
-  return { checked: true, failure: { keyword, at, severity } }
-}
-
-function depthOf(at) {
-  return at.match(/\.|\[/g)?.length ?? 0
+  return { checked: true, failure: { keyword, at: at.path, level: at.level, severity } }
 }
 
 function member(at, key) {
-  return /^[A-Za-z_$][\w$]*$/.test(key) ? `${at}.${key}` : `${at}[${JSON.stringify(key)}]`
+  const path = /^[A-Za-z_$][\w$]*$/.test(key)
+    ? `${at.path}.${key}`
+    : `${at.path}[${JSON.stringify(key)}]`
+  return { path, level: at.level + 1 }
 }
 
-const TYPES = new Set(['null', 'string', 'boolean', 'number', 'integer', 'array', 'object'])
-
-function isType(value, type) {
-  switch (type) {
-    case 'null':
-      return value === null
-    case 'string':
-      return typeof value === 'string'
-    case 'boolean':
-      return typeof value === 'boolean'
-    case 'number':
-      return typeof value === 'number' && Number.isFinite(value)
-    case 'integer':
-      return Number.isInteger(value)
-    case 'array':
-      return Array.isArray(value)
-    default:
-      return isObject(value)
-  }
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
+function index(at, position) {
+  return { path: `${at.path}[${position}]`, level: at.level + 1 }
 }
 
 function isCount(value) {
@@ -336,27 +372,16 @@ function codePoints(text) {
 }
 
 // Floating-point division leaves `0.3 / 0.1` at 2.9999999999999996: a
-// quotient that close to an integer is one.
+// quotient that close to an integer is one. The tolerance is the division's
+// own rounding error, a few ulps of the quotient — a fixed share of it would
+// let `1e9 + 0.5` pass as a multiple of 1.
 function isMultiple(value, divisor) {
   const quotient = value / divisor
   if (!Number.isFinite(quotient)) return true
-  return Math.abs(quotient - Math.round(quotient)) < 1e-9 * Math.max(1, Math.abs(quotient))
-}
-
-// Compiled once per source: github.json repeats a few dozen patterns across
-// thousands of examples. An invalid one is `pattern-valid`'s, and no verdict.
-const PATTERNS = new Map()
-
-function compile(source) {
-  if (typeof source !== 'string') return null
-  if (!PATTERNS.has(source)) {
-    let regex = null
-    try {
-      regex = new RegExp(source, 'u')
-    } catch {}
-    PATTERNS.set(source, regex)
-  }
-  return PATTERNS.get(source)
+  return (
+    Math.abs(quotient - Math.round(quotient)) <=
+    Math.max(1e-9, 8 * Number.EPSILON * Math.abs(quotient))
+  )
 }
 
 // RFC 3339 §5.6: full-date, partial-time, time-offset; `T` and `Z` in either
@@ -400,7 +425,7 @@ const STRING_FORMATS = new Map([
   ['uuid', (text) => /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(text)],
   ['ipv4', (text) => IPV4.test(text)],
   ['ipv6', isIpv6],
-  ['email', (text) => /^[^@\s]+@[^@\s]+$/.test(text)],
+  ['email', isEmail],
   ['uri', isAbsoluteUri],
 ])
 

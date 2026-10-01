@@ -1,4 +1,4 @@
-import { isRealExample, isRealExampleObject } from '../placeholder-example.js'
+import { hasRealExample } from '../placeholder-example.js'
 import { carriesFile, operationContents } from '../schema-walk.js'
 
 // Per-response counterpart of the readiness rule `operation-examples`: that one
@@ -27,7 +27,7 @@ export const responseExample = {
         // No schema means no described payload: nothing to exemplify.
         if (!schema || typeof schema !== 'object') continue
         const state = byStatus.get(item.status) ?? { dataPath: item.dataPath, example: false }
-        state.example ||= hasExample(item.content, schema)
+        state.example ||= hasRealExample(item.content, schema)
         byStatus.set(item.status, state)
       }
       for (const [status, { dataPath, example }] of byStatus) {
@@ -35,17 +35,4 @@ export const responseExample = {
       }
     }
   },
-}
-
-function hasExample(content, schema) {
-  if (isRealExample(content.example, schema)) return true
-  if (content.examples && typeof content.examples === 'object') {
-    if (Object.values(content.examples).some((example) => isRealExampleObject(example, schema)))
-      return true
-  }
-  return (
-    isRealExample(schema.example, schema) ||
-    (Array.isArray(schema.examples) &&
-      schema.examples.some((value) => isRealExample(value, schema)))
-  )
 }

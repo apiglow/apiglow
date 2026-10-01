@@ -1,6 +1,7 @@
 import { listOf } from '../openapi/model.js'
 import { pointer } from './pointer.js'
-import { isSchemaObject } from './tool-inputs.js'
+import { isObject } from './value-check.js'
+import { SCHEMA_DEPTH } from './schema-walk.js'
 
 // The top-level members a client sends in a body described by `schema`: its own
 // `properties` and those of its `allOf` members — an `allOf` of objects is one
@@ -10,9 +11,9 @@ import { isSchemaObject } from './tool-inputs.js'
 export function sentProperties(schema, dataPath) {
   const found = new Map()
   const visit = (node, path, depth, stack) => {
-    if (!isSchemaObject(node) || depth > MAX_DEPTH || stack.has(node)) return
+    if (!isObject(node) || depth > SCHEMA_DEPTH || stack.has(node)) return
     stack.add(node)
-    if (isSchemaObject(node.properties)) {
+    if (isObject(node.properties)) {
       for (const [name, sub] of Object.entries(node.properties)) {
         if (found.has(name) || sub?.readOnly === true) continue
         found.set(name, { name, schema: sub, dataPath: `${path}${pointer('properties', name)}` })
@@ -26,7 +27,3 @@ export function sentProperties(schema, dataPath) {
   visit(schema, dataPath, 0, new Set())
   return [...found.values()]
 }
-
-// `allOf` chains are short in practice; the bound only stops a document that
-// nests fresh members forever (rule 7).
-const MAX_DEPTH = 24

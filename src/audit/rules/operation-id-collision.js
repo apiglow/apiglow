@@ -8,7 +8,9 @@ import { identifierKey } from '../identifier-key.js'
 // declaration order, and moving one in the document renames the other's
 // method in every SDK built from the next version of the document.
 //
-// The key is `identifier-key.js`': case aside, separators dropped. Identical
+// The key is `identifier-key.js`': camelized — separators dropped, the letter
+// after each and the first one taken in either case, every other letter's
+// case kept (`getUserId` and `getUserid` stay two methods). Identical
 // strings are `duplicate-operation-id`'s, not this rule's. Compared across the
 // whole document — the operationId space the specification makes unique —
 // webhooks and callbacks included. One check per operation with an

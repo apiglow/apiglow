@@ -1,6 +1,6 @@
 ---
 name: apiglow-audit
-description: Audit an OpenAPI document (3.0, 3.1, 3.2, Swagger 2.0) with `apiglow audit` and fix what it finds — correctness against the specification, documentation gaps, consistency, and readiness for AI agents calling the API as tools. Use when asked to lint, audit, validate, clean up or make agent-ready an OpenAPI/Swagger file, or to fix the findings of an apiglow audit report.
+description: Audit an OpenAPI document (3.0, 3.1, 3.2, Swagger 2.0) with `apiglow audit` and fix what it finds — correctness against the specification, documentation gaps, consistency, security (what the document lets through), and readiness for AI agents calling the API as tools. Use when asked to lint, audit, validate, clean up or make agent-ready an OpenAPI/Swagger file, or to fix the findings of an apiglow audit report.
 ---
 
 # Auditing and fixing an OpenAPI document with apiglow

@@ -238,6 +238,30 @@ describe('operation-examples', () => {
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
+  it('accepts an example on a parameter serialized by media type', () => {
+    const withParameter = (parameter) =>
+      doc({
+        openapi: '3.2.0',
+        paths: {
+          '/pets': {
+            get: {
+              parameters: [{ name: 'filter', in: 'querystring', ...parameter }],
+              responses: {
+                200: { description: 'OK', content: { 'application/json': { schema: {} } } },
+              },
+            },
+          },
+        },
+      })
+    const schema = { type: 'object', properties: { status: { type: 'string' } } }
+    for (const parameter of [
+      { content: { 'application/json': { schema, example: { status: 'sold' } } } },
+      { content: { 'application/json': { schema } }, example: { status: 'sold' } },
+    ]) {
+      expect(run(operationExamples, withParameter(parameter)).findings).toEqual([])
+    }
+  })
+
   // A download or an upload: no example stands for the bytes of a file, and the
   // try-it takes it from a file picker rather than prefilling anything.
   it('has nothing to check on an operation whose only payloads are files', () => {

@@ -299,6 +299,30 @@ describe('required-property-declared', () => {
     )
     expect(result.findings).toHaveLength(1)
   })
+
+  it('never counts what a sibling branch declares', () => {
+    const result = run(
+      requiredPropertyDeclared,
+      withSchema({
+        oneOf: [{ properties: { a: {} }, required: ['b'] }, { properties: { b: {} } }],
+      }),
+    )
+    expect(result.findings.map((finding) => finding.dataPath)).toEqual([
+      '/components/schemas/Pet/oneOf/0/required/0',
+    ])
+  })
+
+  it('lets an unresolved $ref member declare anything', () => {
+    const result = run(
+      requiredPropertyDeclared,
+      withSchema({
+        properties: { a: {} },
+        allOf: [{ $ref: '#/components/schemas/Missing' }],
+        required: ['a', 'b'],
+      }),
+    )
+    expect(result).toMatchObject({ checks: 2, findings: [] })
+  })
 })
 
 describe('example-type-mismatch', () => {
@@ -582,6 +606,122 @@ describe('example-type-mismatch — in depth', () => {
     )
     expect(result.checks).toBe(0)
   })
+
+  it('reads readOnly / writeOnly on the allOf member a required list names', () => {
+    const composed = { allOf: [pet, { required: ['id', 'name', 'password'] }] }
+    const result = run(
+      exampleTypeMismatch,
+      bodies(composed, { name: 'Rex', password: 'x' }, { id: 1, name: 'Rex' }),
+    )
+    expect(result).toMatchObject({ checks: 2, findings: [] })
+    const own = run(exampleTypeMismatch, component({ ...composed, example: { name: 'Rex' } }))
+    expect(own.findings).toEqual([])
+  })
+
+  it('takes the direction from where the example sits, not from a property name', () => {
+    const nested = { type: 'object', required: ['id'], properties: { id: pet.properties.id } }
+    const shaped = { type: 'object', properties: { responses: { ...nested, example: {} } } }
+    const result = run(exampleTypeMismatch, bodies(shaped))
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('owes neither in a webhook, whose request the API sends', () => {
+    const result = run(
+      exampleTypeMismatch,
+      doc({
+        webhooks: {
+          newPet: {
+            post: {
+              requestBody: {
+                content: { 'application/json': { schema: pet, example: { id: 1, name: 'Rex' } } },
+              },
+              responses: okResponse,
+            },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('places a 3.2 dataValue at dataValue', () => {
+    const result = run(
+      exampleTypeMismatch,
+      doc({
+        openapi: '3.2.0',
+        paths: {
+          '/pets': {
+            get: {
+              responses: {
+                200: {
+                  description: 'OK',
+                  content: {
+                    'application/json': {
+                      schema: { type: 'integer' },
+                      examples: { broken: { dataValue: 'x' } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((finding) => finding.dataPath)).toEqual([
+      '/paths/~1pets/get/responses/200/content/application~1json/examples/broken/dataValue',
+    ])
+  })
+
+  it('checks a parameter serialized by media type, and a response header', () => {
+    const result = run(
+      exampleTypeMismatch,
+      doc({
+        openapi: '3.2.0',
+        paths: {
+          '/pets': {
+            get: {
+              parameters: [
+                {
+                  in: 'querystring',
+                  name: 'filter',
+                  content: {
+                    'application/json': {
+                      schema: { type: 'object', properties: { limit: { type: 'integer' } } },
+                      example: { limit: 'ten' },
+                    },
+                  },
+                },
+                {
+                  in: 'query',
+                  name: 'sort',
+                  content: { 'application/json': { schema: { type: 'string' } } },
+                  example: 3,
+                },
+              ],
+              responses: {
+                200: {
+                  description: 'OK',
+                  headers: {
+                    'X-Rate-Limit': { schema: { type: 'integer' }, example: 'many' },
+                    'X-Trace': {
+                      content: { 'text/plain': { schema: { type: 'string' }, example: 'abc' } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.checks).toBe(4)
+    expect(result.findings.map((finding) => finding.dataPath)).toEqual([
+      '/paths/~1pets/get/parameters/0/content/application~1json/example',
+      '/paths/~1pets/get/parameters/1/example',
+      '/paths/~1pets/get/responses/200/headers/X-Rate-Limit/example',
+    ])
+  })
 })
 
 describe('default-allowed', () => {
@@ -845,9 +985,11 @@ describe('response-substance', () => {
         200: { content: { 'application/json': {} } },
         201: { content: { '*/*': {} } },
         202: { content: { 'application/xml': { examples: {} } } },
+        203: { content: { 'application/yaml': {} } },
+        204: { content: { 'application/openapi+yaml': {} } },
       }),
     )
-    expect(result.findings.map((f) => f.params.status)).toEqual(['200', '201', '202'])
+    expect(result.findings.map((f) => f.params.status)).toEqual(['200', '201', '202', '203', '204'])
   })
 
   it('flags a response with neither description nor content', () => {
@@ -1138,5 +1280,56 @@ describe('field-without-value', () => {
     })
     const result = run(fieldWithoutValue, document, { source })
     expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/S/as uploaded'])
+  })
+
+  // A property is a name, not a keyword: one called `value` or `default` holds
+  // a schema like any other.
+  it('tells a property named like a payload keyword from the keyword', () => {
+    const properties = {
+      value: { type: 'string', description: null },
+      default: { type: 'string', title: null },
+      lost: null,
+    }
+    const result = run(
+      fieldWithoutValue,
+      doc({ components: { schemas: { Setting: { type: 'object', properties } } } }),
+    )
+    expect(result.findings.map((f) => [f.dataPath, f.params.field])).toEqual([
+      ['/components/schemas/Setting/properties/lost', 'lost'],
+      ['/components/schemas/Setting/properties/value/description', 'description'],
+      ['/components/schemas/Setting/properties/default/title', 'title'],
+    ])
+  })
+
+  it('flags an empty map member, never a list member', () => {
+    const result = run(
+      fieldWithoutValue,
+      doc({
+        servers: [
+          { url: 'https://{env}.example.com', variables: { env: { default: 'a', enum: [null] } } },
+        ],
+        paths: { '/a': { get: { responses: { 200: null } } } },
+        components: { responses: { Gone: null } },
+      }),
+    )
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1a/get/responses/200',
+      '/components/responses/Gone',
+    ])
+  })
+
+  it('reports an empty sibling of a 3.1 $ref once', () => {
+    const result = run(
+      fieldWithoutValue,
+      doc({
+        components: {
+          schemas: {
+            A: { type: 'string' },
+            B: { $ref: '#/components/schemas/A', description: null },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/B/description'])
   })
 })

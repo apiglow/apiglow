@@ -1,5 +1,5 @@
 import { pointer } from '../pointer.js'
-import { declaresHeader, responsesWithStatus } from '../response-sites.js'
+import { declaresHeader, responsesWhere } from '../response-sites.js'
 import { effectiveSecurity } from '../security.js'
 import { toolOperations } from '../tool-inputs.js'
 
@@ -43,9 +43,7 @@ export const securedOpErrors = {
   run(ctx, check) {
     for (const entry of toolOperations(ctx)) {
       const { alternatives, anonymous } = effectiveSecurity(ctx, entry)
-      if (anonymous || !alternatives.some((alternative) => Object.keys(alternative).length)) {
-        continue
-      }
+      if (anonymous || !alternatives.length) continue
       const responses = entry.op.responses
       const statuses =
         responses && typeof responses === 'object' && !Array.isArray(responses)
@@ -60,10 +58,10 @@ export const securedOpErrors = {
         },
       )
     }
-    for (const { response, ...site } of responsesWithStatus(ctx, '401')) {
+    for (const { response, site } of responsesWhere(ctx, (status) => status === '401')) {
       check(declaresHeader(response, 'www-authenticate'), {
         ...site,
-        params: { status: '401', missing: 'WWW-Authenticate' },
+        params: { missing: 'WWW-Authenticate' },
       })
     }
   },

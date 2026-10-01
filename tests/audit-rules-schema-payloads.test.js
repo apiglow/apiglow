@@ -70,12 +70,34 @@ describe('composition-sanity', () => {
         },
       }),
     )
-    expect(result.findings.map((f) => [f.dataPath, f.params.keyword])).toEqual([
-      ['/components/schemas/Lonely/anyOf', 'anyOf'],
-      ['/components/schemas/Twice/oneOf/1', 'oneOf'],
-      ['/components/schemas/Impossible/allOf', 'allOf'],
+    // `defect` tells the three apart, in notation any language reads.
+    expect(result.findings.map((f) => [f.dataPath, f.params])).toEqual([
+      [
+        '/components/schemas/Lonely/anyOf',
+        { keyword: 'anyOf', defect: 'anyOf: [#/components/schemas/A]' },
+      ],
+      [
+        '/components/schemas/Twice/oneOf/1',
+        { keyword: 'oneOf', defect: '#/components/schemas/A ×2' },
+      ],
+      ['/components/schemas/Impossible/allOf', { keyword: 'allOf', defect: 'string ∩ object' }],
     ])
     expect(result.findings[0]).toMatchObject({ location: 'components.schemas.Lonely' })
+  })
+
+  it('reads the siblings of a 3.1 $ref, which apply there', () => {
+    const named = {
+      $ref: '#/components/schemas/A',
+      oneOf: [{ $ref: '#/components/schemas/B' }, { $ref: '#/components/schemas/B' }],
+    }
+    const schemas = { A: { type: 'object' }, B: { type: 'object' }, Named: named }
+    const at = (openapi) =>
+      runRefs(compositionSanity, doc({ openapi, components: { schemas } })).findings.map(
+        (f) => f.dataPath,
+      )
+    expect(at('3.1.0')).toEqual(['/components/schemas/Named/oneOf/1'])
+    // 3.0 ignores them: `ref-siblings` says so, and nothing here is read.
+    expect(at('3.0.3')).toEqual([])
   })
 })
 
@@ -168,6 +190,25 @@ describe('recursion-unsatisfiable', () => {
       ['/components/schemas/Node', 'child'],
       ['/components/schemas/Husband', 'wife'],
     ])
+  })
+
+  it('survives an array whose items are the array itself', () => {
+    const result = runRefs(
+      recursionUnsatisfiable,
+      doc({
+        components: {
+          schemas: {
+            Nested: { type: 'array', minItems: 1, items: { $ref: '#/components/schemas/Nested' } },
+            Holder: {
+              type: 'object',
+              required: ['nested'],
+              properties: { nested: { $ref: '#/components/schemas/Nested' } },
+            },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 0, findings: [] })
   })
 })
 
@@ -277,6 +318,34 @@ describe('binary-placement', () => {
         '/paths/~1things/post/requestBody/content/application~1json/schema/properties/scan',
         'application/json',
       ],
+    ])
+  })
+
+  it('finds bytes under a pattern property, and in a 3.2 item schema', () => {
+    const binary = () => ({ type: 'string', format: 'binary' })
+    const document = doc({
+      openapi: '3.2.0',
+      paths: {
+        '/things': {
+          post: {
+            requestBody: {
+              content: {
+                'application/json': {
+                  schema: { type: 'object', patternProperties: { '^f': binary() } },
+                },
+                'application/jsonl': {
+                  itemSchema: { type: 'object', properties: { b: binary() } },
+                },
+              },
+            },
+            responses: okResponse,
+          },
+        },
+      },
+    })
+    expect(run(binaryPlacement, document).findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1things/post/requestBody/content/application~1json/schema/patternProperties/^f',
+      '/paths/~1things/post/requestBody/content/application~1jsonl/itemSchema/properties/b',
     ])
   })
 })

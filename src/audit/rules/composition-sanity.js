@@ -1,6 +1,7 @@
 import { listOf } from '../../openapi/model.js'
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
+import { describeValue } from '../value-check.js'
 
 // Compositions that cannot mean what they say:
 // - `oneOf` / `anyOf` with a single member — a choice with no alternative:
@@ -16,7 +17,10 @@ import { pointer } from '../pointer.js'
 //
 // The first two read the source, where the members are written (a `$ref` is
 // its target's name there); the third the dereferenced schemas, where each
-// member's type is in sight. One check per defect, none otherwise.
+// member's type is in sight. One check per defect, none otherwise; `defect`
+// shows which, in notation a reader of any language takes in — `oneOf: [Cat]`,
+// `#/components/schemas/Cat ×2`, `string ∩ object` — as `enum-valid`'s
+// `detail` does: the message is one string per rule.
 const COMPOSITIONS = ['oneOf', 'anyOf', 'allOf']
 
 export const compositionSanity = {
@@ -31,7 +35,12 @@ export const compositionSanity = {
         if (!Array.isArray(members)) continue
         const at = `${dataPath}${pointer(keyword)}`
         if (members.length === 1 && keyword !== 'allOf' && Object.keys(node).length === 1) {
-          check(false, { ...placeOf(ctx.operations, at), dataPath: at, params: { keyword } })
+          const defect = `${keyword}: [${memberLabel(members[0])}]`
+          check(false, {
+            ...placeOf(ctx.operations, at),
+            dataPath: at,
+            params: { keyword, defect },
+          })
         }
         const seen = new Set()
         for (const [index, member] of members.entries()) {
@@ -42,7 +51,7 @@ export const compositionSanity = {
             check(false, {
               ...placeOf(ctx.operations, memberAt),
               dataPath: memberAt,
-              params: { keyword },
+              params: { keyword, defect: `${memberLabel(member)} ×2` },
             })
           }
           seen.add(key)
@@ -50,10 +59,24 @@ export const compositionSanity = {
       }
     }
     for (const { schema, dataPath, op, location } of ctx.schemas) {
-      if (!Array.isArray(schema.allOf) || !disjointTypes(schema)) continue
-      check(false, { op, location, dataPath: `${dataPath}/allOf`, params: { keyword: 'allOf' } })
+      if (!Array.isArray(schema.allOf)) continue
+      const disjoint = disjointTypes(schema)
+      if (!disjoint) continue
+      check(false, {
+        op,
+        location,
+        dataPath: `${dataPath}/allOf`,
+        params: { keyword: 'allOf', defect: disjoint.join(' ∩ ') },
+      })
     }
   },
+}
+
+// How the finding names a member: what its `$ref` points to, or the member as
+// written, cut to a line.
+function memberLabel(member) {
+  if (member && typeof member === 'object' && typeof member.$ref === 'string') return member.$ref
+  return describeValue(member)
 }
 
 // What makes two written members the same: the target of a `$ref`, or the
@@ -71,17 +94,20 @@ function memberKey(member) {
 }
 
 // The types each of the schema and its `allOf` members allows, intersected —
-// `integer` within `number` — and found empty. Members declaring no type
-// constrain nothing here.
+// `integer` within `number` — and found empty → the type sets intersected, as
+// written (`string ∩ object`), or null. Members declaring no type constrain
+// nothing here.
 function disjointTypes(schema) {
   let allowed = null
+  const written = []
   for (const part of [schema, ...listOf(schema.allOf)]) {
     const types = declaredTypes(part)
     if (!types) continue
+    written.push(types.size > 1 ? `(${[...types].join(' | ')})` : [...types][0])
     allowed = allowed ? intersect(allowed, types) : types
-    if (!allowed.size) return true
+    if (!allowed.size) return written
   }
-  return false
+  return null
 }
 
 function intersect(a, b) {

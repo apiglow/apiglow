@@ -12,7 +12,7 @@ export const readonlyWriteonly = {
   run(ctx, check) {
     for (const { schema, dataPath, op, location } of ctx.schemas) {
       if (schema.readOnly !== true || schema.writeOnly !== true) continue
-      check(false, { op, location, dataPath, params: {} })
+      check(false, { op, location, dataPath })
     }
   },
 }

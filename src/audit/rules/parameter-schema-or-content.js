@@ -12,7 +12,9 @@ import { objectLabel } from '../openapi-objects.js'
 // several media types, nothing says which one the value is sent as.
 //
 // A field present without a value is `field-without-value`'s, a `content` that
-// is not a map `field-value-kind`'s. One check per defect.
+// is not a map `field-value-kind`'s. An `x-` key of `content` counts as an
+// entry: the map holds media types, not fields, and takes no extension
+// (`media-type-key-syntax` reports it too). One check per defect.
 export const parameterSchemaOrContent = {
   id: 'parameter-schema-or-content',
   category: 'correctness',
@@ -25,7 +27,7 @@ export const parameterSchemaOrContent = {
       const content = node.content
       const entries =
         content && typeof content === 'object' && !Array.isArray(content)
-          ? Object.keys(content).filter((key) => !key.startsWith('x-')).length
+          ? Object.keys(content).length
           : 1
       if (hasSchema !== hasContent && (!hasContent || entries === 1)) continue
       check(false, {

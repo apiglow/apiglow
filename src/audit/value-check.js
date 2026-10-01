@@ -22,7 +22,8 @@ export function describeValue(value) {
 
 // The audit reads the RAW document: both nullability spellings coexist here
 // (3.0 `nullable` sibling flag, 3.1 `null` inside a type array), unlike in the
-// model where normalization has already unified them.
+// model where normalization has already unified them. `nullable` only takes
+// effect next to a `type` (OAS 3.0.4): alone, it adds nothing to check.
 function declaredTypes(schema) {
   const declared = Array.isArray(schema.type)
     ? schema.type
@@ -30,11 +31,11 @@ function declaredTypes(schema) {
       ? [schema.type]
       : []
   const types = declared.filter((type) => typeof type === 'string')
-  if (schema.nullable === true && !types.includes('null')) types.push('null')
+  if (schema.nullable === true && types.length && !types.includes('null')) types.push('null')
   return types
 }
 
-function valueIsType(value, type) {
+export function valueIsType(value, type) {
   switch (type) {
     case 'null':
       return value === null
@@ -49,11 +50,15 @@ function valueIsType(value, type) {
     case 'array':
       return Array.isArray(value)
     case 'object':
-      return value !== null && typeof value === 'object' && !Array.isArray(value)
+      return isObject(value)
     default:
       // Unknown type keyword: no verdict rather than a false positive.
       return true
   }
+}
+
+export function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
 // 3.0 spells the exclusive bounds as booleans qualifying minimum/maximum, 3.1

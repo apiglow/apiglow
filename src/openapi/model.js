@@ -1307,7 +1307,7 @@ function extensionEnumDescriptions(raw, values) {
 }
 
 // Many real-world schemas omit `type`: it's inferred from the structure.
-function inferType(raw) {
+export function inferType(raw) {
   if (
     raw.properties ||
     raw.additionalProperties !== undefined ||

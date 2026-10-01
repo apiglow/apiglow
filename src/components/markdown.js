@@ -15,6 +15,7 @@ import { marked } from 'marked'
 import { docsMarkdownToHtml, taskMarkerRenderer } from '../docs/markdown.js'
 import { headingIds } from '../docs/sections.js'
 import { t } from '../i18n/index.js'
+import { FORBIDDEN_TAGS } from '../openapi/sanitize-policy.js'
 import { scrollBlock } from './a11y.js'
 
 // All HTML coming from external content (OpenAPI descriptions, .md pages) goes
@@ -35,14 +36,8 @@ hljs.registerLanguage('ruby', ruby)
 hljs.registerLanguage('java', java)
 hljs.registerLanguage('csharp', csharp)
 
-// On top of the HTML profile: a stylesheet restyles the whole app, not just
-// the description that carries it, and a form control in a description is a
-// field a reader can be asked to type a secret into. The `style` attribute
-// stays — it reaches no further than its own element.
-const FORBID_TAGS = ['style', 'form', 'input', 'button', 'textarea', 'select', 'option', 'optgroup']
-
 function sanitize(html) {
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, FORBID_TAGS })
+  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, FORBID_TAGS: FORBIDDEN_TAGS })
 }
 
 marked.use({ renderer: taskMarkerRenderer })

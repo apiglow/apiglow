@@ -1,4 +1,5 @@
 import { unescapePointerToken } from '../scenarios/pointer.js'
+import { isObject } from './value-check.js'
 
 // Where a finding found by pointer belongs: the innermost operation declaring
 // it — a callback's pointer runs through its parent's, and the longest prefix
@@ -21,4 +22,24 @@ function locationOf(dataPath) {
   if ((root === 'paths' || root === 'webhooks') && section !== undefined) return section
   // Top-level fields (info, servers, tags…): the dotted path says which one.
   return segments.join('.')
+}
+
+// Component object → its name under `components.{section}`. The dereferenced
+// document keeps one object per `$ref` target, so identity tells a use of the
+// component from an inline copy; the first name wins when one component is a
+// `$ref` to another.
+export function componentNames(document, section) {
+  const names = new Map()
+  const declared = document.components?.[section]
+  if (!isObject(declared)) return names
+  for (const [name, component] of Object.entries(declared)) {
+    if (isObject(component) && !names.has(component)) names.set(component, name)
+  }
+  return names
+}
+
+// Inside a webhook or a callback, Path Item level included: a request the API
+// sends, rather than one a client makes.
+export function sentByTheApi(dataPath) {
+  return dataPath.startsWith('/webhooks/') || dataPath.includes('/callbacks/')
 }

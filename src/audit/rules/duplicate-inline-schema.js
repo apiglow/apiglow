@@ -1,3 +1,5 @@
+import { componentNames } from '../locate.js'
+
 // The same shape written out twice instead of shared: the two copies are
 // identical today and drift the day one of them gets a field. Cheap heuristic
 // (docs/audit.md §4.4): identical canonical serializations, above a size worth
@@ -20,7 +22,7 @@ export const duplicateInlineSchema = {
   category: 'consistency',
   severity: 'info',
   run(ctx, check) {
-    const named = componentNames(ctx.document)
+    const named = componentNames(ctx.document, 'schemas')
     const groups = new Map()
     for (const entry of ctx.schemas) {
       const key = signature(entry.schema, 0, new Set(), named)
@@ -66,12 +68,4 @@ function signature(value, depth, ancestors, named) {
         .join(',')}}`
   ancestors.delete(value)
   return body
-}
-
-function componentNames(document) {
-  const named = new Map()
-  for (const [name, schema] of Object.entries(document.components?.schemas ?? {})) {
-    if (schema && typeof schema === 'object') named.set(schema, name)
-  }
-  return named
 }

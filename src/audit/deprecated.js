@@ -15,7 +15,7 @@ export function* deprecableElements(ctx) {
     for (const { param, dataPath } of entry.parameters) {
       if (!param || typeof param !== 'object' || seen.has(param)) continue
       seen.add(param)
-      yield { node: param, target: { op: entry, dataPath, params: { name: param.name ?? '' } } }
+      yield { node: param, target: { op: entry, dataPath } }
     }
   }
 
@@ -34,7 +34,6 @@ export function* deprecableElements(ctx) {
       target: {
         location: `components.securitySchemes.${name}`,
         dataPath: pointer('components', 'securitySchemes', name),
-        params: { name },
       },
     }
   }

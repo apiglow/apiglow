@@ -214,7 +214,7 @@ describe('redirect-location', () => {
         components: { responses: { Moved: moved } },
         paths: {
           '/a': { get: op({ responses: { 308: moved } }) },
-          '/b': { get: op({ responses: { 308: moved } }) },
+          '/b': { get: op({ responses: { 301: moved, 308: moved } }) },
         },
       }),
     )
@@ -339,10 +339,26 @@ describe('http-date-headers', () => {
         'retry-after': { schema: { type: 'string' }, example: '120' },
         Expires: { schema: { type: 'string' }, example: { not: 'a string' } },
         ETag: { schema: { type: 'integer' } },
-        Sunset: { content: { 'text/plain': { schema: { format: 'date' } } } },
+        Sunset: { content: { 'text/plain': { schema: { format: 'http-date' } } } },
       }),
     )
-    expect(result).toMatchObject({ checks: 4, findings: [] })
+    expect(result).toMatchObject({ checks: 5, findings: [] })
+  })
+
+  it('reads a header described by its content', () => {
+    const result = run(
+      httpDateHeaders,
+      responding({
+        Sunset: {
+          content: { 'text/plain': { schema: { type: 'string', format: 'date-time' } } },
+        },
+        Expires: { content: { 'text/plain': { example: '2024-01-01' } } },
+      }),
+    )
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1a/get/responses/200/headers/Sunset/content/text~1plain/schema/format',
+      '/paths/~1a/get/responses/200/headers/Expires/content/text~1plain/example',
+    ])
   })
 
   it('rejects an HTTP-date in another form, or an impossible one', () => {
@@ -406,6 +422,43 @@ describe('http-date-headers', () => {
       ['Last-Modified', '/components/headers/When/schema/format', 'components.headers.When'],
       ['Expires', '/components/headers/Expires/schema/type', 'components.headers.Expires'],
     ])
+  })
+
+  it('names a shared header after the keys responses use, its own only when none does', () => {
+    const document = doc({
+      components: {
+        headers: {
+          Sunset: { schema: { type: 'integer' } },
+          When: { schema: { type: 'integer' } },
+          Expires: { schema: { type: 'integer' } },
+        },
+      },
+      paths: {
+        '/a': {
+          get: op({
+            responses: {
+              200: {
+                description: 'OK',
+                headers: {
+                  'X-Count': { $ref: '#/components/headers/Sunset' },
+                  'X-When': { $ref: '#/components/headers/When' },
+                },
+              },
+              201: {
+                description: 'Created',
+                headers: { Expires: { $ref: '#/components/headers/When' } },
+              },
+            },
+          }),
+        },
+      },
+    })
+    const result = run(httpDateHeaders, document, { source: structuredClone(document) })
+    expect(result.findings.map((f) => [f.params.header, f.dataPath])).toEqual([
+      ['Expires', '/components/headers/When/schema/type'],
+      ['Expires', '/components/headers/Expires/schema/type'],
+    ])
+    expect(result.checks).toBe(2)
   })
 
   it('leaves part headers of a multipart encoding alone', () => {

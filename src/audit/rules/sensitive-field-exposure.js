@@ -1,8 +1,9 @@
 import { listOf } from '../../openapi/model.js'
 import { placeInput } from '../input-shape.js'
 import { pointer } from '../pointer.js'
-import { operationContents } from '../schema-walk.js'
-import { isSchemaObject } from '../tool-inputs.js'
+import { operationContents, SCHEMA_DEPTH } from '../schema-walk.js'
+import { payloadChildren } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // A password in a response: a schema the document itself marks `format:
 // password` — "a hint to obscure the value" (OpenAPI Data Types) — reachable
@@ -51,30 +52,30 @@ export const sensitiveFieldExposure = {
   },
 }
 
-// Same budget as the shared schema walk (schema-walk.js).
-const MAX_DEPTH = 24
-
-// What a response carries, below and including `root`: properties (readOnly
-// ones too — they are what responses are for), map values, array and tuple
-// items, composition members. Each schema object once; `visit` is called on
-// the passwords, and nothing under a writeOnly schema is in a response.
+// What a response carries, below and including `root`: the edges
+// `payloadChildren` lists on the response side — properties (readOnly ones
+// too: they are what responses are for), map and `patternProperties` values,
+// array and tuple items, composition and conditional members. Each schema
+// object once; `visit` is called on the passwords, and nothing under a
+// writeOnly schema is in a response.
 function walkResponseSchema(root, dataPath, visit, seen) {
   const walk = (schema, path, depth) => {
-    if (!isSchemaObject(schema) || depth > MAX_DEPTH || seen.has(schema)) return
+    if (!isObject(schema) || depth > SCHEMA_DEPTH || seen.has(schema)) return
     seen.add(schema)
     // A password is a string: nothing below it to walk, and its `allOf`
     // members are the same value, judged once, here.
     if (password(schema)) return visit(schema, path)
     if (writeOnly(schema)) return
-    const child = (sub, ...segments) => walk(sub, `${path}${pointer(...segments)}`, depth + 1)
-    if (isSchemaObject(schema.properties)) {
-      for (const [name, sub] of Object.entries(schema.properties)) child(sub, 'properties', name)
+    // `payloadChildren` leaves a writeOnly property out, being never returned;
+    // a password one is still a check here, and the one that passes.
+    if (isObject(schema.properties)) {
+      for (const [name, sub] of Object.entries(schema.properties)) {
+        if (isObject(sub) && sub.writeOnly === true && password(sub))
+          walk(sub, `${path}${pointer('properties', name)}`, depth + 1)
+      }
     }
-    child(schema.additionalProperties, 'additionalProperties')
-    child(schema.items, 'items')
-    for (const keyword of ['allOf', 'oneOf', 'anyOf', 'prefixItems']) {
-      for (const [index, sub] of listOf(schema[keyword]).entries()) child(sub, keyword, index)
-    }
+    for (const [child, childPath] of payloadChildren(schema, path, 'response'))
+      walk(child, childPath, depth + 1)
   }
   walk(root, dataPath, 0)
 }
@@ -92,7 +93,5 @@ function writeOnly(schema) {
 }
 
 function saysOwnOrAllOf(schema, test) {
-  return (
-    test(schema) || listOf(schema.allOf).some((member) => isSchemaObject(member) && test(member))
-  )
+  return test(schema) || listOf(schema.allOf).some((member) => isObject(member) && test(member))
 }

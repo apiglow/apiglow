@@ -9,8 +9,10 @@ import { pointer } from '../pointer.js'
 // issues #8291, #20484; the maintainers' answer is a per-name mapping option
 // every consumer has to set). The JSON is valid; the SDK built from it is not.
 //
-// The key is `identifier-key.js`': case aside, separators dropped, other
-// symbols kept (`+1` and `-1` do not collide). Own `properties` only, each
+// The key is `identifier-key.js`': camelized — separators dropped, the letter
+// after each and the first one taken in either case, every other letter's
+// case kept (`userId` and `userid` stay two fields), other symbols kept (`+1`
+// and `-1` do not collide). Own `properties` only, each
 // schema once (`ctx.schemas`, a component's at the component). One check per
 // schema with two properties or more; a finding per colliding name, on the
 // later property, naming the first one of its key.

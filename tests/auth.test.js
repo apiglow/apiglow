@@ -5,6 +5,7 @@ import {
   credentialFields,
   credentialsStatus,
   platformLimits,
+  securityRequirements,
   suggestedVariables,
 } from '../src/openapi/auth.js'
 
@@ -79,6 +80,59 @@ describe('applicableSchemes', () => {
 
   it('ignores undeclared schemes', () => {
     expect(applicableSchemes(model, { security: [{ ghost: [] }] }).schemes).toEqual([])
+  })
+
+  it('survives malformed security values instead of throwing', () => {
+    expect(
+      applicableSchemes(model, { security: [null, 'bearerAuth', [], { apiKey: [] }] }),
+    ).toEqual({ schemes: [apiKeyHeader], optional: false })
+    // Not a list: no requirement of its own, the document's applies.
+    expect(applicableSchemes(model, { security: {} }).schemes).toEqual([bearer])
+    expect(applicableSchemes({ ...model, security: {} }, { security: null })).toEqual({
+      schemes: [],
+      optional: false,
+    })
+  })
+})
+
+describe('securityRequirements', () => {
+  const key = { key: [] }
+
+  it('takes the operation list over the root one, [] included', () => {
+    expect(securityRequirements(undefined, [key])).toEqual({
+      alternatives: [key],
+      declared: true,
+      anonymous: false,
+    })
+    expect(securityRequirements([], [key])).toEqual({
+      alternatives: [],
+      declared: true,
+      anonymous: true,
+    })
+  })
+
+  it('reads a root [] as nothing written, a root {} alternative as a statement', () => {
+    for (const root of [undefined, []]) {
+      expect(securityRequirements(undefined, root)).toEqual({
+        alternatives: [],
+        declared: false,
+        anonymous: true,
+      })
+    }
+    expect(securityRequirements(undefined, [{}, key])).toEqual({
+      alternatives: [{}, key],
+      declared: true,
+      anonymous: true,
+    })
+  })
+
+  it('leaves malformed entries out, and a list of only those secures nothing', () => {
+    expect(securityRequirements([null, 'key'], undefined)).toEqual({
+      alternatives: [],
+      declared: true,
+      anonymous: false,
+    })
+    expect(securityRequirements({}, [key]).alternatives).toEqual([key])
   })
 })
 

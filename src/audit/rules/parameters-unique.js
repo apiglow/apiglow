@@ -1,5 +1,5 @@
-import { resolvePointer } from '../../scenarios/pointer.js'
 import { placeOf } from '../locate.js'
+import { nodeAt } from '../ref-pointer.js'
 
 // A parameter list naming the same parameter twice — same `name`, same `in`
 // (OAS 3.x, Operation and Path Item `parameters`, MUST NOT). Which declaration
@@ -10,15 +10,17 @@ import { placeOf } from '../locate.js'
 // Each list on its own: an operation redeclaring a Path Item parameter
 // overrides it, which is what that pairing is for. Lists are read dereferenced
 // — two `$ref`s to one component are a duplicate too. One finding per extra
-// occurrence.
+// occurrence. A Path Item that is a `$ref` is checked where its target is
+// written, not again under every path pointing at it.
 export const parametersUnique = {
   id: 'parameters-unique',
   category: 'correctness',
   severity: 'error',
   run(ctx, check) {
-    for (const { type, dataPath } of ctx.objects) {
+    for (const { type, node, dataPath } of ctx.objects) {
       if (type !== 'PathItem' && type !== 'Operation') continue
-      const { value: list } = resolvePointer(ctx.document, `${dataPath}/parameters`)
+      if (typeof node.$ref === 'string') continue
+      const list = nodeAt(ctx.document, `${dataPath}/parameters`)
       if (!Array.isArray(list)) continue
       const seen = new Set()
       for (const [index, param] of list.entries()) {

@@ -231,7 +231,7 @@ describe('bridge-degradation', () => {
   it('passes on header credentials, anonymous access, and no security at all', () => {
     for (const security of [
       [{ bearer: [] }],
-      [{ headerKey: [], oauth: ['read'] }],
+      [{ headerKey: [], bearer: [] }],
       [{ queryKey: [] }, {}],
       [{ tls: [] }, { bearer: [] }],
       [],
@@ -256,6 +256,28 @@ describe('bridge-degradation', () => {
       paths: { '/a': { get: op({ security: [{ old: [] }] }) } },
     })
     expect(run(bridgeDegradation, document).findings[0].params).toEqual({ names: 'old' })
+  })
+
+  it('counts a scheme whose header an earlier one took as not carried: the config holds one', () => {
+    const document = (security) =>
+      doc({
+        components: {
+          securitySchemes: {
+            basic: { type: 'http', scheme: 'basic' },
+            token: { type: 'http', scheme: 'bearer' },
+            oauth: { type: 'oauth2', flows: {} },
+          },
+        },
+        paths: { '/a': { get: op({ security }) } },
+      })
+    for (const [security, names] of [
+      [[{ token: [] }], 'token'],
+      [[{ basic: [], token: [] }], 'token'],
+      [[{ oauth: ['read'] }], 'oauth'],
+    ]) {
+      expect(run(bridgeDegradation, document(security)).findings[0].params).toEqual({ names })
+    }
+    expect(run(bridgeDegradation, document([{ token: [] }, { basic: [] }])).findings).toEqual([])
   })
 
   it("inherits the document's security, and lets the operation's override it", () => {

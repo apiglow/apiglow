@@ -105,6 +105,37 @@ describe('deprecation-replacement', () => {
     })
   })
 
+  it('reads whole words naming a successor or a date, never a word that merely contains one', () => {
+    const verdicts = (descriptions) => {
+      const paths = Object.fromEntries(
+        descriptions.map((description, index) => [
+          `/p${index}`,
+          { get: { deprecated: true, description, responses: {} } },
+        ]),
+      )
+      const flagged = new Set(
+        run(deprecationReplacement, doc({ paths })).findings.map((f) => f.location),
+      )
+      return descriptions.map((_, index) => !flagged.has(`GET /p${index}`))
+    }
+    const answers = [
+      'Deprecated: use getPetV2.',
+      'Its successor is /v2/pets.',
+      'Remplacé par /v2/users.',
+      'Déprécié au profit de /v2/users.',
+      'À la place, appelez /v2/users.',
+      'Removed on 2027-01-01.',
+    ]
+    const silences = [
+      'Removes a pet.',
+      'Supprime un utilisateur.',
+      'Liste des utilisateurs.',
+      'Reads the user preferences.',
+    ]
+    expect(verdicts(answers)).toEqual(answers.map(() => true))
+    expect(verdicts(silences)).toEqual(silences.map(() => false))
+  })
+
   it('accepts a Sunset or Deprecation header on any response of a deprecated operation', () => {
     for (const name of ['Sunset', 'deprecation']) {
       const result = run(

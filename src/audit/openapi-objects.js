@@ -1,4 +1,6 @@
 import { escapePointerToken } from '../scenarios/pointer.js'
+import { nodeAt } from './ref-pointer.js'
+import { subschemas } from './schema-keywords.js'
 
 // The OpenAPI objects, field by field and version by version — the table the
 // structural rules read (docs/audit.md §4.1): which fields an object has in
@@ -20,8 +22,9 @@ const boolean = { kind: 'boolean' }
 const any = { kind: 'any' }
 const url = { kind: 'string', url: true }
 const obj = (kind, extra = {}) => ({ kind, ...extra })
-const array = (kind, extra = {}) => ({ kind: { array: kind, ref: extra.ref }, ...extra })
-const map = (kind, extra = {}) => ({ kind: { map: kind, ref: extra.ref }, ...extra })
+// `ref` qualifies the members: a list or a map itself is never a `$ref`.
+const array = (kind, { ref, ...extra } = {}) => ({ kind: { array: kind, ref }, ...extra })
+const map = (kind, { ref, ...extra } = {}) => ({ kind: { map: kind, ref }, ...extra })
 
 const PARAMETER_STYLES = [
   'matrix',
@@ -292,24 +295,6 @@ export function allowedValues(field, minor) {
     .map((entry) => (typeof entry === 'string' ? entry : entry.value))
 }
 
-// Schema keywords whose value is one subschema, a list of them, or a map of
-// them — what the walk descends into. Payload keywords (example, default,
-// enum, const, a 3.1 `examples` list) are never walked.
-const SCHEMA_ONE = [
-  'items',
-  'additionalProperties',
-  'not',
-  'if',
-  'then',
-  'else',
-  'contains',
-  'propertyNames',
-  'unevaluatedItems',
-  'unevaluatedProperties',
-  'additionalItems',
-]
-const SCHEMA_LIST = ['allOf', 'anyOf', 'oneOf', 'prefixItems']
-const SCHEMA_MAP = ['properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas']
 const SCHEMA_OBJECTS = {
   discriminator: 'Discriminator',
   xml: 'XML',
@@ -321,11 +306,14 @@ const MAX_DEPTH = 96
 
 // Every OpenAPI object of the source document, typed → [{ type, node,
 // dataPath }], in document order. A `$ref` where an object of type T may stand
-// is `{ type: 'Reference', expected: T }`, and is not followed when it points
-// inside the document: its target is walked where it is declared, once. One
-// that points to another file is followed through the dereferenced document —
-// what was read there — and its content reported under the `$ref`'s own
-// pointer, which the CLI's positions follow into that file.
+// is `{ type: 'Reference', expected: T }` — with `since: n` when 3.n is the
+// first version to allow a Reference there (a Media Type's) — and is not
+// followed when it points inside the document: its target is walked where it
+// is declared, once. One that points to another file is followed through the
+// dereferenced document — what was read there, the `$ref`'s siblings laid over
+// it — and its content reported under the `$ref`'s own pointer, which the CLI's
+// positions follow into that file. A Path Item's `$ref` is one of its fields,
+// so a Path Item in another file is typed as a Path Item, not a Reference.
 export function walkObjects(source, document, minor) {
   const entries = []
   const seen = new Set()
@@ -335,13 +323,12 @@ export function walkObjects(source, document, minor) {
     if (typeof kind === 'object') {
       const members = kind.array ? (Array.isArray(node) ? node.entries() : []) : null
       const entriesOf = members ?? (Array.isArray(node) ? [] : Object.entries(node))
-      const refable = kind.ref === true || (typeof kind.ref === 'number' && minor >= kind.ref)
       for (const [key, member] of entriesOf) {
         if (!kind.array && String(key).startsWith('x-')) continue
         typed(
           member,
           kind.array ?? kind.map,
-          refable,
+          kind.ref,
           `${dataPath}/${escapePointerToken(key)}`,
           depth + 1,
           external,
@@ -360,11 +347,10 @@ export function walkObjects(source, document, minor) {
         (typeof field.kind === 'string' && !OBJECTS[field.kind] && field.kind !== 'Schema')
       )
         continue
-      const refable = field.ref === true || (typeof field.ref === 'number' && minor >= field.ref)
       typed(
         node[key],
         field.kind,
-        refable,
+        field.ref,
         `${dataPath}/${escapePointerToken(key)}`,
         depth + 1,
         external,
@@ -372,19 +358,37 @@ export function walkObjects(source, document, minor) {
     }
   }
 
-  // One value where an object of `kind` belongs, a Reference Object allowed or
-  // not. A Path Item's own `$ref` is a field of it rather than a Reference.
-  const typed = (value, kind, refable, dataPath, depth, external) => {
+  // An external target the loader could not read is still the `$ref` there:
+  // `ref-resolves`' finding, and nothing to type.
+  const followed = (ref, dataPath, external) => {
+    if (external || ref.startsWith('#')) return null
+    const target = nodeAt(document, dataPath)
+    return target && typeof target === 'object' && typeof target.$ref !== 'string' ? target : null
+  }
+
+  // One value where an object of `kind` belongs; `ref` says whether a
+  // Reference Object may stand there instead (`true`, or from 3.n on).
+  const typed = (value, kind, ref, dataPath, depth, external) => {
     if (typeof kind === 'string' && !OBJECTS[kind] && kind !== 'Schema') return
     const isRef = value && typeof value === 'object' && typeof value.$ref === 'string'
-    if (isRef && kind !== 'PathItem' && (refable || kind === 'Schema')) {
+    if (isRef && kind === 'PathItem') {
+      const target = followed(value.$ref, dataPath, external)
+      return visit(target ?? value, kind, dataPath, depth, external || target !== null)
+    }
+    if (isRef && (ref === true || typeof ref === 'number' || kind === 'Schema')) {
       if (seen.has(value)) return
       seen.add(value)
-      entries.push({ type: 'Reference', expected: kind, node: value, dataPath })
-      // An external target the loader could not read is still the `$ref`
-      // there: `ref-resolves`' finding, and nothing to type.
-      const target = !external && !value.$ref.startsWith('#') ? nodeAt(document, dataPath) : null
-      if (target && typeof target.$ref !== 'string') visit(target, kind, dataPath, depth, true)
+      const since = typeof ref === 'number' ? { since: ref } : {}
+      entries.push({ type: 'Reference', expected: kind, node: value, dataPath, ...since })
+      const target = followed(value.$ref, dataPath, external)
+      if (target) visit(target, kind, dataPath, depth, true)
+      // From 3.1 a Schema's `$ref` is one keyword among others, and its
+      // siblings apply: the node is a Schema too. A followed target already
+      // carries them.
+      else if (kind === 'Schema' && minor >= 1 && Object.keys(value).length > 1) {
+        entries.push({ type: 'Schema', node: value, dataPath })
+        visitSchema(value, dataPath, depth, external)
+      }
       return
     }
     visit(value, kind, dataPath, depth, external)
@@ -400,31 +404,10 @@ export function walkObjects(source, document, minor) {
         depth + 1,
         external,
       )
-    for (const keyword of SCHEMA_ONE) {
-      if (
-        schema[keyword] &&
-        typeof schema[keyword] === 'object' &&
-        !Array.isArray(schema[keyword])
-      ) {
-        child(schema[keyword], keyword)
-      }
-    }
-    // 3.0 and draft-04 tuples: `items` as a list.
-    if (Array.isArray(schema.items)) {
-      for (const [index, item] of schema.items.entries()) child(item, 'items', index)
-    }
-    for (const keyword of SCHEMA_LIST) {
-      if (!Array.isArray(schema[keyword])) continue
-      for (const [index, item] of schema[keyword].entries()) child(item, keyword, index)
-    }
-    for (const keyword of SCHEMA_MAP) {
-      const members = schema[keyword]
-      if (!members || typeof members !== 'object' || Array.isArray(members)) continue
-      for (const [name, item] of Object.entries(members)) child(item, keyword, name)
-    }
+    for (const [sub, ...segments] of subschemas(schema)) child(sub, ...segments)
     for (const [keyword, type] of Object.entries(SCHEMA_OBJECTS)) {
       if (schema[keyword] !== undefined) {
-        typed(schema[keyword], type, false, `${dataPath}/${keyword}`, depth + 1, external)
+        typed(schema[keyword], type, undefined, `${dataPath}/${keyword}`, depth + 1, external)
       }
     }
   }
@@ -434,22 +417,13 @@ export function walkObjects(source, document, minor) {
       if (key.startsWith('x-')) continue
       const at = `${dataPath}/${escapePointerToken(key)}`
       if (kind === 'Paths' || kind === 'Callback')
-        typed(value, 'PathItem', false, at, depth + 1, external)
+        typed(value, 'PathItem', undefined, at, depth + 1, external)
       else if (kind === 'Responses') typed(value, 'Response', true, at, depth + 1, external)
     }
   }
 
   visit(source, 'OpenAPI', '', 0, false)
   return entries
-}
-
-function nodeAt(root, dataPath) {
-  let node = root
-  for (const token of dataPath.slice(1).split('/')) {
-    if (node === null || typeof node !== 'object') return undefined
-    node = node[token.replaceAll('~1', '/').replaceAll('~0', '~')]
-  }
-  return node
 }
 
 // How a finding names an object: the spec's own name for it, which is also what

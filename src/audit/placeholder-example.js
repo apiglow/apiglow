@@ -1,5 +1,5 @@
 import { normalize } from './text.js'
-import { deepEqual } from './value-check.js'
+import { deepEqual, isObject } from './value-check.js'
 
 // An example that stands in for one rather than showing a value: a JSON type
 // name, a "TODO", a "lorem ipsum" — what Swagger Editor's generated example
@@ -34,6 +34,25 @@ export function isRealExampleObject(example, schema) {
   if (!example || typeof example !== 'object') return true
   const values = [example.value, example.dataValue].filter((value) => value !== undefined)
   return !values.length || values.some((value) => !isPlaceholderExample(value, schema))
+}
+
+// Whether a Media Type, Parameter or Header Object carries an example the doc
+// can show: its own `example` or `examples` map, or one on the schema it
+// illustrates — the app reads either for the sample and the try-it prefill.
+export function hasRealExample(node, schema) {
+  if (!isObject(node)) return false
+  if (isRealExample(node.example, schema)) return true
+  if (
+    isObject(node.examples) &&
+    Object.values(node.examples).some((example) => isRealExampleObject(example, schema))
+  ) {
+    return true
+  }
+  if (!isObject(schema)) return false
+  if (isRealExample(schema.example, schema)) return true
+  return (
+    Array.isArray(schema.examples) && schema.examples.some((value) => isRealExample(value, schema))
+  )
 }
 
 function fillerOnly(value, schema, state, depth) {
@@ -75,6 +94,7 @@ const PLACEHOLDERS = new Set([
   'object',
   'array',
   'todo',
+  'to do',
   'tbd',
   'fixme',
   'xxx',
@@ -97,8 +117,4 @@ function itemSchema(schema, index) {
     return schema.prefixItems[index]
   }
   return schema.items
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

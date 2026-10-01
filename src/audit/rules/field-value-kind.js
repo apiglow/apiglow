@@ -1,7 +1,7 @@
 import { placeOf } from '../locate.js'
 import { allowedValues, inVersion, OBJECTS, objectLabel, PATTERNED } from '../openapi-objects.js'
 import { pointer } from '../pointer.js'
-import { describeValue } from '../value-check.js'
+import { describeValue, isObject } from '../value-check.js'
 
 // A field holding the wrong kind of value — a list where a string belongs, a
 // string where an object does — or a value outside the set the specification
@@ -10,13 +10,18 @@ import { describeValue } from '../value-check.js'
 // documentation and most generators read such a field as absent, so the
 // parameter has no location, the scheme no type, the schema no type.
 //
-// `null` is `field-without-value`'s, and a value only a later version allows
-// is `version-construct`'s. One check per wrong value, none otherwise.
+// A list or a map is held to its members too: `security: [api_key]` is a list
+// of names where Security Requirement objects belong, and leaves the API
+// unsecured without a word; `responses: { 200: OK }` declares no response. So
+// is a schema's `items` written as a list — draft-04's tuples, which neither
+// 3.0 nor JSON Schema 2020-12 (`prefixItems`) reads.
+//
+// `null` is `field-without-value`'s — a field's, or a map member's; a list
+// member is no field, and a `null` there is this rule's. A value only a later
+// version allows is `version-construct`'s. One check per wrong value, none
+// otherwise.
 
 const SCHEMA_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object']
-
-// Every version this table knows: what some version allows.
-const LATEST = 99
 
 export const fieldValueKind = {
   id: 'field-value-kind',
@@ -24,12 +29,12 @@ export const fieldValueKind = {
   severity: 'error',
   run(ctx, check) {
     const minor = ctx.version.minor
-    const report = (type, at, value, expected) =>
+    const report = (type, at, field, value, expected) =>
       check(false, {
         ...placeOf(ctx.operations, at),
         dataPath: at,
         params: {
-          field: at.slice(at.lastIndexOf('/') + 1),
+          field,
           object: objectLabel(type),
           value: describeValue(value),
           expected,
@@ -37,76 +42,106 @@ export const fieldValueKind = {
       })
     for (const { type, node, dataPath } of ctx.objects) {
       if (type === 'Schema') {
-        checkSchemaType(node, dataPath, minor, report)
+        checkSchema(node, dataPath, minor, report)
         continue
       }
-      if (type === 'Reference' || PATTERNED.has(type)) {
-        if (type === 'SecurityRequirement') checkRequirement(node, dataPath, report)
+      if (type === 'Reference') continue
+      if (PATTERNED.has(type)) {
+        checkPatterned(type, node, dataPath, report)
         continue
       }
       for (const [key, field] of Object.entries(OBJECTS[type])) {
         const value = node[key]
         if (value === undefined || value === null || !inVersion(field, minor)) continue
         const at = `${dataPath}${pointer(key)}`
-        const expected = expectedKind(field.kind)
-        if (!fits(value, field.kind)) {
-          report(type, at, value, expected)
+        if (!fits(value, field.kind, minor)) {
+          report(type, at, key, value, expectedKind(field.kind))
           continue
+        }
+        if (typeof field.kind === 'object') {
+          const member = field.kind.array ?? field.kind.map
+          for (const [name, wrong] of misfits(value, field.kind, minor)) {
+            const spelled = field.kind.array ? `${key}[${name}]` : `${key}.${name}`
+            report(type, `${at}${pointer(name)}`, spelled, wrong, expectedKind(member))
+          }
         }
         const allowed = allowedValues(field, minor)
         // A value a later version allows is version-construct's.
-        if (allowed && !allowed.includes(value) && !allowedValues(field, LATEST).includes(value)) {
-          report(type, at, value, allowed.join(' | '))
+        if (allowed && !allowed.includes(value) && !inSomeVersion(field, value)) {
+          report(type, at, key, value, allowed.join(' | '))
         }
       }
     }
   },
 }
 
-function fits(value, kind) {
+// The container alone: its members are `misfits`'.
+function fits(value, kind, minor) {
   if (kind === 'any') return true
   if (kind === 'string') return typeof value === 'string'
   if (kind === 'boolean') return typeof value === 'boolean'
-  if (typeof kind === 'string') return isObject(value)
-  if (kind.array) {
-    if (!Array.isArray(value)) return false
-    return kind.array !== 'string' || value.every((member) => typeof member === 'string')
+  if (typeof kind === 'string') return isObject(value) || isBooleanSchema(value, kind, minor)
+  return kind.array ? Array.isArray(value) : isObject(value)
+}
+
+// → [key, member] for each member of a list or map that is not of its kind.
+function* misfits(container, kind, minor) {
+  const member = kind.array ?? kind.map
+  if (member === 'any') return
+  const members = kind.array ? container.entries() : Object.entries(container)
+  for (const [key, value] of members) {
+    if (!kind.array && (key.startsWith('x-') || value === null)) continue
+    if (!fits(value, member, minor)) yield [key, value]
   }
-  if (!isObject(value)) return false
-  return kind.map !== 'string' || Object.values(value).every((member) => typeof member === 'string')
+}
+
+// From 3.1 a Schema is a JSON Schema, and `true` / `false` are schemas.
+function isBooleanSchema(value, kind, minor) {
+  return kind === 'Schema' && minor >= 1 && typeof value === 'boolean'
+}
+
+function inSomeVersion(field, value) {
+  return field.values.some((entry) => (typeof entry === 'string' ? entry : entry.value) === value)
 }
 
 function expectedKind(kind) {
-  if (typeof kind === 'string') return ['string', 'boolean', 'any'].includes(kind) ? kind : 'object'
+  if (typeof kind === 'string') return kind === 'string' || kind === 'boolean' ? kind : 'object'
   if (kind.array) return kind.array === 'string' ? 'array of strings' : 'array'
   return kind.map === 'string' ? 'map of strings' : 'object'
 }
 
-// 3.0 types are one string; 3.1 adds `null` and lists of types — a list in a
-// 3.0 document is version-construct's.
-function checkSchemaType(schema, dataPath, minor, report) {
+function checkSchema(schema, dataPath, minor, report) {
+  if (Array.isArray(schema.items)) {
+    report('Schema', `${dataPath}/items`, 'items', schema.items, 'object')
+  }
+  // 3.0 types are one string; 3.1 adds `null` and lists of types — a list in
+  // a 3.0 document is version-construct's.
   const { type } = schema
   if (type === undefined || type === null) return
   const allowed = minor >= 1 ? [...SCHEMA_TYPES, 'null'] : SCHEMA_TYPES
   const values = Array.isArray(type) ? (minor >= 1 ? type : []) : [type]
   if (!Array.isArray(type) && typeof type !== 'string') {
-    report('Schema', `${dataPath}/type`, type, minor >= 1 ? 'string | array' : 'string')
+    report('Schema', `${dataPath}/type`, 'type', type, minor >= 1 ? 'string | array' : 'string')
     return
   }
   for (const value of values) {
     if (typeof value !== 'string' || !allowed.includes(value)) {
-      report('Schema', `${dataPath}/type`, value, allowed.join(' | '))
+      report('Schema', `${dataPath}/type`, 'type', value, allowed.join(' | '))
     }
   }
 }
 
-// Scheme name → the scopes (or roles) required: always a list of strings.
-function checkRequirement(requirement, dataPath, report) {
-  for (const [name, scopes] of Object.entries(requirement)) {
-    if (!Array.isArray(scopes) || !scopes.every((scope) => typeof scope === 'string')) {
-      report('SecurityRequirement', `${dataPath}${pointer(name)}`, scopes, 'array of strings')
-    }
+// The members of the patterned maps: a Path Item under each path or callback
+// expression, a Response under each status code, the scopes (or roles) under
+// each scheme name — always a list of strings.
+function checkPatterned(type, node, dataPath, report) {
+  for (const [key, value] of Object.entries(node)) {
+    if (key.startsWith('x-') || value === null) continue
+    const at = `${dataPath}${pointer(key)}`
+    if (type === 'SecurityRequirement') {
+      if (!Array.isArray(value) || !value.every((scope) => typeof scope === 'string')) {
+        report(type, at, key, value, 'array of strings')
+      }
+    } else if (!isObject(value)) report(type, at, key, value, 'object')
   }
 }
-
-const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)

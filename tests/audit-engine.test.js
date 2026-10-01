@@ -194,6 +194,48 @@ describe('audit context', () => {
     expect(roots).toHaveLength(1)
     expect(roots[0]).toMatchObject({ dataPath: '/components/schemas/Pet', op: null })
   })
+
+  it("collects every applicator's schemas, and a header's content schema", () => {
+    const ctx = createAuditContext(
+      auditInput(
+        doc({
+          paths: {
+            '/pets': {
+              get: {
+                responses: {
+                  200: {
+                    description: 'OK',
+                    headers: {
+                      Link: { content: { 'text/plain': { schema: { type: 'string' } } } },
+                    },
+                    content: {
+                      'application/json': {
+                        schema: {
+                          items: [{ type: 'string' }],
+                          additionalItems: { type: 'integer' },
+                          definitions: { Legacy: { type: 'object' } },
+                          contentSchema: { type: 'object' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ),
+    )
+    const base = '/paths/~1pets/get/responses/200'
+    expect(ctx.schemas.map(({ dataPath }) => dataPath.slice(base.length))).toEqual([
+      '/content/application~1json/schema',
+      '/content/application~1json/schema/items/0',
+      '/content/application~1json/schema/additionalItems',
+      '/content/application~1json/schema/contentSchema',
+      '/content/application~1json/schema/definitions/Legacy',
+      '/headers/Link/content/text~1plain/schema',
+    ])
+  })
 })
 
 describe('audit scoring', () => {

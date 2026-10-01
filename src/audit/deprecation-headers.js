@@ -1,6 +1,7 @@
 import { listOf } from '../openapi/model.js'
 import { pointer } from './pointer.js'
 import { internalTarget, nodeAt } from './ref-pointer.js'
+import { isObject } from './value-check.js'
 
 // The headers that carry a deprecation on the wire — RFC 9745 `Deprecation`,
 // RFC 8594 `Sunset` — read off the document's Response Objects for the
@@ -37,41 +38,74 @@ export function* documentResponses(ctx) {
 }
 
 // The schema a Header describes its value with: `schema`, or the one of its
-// single `content` entry.
-export function headerSchema(header) {
-  if (isObject(header.schema)) return header.schema
-  for (const media of Object.values(isObject(header.content) ? header.content : {})) {
-    if (isObject(media) && isObject(media.schema)) return media.schema
+// single `content` entry. → { schema, at }, `at` the path to it within the
+// Header, or null.
+export function headerSchemaSite(header) {
+  if (isObject(header.schema)) return { schema: header.schema, at: ['schema'] }
+  for (const [mediaType, media] of Object.entries(isObject(header.content) ? header.content : {})) {
+    if (isObject(media) && isObject(media.schema)) {
+      return { schema: media.schema, at: ['content', mediaType, 'schema'] }
+    }
   }
   return null
+}
+
+export function headerSchema(header) {
+  return headerSchemaSite(header)?.schema ?? null
 }
 
 // Every example value a Header gives, wherever it writes one: its own
 // `example` / `examples`, its `content` entry's, its schema's `example` /
 // `examples` list. An Example Object counts by its `value`, 3.2 `dataValue` or
-// `serializedValue` — for a header the last two are the same text.
-export function headerExamples(header) {
-  const values = []
-  const fromHolder = (holder) => {
+// `serializedValue` — for a header the last two are the same text. → [{ value,
+// at }], `at` the path to the value within the Header.
+export function headerExampleSites(header) {
+  const sites = []
+  const fromHolder = (holder, at) => {
     if (!isObject(holder)) return
-    if (holder.example !== undefined) values.push(holder.example)
-    for (const example of Object.values(isObject(holder.examples) ? holder.examples : {})) {
+    if (holder.example !== undefined) sites.push({ value: holder.example, at: [...at, 'example'] })
+    for (const [name, example] of Object.entries(
+      isObject(holder.examples) ? holder.examples : {},
+    )) {
       if (!isObject(example)) continue
       for (const field of ['value', 'dataValue', 'serializedValue']) {
-        if (example[field] !== undefined) values.push(example[field])
+        if (example[field] !== undefined) {
+          sites.push({ value: example[field], at: [...at, 'examples', name, field] })
+        }
       }
     }
   }
-  fromHolder(header)
-  for (const media of Object.values(isObject(header.content) ? header.content : {})) {
-    fromHolder(media)
+  fromHolder(header, [])
+  for (const [mediaType, media] of Object.entries(isObject(header.content) ? header.content : {})) {
+    fromHolder(media, ['content', mediaType])
   }
-  const schema = headerSchema(header)
-  if (schema) {
-    if (schema.example !== undefined) values.push(schema.example)
-    values.push(...listOf(schema.examples))
+  const site = headerSchemaSite(header)
+  if (site) {
+    const { schema, at } = site
+    if (schema.example !== undefined) sites.push({ value: schema.example, at: [...at, 'example'] })
+    for (const [index, value] of listOf(schema.examples).entries()) {
+      sites.push({ value, at: [...at, 'examples', index] })
+    }
   }
-  return values
+  return sites
+}
+
+export function headerExamples(header) {
+  return headerExampleSites(header).map(({ value }) => value)
+}
+
+// The pointer of `at` (a path within the dereferenced Header) as the author
+// wrote it under `dataPath`: cut at the first `$ref` met in `source`, the
+// Header as written — what lies behind one is not written there.
+export function writtenPointer(source, dataPath, at) {
+  let node = source
+  for (const [index, segment] of at.entries()) {
+    node = node !== null && typeof node === 'object' ? node[segment] : undefined
+    if (isObject(node) && typeof node.$ref === 'string') {
+      return `${dataPath}${pointer(...at.slice(0, index + 1))}`
+    }
+  }
+  return `${dataPath}${pointer(...at)}`
 }
 
 // RFC 9651 §3.3.7 Date: `@` and an integer of at most 15 digits, seconds since
@@ -104,8 +138,4 @@ export function parseImfFixdate(value) {
   if (month < 0 || hour > 23 || minute > 59 || second > 60) return null
   const time = Date.UTC(year, month, day, hour, minute, Math.min(second, 59))
   return new Date(time).getUTCDate() === day ? time : null
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

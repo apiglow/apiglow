@@ -1,5 +1,7 @@
-import { placeOf } from '../locate.js'
+import { componentNames, placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
+import { forbidsContent } from '../response-sites.js'
+import { isObject } from '../value-check.js'
 
 // A response declaring content where HTTP allows none. RFC 9110: "All 1xx
 // (Informational), 204 (No Content), and 304 (Not Modified) responses do not
@@ -18,14 +20,13 @@ import { pointer } from '../pointer.js'
 // operation usually reuses its GET's response, whose content is right for
 // GET — so a HEAD response is checked where the operation lists it. An empty
 // `content` map declares nothing and passes.
-const BODYLESS = /^(1\d\d|1XX|204|205|304)$/i
 
 export const bodylessStatus = {
   id: 'bodyless-status',
   category: 'correctness',
   severity: 'error',
   run(ctx, check) {
-    const components = componentResponses(ctx)
+    const components = componentNames(ctx.document, 'responses')
     const seen = new Set()
     for (const entry of ctx.operations) {
       const responses = entry.op.responses
@@ -33,7 +34,7 @@ export const bodylessStatus = {
       const head = entry.method === 'head'
       for (const [status, response] of Object.entries(responses)) {
         if (!isObject(response) || typeof response.$ref === 'string') continue
-        if (!head && !BODYLESS.test(status)) continue
+        if (!forbidsContent(status, entry.method)) continue
         const name = components.get(response)
         let site
         if (name === undefined || head) {
@@ -53,21 +54,4 @@ export const bodylessStatus = {
       }
     }
   },
-}
-
-// Response object → its name under `components.responses`, as
-// `response-sites.js` reads it: the dereferenced document keeps one object per
-// `$ref` target, so identity tells a use of the component from an inline copy.
-function componentResponses(ctx) {
-  const names = new Map()
-  const declared = ctx.document.components?.responses
-  if (!isObject(declared)) return names
-  for (const [name, response] of Object.entries(declared)) {
-    if (isObject(response) && !names.has(response)) names.set(response, name)
-  }
-  return names
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

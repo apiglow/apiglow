@@ -1,11 +1,13 @@
 import { bodyKind } from '../../openapi/body-kind.js'
 import { listOf } from '../../openapi/model.js'
 import { valueTypes } from '../input-shape.js'
-import { isSchemaObject, toolInputs, toolOperations } from '../tool-inputs.js'
+import { toolInputs, toolOperations } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // A JSON request body whose root is not an object: an array, a scalar, or a
-// choice (`oneOf` / `anyOf`, even of objects). A tool's input is an object of
-// named arguments, and the consumers bend a body that is not one:
+// root that is only a choice (`oneOf` / `anyOf`, even of objects). A tool's
+// input is an object of named arguments, and the consumers bend a body that is
+// not one:
 // - GPT Actions logs "request body schema is not an object schema; skipping"
 //   and leaves the operation out;
 // - `@ivotoby/openapi-mcp-server`, one of the two bridges this documentation's
@@ -46,12 +48,20 @@ export const inputRootShape = {
 // 'object', the JSON Schema word for what it is instead (`array`, `string`,
 // `oneOf`…), or null when the schema does not say.
 function rootShape(schema, depth) {
-  if (!isSchemaObject(schema)) return null
+  if (!isObject(schema)) return null
+  const shape = statedShape(schema, depth)
+  if (shape === 'object') return shape
   // A choice inside an `allOf` member is not the tool's root: only the body's
-  // own `oneOf` / `anyOf` becomes it.
+  // own `oneOf` / `anyOf` becomes it. An object root that also holds one —
+  // `{ type: object, properties, oneOf: [{ required: [email] }, …] }` — stays
+  // an object, its branches constraints on which members come together.
   for (const keyword of depth === 0 ? ['oneOf', 'anyOf'] : []) {
     if (listOf(schema[keyword]).length) return keyword
   }
+  return shape
+}
+
+function statedShape(schema, depth) {
   const types = valueTypes(schema)
   if (types.length) return types.includes('object') ? 'object' : types[0]
   if (depth >= MAX_MEMBER_DEPTH) return null

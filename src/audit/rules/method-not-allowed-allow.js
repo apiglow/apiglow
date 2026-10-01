@@ -1,4 +1,4 @@
-import { declaresHeader, responsesWithStatus } from '../response-sites.js'
+import { declaresHeader, responsesWhere } from '../response-sites.js'
 
 // A 405 that does not document its Allow header. RFC 9110 §15.5.6: "The origin
 // server MUST generate an Allow header field in a 405 response containing a
@@ -17,7 +17,7 @@ export const methodNotAllowedAllow = {
   category: 'completeness',
   severity: 'info',
   run(ctx, check) {
-    for (const { response, ...site } of responsesWithStatus(ctx, '405')) {
+    for (const { response, site } of responsesWhere(ctx, (status) => status === '405')) {
       check(declaresHeader(response, 'allow'), { ...site, params: { status: '405' } })
     }
   },

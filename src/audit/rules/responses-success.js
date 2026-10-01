@@ -10,7 +10,7 @@
 // with no Responses Object at all is legal from 3.1 and left alone; in 3.0 it is
 // `required-field-missing`'s. One check per operation without a success.
 
-const SUCCESS = /^([23]\d\d|[23]XX)$/i
+const SUCCESS = /^([23]\d\d|[23]XX)$/
 
 export const responsesSuccess = {
   id: 'responses-success',

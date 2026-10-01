@@ -1,15 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { runRule } from '../src/audit/engine.js'
+import { createAuditContext, runRule } from '../src/audit/engine.js'
 import { apikeyInQuery } from '../src/audit/rules/apikey-in-query.js'
 import { authSchemeWeak } from '../src/audit/rules/auth-scheme-weak.js'
 import { httpSchemeRegistered } from '../src/audit/rules/http-scheme-registered.js'
 import { oauthUrlTls } from '../src/audit/rules/oauth-url-tls.js'
 import { serverHttps } from '../src/audit/rules/server-https.js'
+import { serverPlaceholder } from '../src/audit/rules/server-placeholder.js'
+import { normalizeDocument } from '../src/openapi/model.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
 // The security rules of docs/audit.md §4.8 on transport and credentials.
 
 const run = (rule, document) => runRule(rule, auditContext(document))
+// A document whose 3.2 `$self` the loader resolved to `baseUri`.
+const runAt = (rule, document, baseUri) =>
+  runRule(
+    rule,
+    createAuditContext({
+      source: document,
+      document,
+      model: normalizeDocument(document, { baseUri }),
+    }),
+  )
 const op = (extra = {}) => ({ responses: okResponse, ...extra })
 const schemes = (securitySchemes, extra = {}) => doc({ components: { securitySchemes }, ...extra })
 
@@ -73,6 +85,7 @@ describe('server-https', () => {
               callbacks: {
                 done: {
                   '{$request.body#/url}': {
+                    servers: [{ url: 'http://hook.example.com' }],
                     post: op({ servers: [{ url: 'http://hook.example.com' }] }),
                   },
                 },
@@ -80,7 +93,12 @@ describe('server-https', () => {
             }),
           },
         },
-        webhooks: { ping: { post: op({ servers: [{ url: 'http://hook.example.com' }] }) } },
+        webhooks: {
+          ping: {
+            servers: [{ url: 'http://hook.example.com' }],
+            post: op({ servers: [{ url: 'http://hook.example.com' }] }),
+          },
+        },
       }),
     )
     expect(result.findings.map((f) => f.dataPath)).toEqual([
@@ -91,6 +109,26 @@ describe('server-https', () => {
   it('gives no verdict on an undeclared host variable', () => {
     const result = run(serverHttps, doc({ servers: [{ url: 'http://{host}/v1' }] }))
     expect(result.findings).toEqual([])
+  })
+
+  it('fills a non-string default, as the try-it does', () => {
+    const result = run(
+      serverHttps,
+      doc({
+        servers: [{ url: 'http://api.example.com:{port}', variables: { port: { default: 8080 } } }],
+      }),
+    )
+    expect(result.findings.map((f) => f.params.url)).toEqual(['http://api.example.com:8080'])
+  })
+
+  it("resolves a relative server against the document's $self, as the try-it does", () => {
+    const servers = [{ url: '/v1' }, { url: 'https://api.example.com' }]
+    const http = runAt(serverHttps, doc({ servers }), 'http://api.example.com/openapi.json')
+    expect(http.findings.map((f) => [f.dataPath, f.params.url])).toEqual([
+      ['/servers/0/url', 'http://api.example.com/v1'],
+    ])
+    const https = runAt(serverHttps, doc({ servers }), 'https://api.example.com/openapi.json')
+    expect(https).toMatchObject({ checks: 2, findings: [] })
   })
 })
 
@@ -281,6 +319,30 @@ describe('auth-scheme-weak', () => {
       }),
     )
     expect(result).toMatchObject({ checks: 0, findings: [] })
+  })
+
+  it("reads a relative server against the document's $self", () => {
+    const document = schemes(declared, {
+      servers: [{ url: '/v1' }],
+      paths: { '/a': { get: op({ security: [{ bearer: [] }] }) } },
+    })
+    const result = runAt(authSchemeWeak, document, 'http://api.example.com/openapi.json')
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        params: { scheme: 'bearer', url: 'http://api.example.com/v1' },
+      }),
+    ])
+    expect(run(authSchemeWeak, document)).toMatchObject({ checks: 1, findings: [] })
+  })
+})
+
+describe('server-placeholder', () => {
+  it("reads a relative server against the document's $self", () => {
+    const document = doc({ servers: [{ url: '/v1' }] })
+    expect(run(serverPlaceholder, document)).toMatchObject({ checks: 0, findings: [] })
+    const result = runAt(serverPlaceholder, document, 'https://api.example.com/openapi.json')
+    expect(result.findings.map((f) => f.params.url)).toEqual(['https://api.example.com/v1'])
   })
 })
 

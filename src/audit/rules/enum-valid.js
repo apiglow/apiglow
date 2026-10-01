@@ -1,5 +1,5 @@
 import { pointer } from '../pointer.js'
-import { checkValueType, describeValue } from '../value-check.js'
+import { checkValueType, describeValue, isObject } from '../value-check.js'
 
 // An `enum` that cannot do its job: not a list, an empty list (no value is ever
 // valid), an entry the schema's own `type` rejects (`enum: ["1", "2"]` on an
@@ -30,8 +30,8 @@ export const enumValid = {
       const seen = new Set()
       for (const [index, value] of schema.enum.entries()) {
         const path = `${at}${pointer(index)}`
-        const key = JSON.stringify(value)
-        if (seen.has(key)) {
+        const key = canonical(value)
+        if (key !== null && seen.has(key)) {
           report(path, `${describeValue(value)} ×2`)
           continue
         }
@@ -42,6 +42,24 @@ export const enumValid = {
       }
     }
   },
+}
+
+// One string per JSON value, keys in a fixed order: `{a: 1, b: 2}` and
+// `{b: 2, a: 1}` are the same entry. A set of these finds duplicates in one
+// pass, where comparing entries pairwise would not keep up with enums of
+// thousands. → null for a value that loops back (a YAML alias): no verdict.
+function canonical(value) {
+  try {
+    return JSON.stringify(value, (_, member) =>
+      isObject(member)
+        ? Object.fromEntries(
+            Object.entries(member).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+          )
+        : member,
+    )
+  } catch {
+    return null
+  }
 }
 
 function typeLabel(schema) {

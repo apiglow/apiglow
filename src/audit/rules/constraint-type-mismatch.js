@@ -46,7 +46,7 @@ export const constraintTypeMismatch = {
           op,
           location,
           dataPath: `${dataPath}${pointer(keyword)}`,
-          params: { keyword, type: types.join(' | ') },
+          params: { keyword },
         })
       }
     }

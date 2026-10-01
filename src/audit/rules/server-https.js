@@ -1,4 +1,4 @@
-import { placeOf } from '../locate.js'
+import { placeOf, sentByTheApi } from '../locate.js'
 import { isCleartext } from '../../openapi/mixed-content.js'
 import { serverDefaultUrl } from '../security.js'
 
@@ -11,12 +11,15 @@ import { serverDefaultUrl } from '../security.js'
 // unless a CORS proxy relays the call, and the failed request is diagnosed as
 // mixed content (`diagnoseFailure`, `src/openapi/insights.js`).
 //
-// The URL is judged with its variables at their defaults (`serverDefaultUrl`),
-// the base this documentation sends to — a `{scheme}` variable defaulting to
-// `http` counts. Loopback (`localhost`, `127.0.0.0/8`, `[::1]`) is exempt:
-// browsers hold it potentially trustworthy (W3C Secure Contexts) and nothing
-// leaves the machine. A relative URL takes the page's scheme. An undeclared
-// variable in the host gives no verdict: that is `server-variables`'.
+// The URL is judged as this documentation sends to it (`serverDefaultUrl`):
+// variables at their defaults — a `{scheme}` variable defaulting to `http`
+// counts — and a relative URL resolved against the document's 3.2 `$self`,
+// so `/v1` under an http `$self` is cleartext. Without `$self` a relative URL
+// takes the scheme of wherever the document is served from, which the audit
+// is not told: no verdict. Loopback (`localhost`, `127.0.0.0/8`, `[::1]`) is
+// exempt: browsers hold it potentially trustworthy (W3C Secure Contexts) and
+// nothing leaves the machine. An undeclared variable in the host gives no
+// verdict: that is `server-variables`'.
 //
 // Every Server Object the client calls: root, Path Item, Operation, a Link's
 // `server`. A server inside a webhook or a callback is the receiver's — the
@@ -30,10 +33,9 @@ export const serverHttps = {
   severity: 'warning',
   run(ctx, check) {
     for (const { type, node, dataPath } of ctx.objects) {
-      if (type !== 'Server' || typeof node.url !== 'string') continue
+      if (type !== 'Server' || typeof node.url !== 'string' || sentByTheApi(dataPath)) continue
       const place = placeOf(ctx.operations, dataPath)
-      if (place.op && place.op.kind !== 'operation') continue
-      const url = serverDefaultUrl(node)
+      const url = serverDefaultUrl(ctx, node)
       check(!isCleartext(url), { ...place, dataPath: `${dataPath}/url`, params: { url } })
     }
   },

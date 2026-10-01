@@ -1,27 +1,15 @@
+import { securityRequirements } from '../openapi/auth.js'
 import { listOf } from '../openapi/model.js'
+import { serverUrl } from '../openapi/servers.js'
 
 // What the security rules (docs/audit.md §4.8) read of an operation: the
 // requirement that applies to it, and where it sends its requests. One reading,
-// so that two rules never disagree on whether an operation is secured.
+// shared with the try-it (`securityRequirements`, `serverUrl`), so that the
+// report never judges an operation the page treats otherwise.
 
-// The operation's own `security`, else the document's. → { alternatives,
-// declared, anonymous }: the requirement objects (a malformed entry left out),
-// whether any `security` applies at all, and whether one alternative is empty
-// (`{}`, or `security: []` on the operation) — access without credentials.
-// A list holding only malformed entries (`security: [api_key]`) is neither
-// anonymous nor secured: no alternative, and no verdict.
+// → { alternatives, declared, anonymous } (`securityRequirements`).
 export function effectiveSecurity(ctx, entry) {
-  const own = entry.op.security
-  const declared = Array.isArray(own) || Array.isArray(ctx.document.security)
-  const list = Array.isArray(own) ? own : listOf(ctx.document.security)
-  const alternatives = list.filter(
-    (alternative) =>
-      alternative !== null && typeof alternative === 'object' && !Array.isArray(alternative),
-  )
-  const anonymous =
-    (declared && !list.length) ||
-    alternatives.some((alternative) => !Object.keys(alternative).length)
-  return { alternatives, declared, anonymous }
+  return securityRequirements(entry.op.security, ctx.document.security)
 }
 
 // The raw security scheme a requirement names, or null when it names none —
@@ -32,23 +20,35 @@ export function schemeNamed(ctx, name) {
 }
 
 // The server URLs a request to the operation goes to: its own `servers`, else
-// its Path Item's, else the document's — each URL with its variables at their
-// defaults, the base this documentation sends to.
+// its Path Item's, else the document's.
 export function operationServerUrls(ctx, entry) {
   const servers = [entry.op.servers, entry.pathItem.servers, ctx.document.servers].find(
     (list) => Array.isArray(list) && list.length,
   )
   return listOf(servers)
     .filter((server) => server && typeof server.url === 'string')
-    .map(serverDefaultUrl)
+    .map((server) => serverDefaultUrl(ctx, server))
 }
 
-// A Server Object's URL with each declared variable at its default; an
-// undeclared `{name}` stays (`server-variables`').
-export function serverDefaultUrl(server) {
-  const variables = server.variables && typeof server.variables === 'object' ? server.variables : {}
-  return server.url.replace(/\{([^{}]+)\}/g, (match, name) => {
-    const value = variables[name]?.default
-    return typeof value === 'string' ? value : match
-  })
+const ABSOLUTE = /^[a-z][a-z\d+.-]*:/i
+
+// A raw Server Object's URL as the try-it sends to it: each declared variable
+// at its default (`serverUrl`; an undeclared `{name}` stays, `server-variables`'),
+// a relative URL resolved against the document's 3.2 `$self`. Without `$self`
+// the try-it resolves it against wherever the document was read from, which
+// the audit is not told: the URL stays relative. An absolute URL is kept as
+// written, so a finding quotes it the way the author spelled it.
+export function serverDefaultUrl(ctx, server) {
+  const variables = Object.entries(server.variables ?? {}).map(([name, variable]) => ({
+    name,
+    default: variable?.default,
+  }))
+  const url = serverUrl({ url: server.url, variables })
+  const base = ctx.model.baseUri
+  if (!base || ABSOLUTE.test(url)) return url
+  try {
+    return new URL(url, base).href
+  } catch {
+    return url
+  }
 }

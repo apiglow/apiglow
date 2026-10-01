@@ -1,7 +1,9 @@
 import { isFileSchema } from '../../openapi/body-kind.js'
 import { enumOf, listOf } from '../../openapi/model.js'
 import { sentProperties } from '../body-properties.js'
-import { isSchemaObject, toolInputs, toolOperations } from '../tool-inputs.js'
+import { toolInputs, toolOperations } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
+import { SCHEMA_DEPTH } from '../schema-walk.js'
 
 // A request body whose schema shows no example of what to send. Tools built
 // from the operation copy the request schema into their input schema whole —
@@ -21,8 +23,9 @@ import { isSchemaObject, toolInputs, toolOperations } from '../tool-inputs.js'
 //
 // One check per distinct schema among an operation's non-file request media
 // types — the same payload offered as JSON, form and XML is one example to
-// write, as `response-example` counts it; a file has no example to write, and a
-// body with no schema is no tool argument to fill.
+// write, as `response-example` counts it; a file has no example to write, a
+// body with no schema is no tool argument to fill, and an object whose
+// declared properties are all `readOnly` has nothing to send.
 export const requestExample = {
   id: 'request-example',
   category: 'agent',
@@ -31,8 +34,8 @@ export const requestExample = {
     for (const entry of toolOperations(ctx)) {
       const seen = new Set()
       for (const input of toolInputs(entry)) {
-        if (input.kind !== 'body' || !isSchemaObject(input.schema)) continue
-        if (seen.has(input.schema)) continue
+        if (input.kind !== 'body' || !isObject(input.schema)) continue
+        if (seen.has(input.schema) || sendsNothing(input.schema)) continue
         seen.add(input.schema)
         check(exemplified(input.schema), {
           op: entry,
@@ -44,12 +47,19 @@ export const requestExample = {
   },
 }
 
-// Same budget as the shared walks (rule 7); a cycle back to an ancestor shows
-// nothing new, and counts as unexemplified.
-const MAX_DEPTH = 24
+// An object whose every declared property is `readOnly`: nothing to send, so
+// nothing to show an example of.
+function sendsNothing(schema) {
+  if (sentProperties(schema, '').length) return false
+  return [schema, ...listOf(schema.allOf)].some(
+    (member) => isObject(member?.properties) && Object.keys(member.properties).length > 0,
+  )
+}
+
+// A cycle back to an ancestor shows nothing new, and counts as unexemplified.
 
 function exemplified(schema, depth = 0, stack = new Set()) {
-  if (!isSchemaObject(schema) || depth > MAX_DEPTH || stack.has(schema)) return false
+  if (!isObject(schema) || depth > SCHEMA_DEPTH || stack.has(schema)) return false
   // A file part of a form: bytes the user picks, no value to exemplify.
   if (carriesExample(schema) || isFileSchema(schema)) return true
   stack.add(schema)
@@ -63,7 +73,7 @@ function shownByParts(schema, depth, stack) {
   if (properties.length) {
     return properties.every((property) => exemplified(property.schema, depth, stack))
   }
-  if (isSchemaObject(schema.items)) return exemplified(schema.items, depth, stack)
+  if (isObject(schema.items)) return exemplified(schema.items, depth, stack)
   if (listsValues(schema)) return true
   // A value held by a wrapper (`allOf: [$ref]`, the 3.0 way to describe a
   // reference) or offered as a choice: one exemplified branch shows a value.
@@ -83,7 +93,7 @@ function carriesExample(schema) {
   if (Array.isArray(schema.examples) && schema.examples.length > 0) return true
   return listOf(schema.allOf).some(
     (member) =>
-      isSchemaObject(member) &&
+      isObject(member) &&
       (member.example !== undefined ||
         (Array.isArray(member.examples) && member.examples.length > 0)),
   )

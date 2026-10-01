@@ -1,5 +1,5 @@
 import { mediaEssence } from '../../openapi/body-kind.js'
-import { declaresHeader, responsesWithStatus } from '../response-sites.js'
+import { declaresHeader, responsesWhere } from '../response-sites.js'
 
 // A 206 that says neither which range it carries nor that it carries several.
 // RFC 9110 §15.3.7: a single-part 206 MUST come with a Content-Range header
@@ -20,7 +20,7 @@ export const partialContentRange = {
   category: 'completeness',
   severity: 'info',
   run(ctx, check) {
-    for (const { response, ...site } of responsesWithStatus(ctx, '206')) {
+    for (const { response, site } of responsesWhere(ctx, (status) => status === '206')) {
       const content = response.content
       const multipart =
         content !== null &&

@@ -31,6 +31,7 @@ describe('isPlaceholderExample', () => {
       'string',
       'Integer',
       ' TODO: ',
+      'To-do',
       'tbd',
       'FIXME',
       'xxx',
@@ -101,6 +102,8 @@ describe('response-content-schema', () => {
                 'text/xml': {},
                 'application/atom+xml': {},
                 'application/x-www-form-urlencoded': {},
+                'application/yaml': {},
+                'application/openapi+yaml': {},
               },
             },
           }),
@@ -113,6 +116,8 @@ describe('response-content-schema', () => {
       'text/xml',
       'application/atom+xml',
       'application/x-www-form-urlencoded',
+      'application/yaml',
+      'application/openapi+yaml',
     ])
     expect(result.findings[0]).toMatchObject({
       ruleId: 'response-content-schema',
@@ -148,6 +153,30 @@ describe('response-content-schema', () => {
       location: 'components.responses.Error',
       opRef: null,
     })
+  })
+
+  it('leaves a response HTTP gives no content to bodyless-status', () => {
+    const result = runRefs(
+      responseContentSchema,
+      doc({
+        components: {
+          responses: { Shared: { description: 'Shared', content: json() } },
+        },
+        paths: {
+          '/a': {
+            ...getWith({
+              204: { description: 'Gone', content: json() },
+              304: { $ref: '#/components/responses/Shared' },
+            }),
+            head: { responses: { 200: { description: 'OK', content: json() } } },
+          },
+          '/b': getWith({ 200: { $ref: '#/components/responses/Shared' } }),
+        },
+      }),
+    )
+    expect(result.findings.map((f) => [f.dataPath, f.params.status])).toEqual([
+      ['/components/responses/Shared/content/application~1json', '200'],
+    ])
   })
 })
 
@@ -488,6 +517,69 @@ describe('type-missing', () => {
       '/components/schemas/Pet/properties/id',
       '/webhooks/petAdded/post/parameters/0/schema',
       '/webhooks/petAdded/post/requestBody/content/application~1json',
+    ])
+  })
+
+  it('judges a schema that holds a value anywhere, whatever the order of the paths', () => {
+    const paths = {
+      '/a': getWith({
+        200: {
+          description: 'OK',
+          content: json({ schema: { allOf: [{ $ref: '#/components/schemas/Note' }] } }),
+        },
+      }),
+      '/b': getWith({
+        200: {
+          description: 'OK',
+          content: json({
+            schema: { type: 'object', properties: { note: { $ref: '#/components/schemas/Note' } } },
+          }),
+        },
+      }),
+    }
+    const components = { schemas: { Note: { description: 'Free text' } } }
+    for (const order of [paths, { '/b': paths['/b'], '/a': paths['/a'] }]) {
+      const result = runRefs(typeMissing, doc({ components, paths: order }))
+      expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/Note'])
+    }
+  })
+
+  it('leaves a response that allows no content to bodyless-status', () => {
+    const result = run(
+      typeMissing,
+      doc({
+        paths: {
+          '/pets': {
+            head: { responses: { 200: { description: 'OK', content: json({ schema: {} }) } } },
+            delete: { responses: { 204: { description: 'Gone', content: json({ schema: {} }) } } },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 0, findings: [] })
+  })
+
+  it('judges a shared response once, at the component', () => {
+    const result = runRefs(
+      typeMissing,
+      doc({
+        components: {
+          responses: {
+            Err: { description: 'Error', content: json({ schema: { properties: { code: {} } } }) },
+          },
+        },
+        paths: {
+          '/a': getWith({ 400: { $ref: '#/components/responses/Err' } }),
+          '/b': getWith({ 400: { $ref: '#/components/responses/Err' } }),
+        },
+      }),
+    )
+    expect(result.checks).toBe(2)
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        location: 'components.responses.Err',
+        dataPath: '/components/responses/Err/content/application~1json/schema/properties/code',
+      }),
     ])
   })
 })

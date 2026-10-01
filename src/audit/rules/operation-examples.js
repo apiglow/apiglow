@@ -1,5 +1,6 @@
-import { isRealExample, isRealExampleObject } from '../placeholder-example.js'
+import { hasRealExample } from '../placeholder-example.js'
 import { carriesFile, operationContents } from '../schema-walk.js'
+import { isObject } from '../value-check.js'
 
 // Docs readiness: with no example anywhere, the try-it prefills a sample
 // generated from the schema — structurally valid, semantically meaningless
@@ -14,7 +15,8 @@ import { carriesFile, operationContents } from '../schema-walk.js'
 // "Anywhere" includes the parameters: `sample.js` prefills a field from
 // `schema.examples[0]` whatever the field is, so an operation whose only
 // example sits on a query parameter is already sendable as-is — saying it has
-// none would be false.
+// none would be false. A parameter serialized by media type (`content`, 3.2's
+// `querystring`) counts the same, on itself or on its media type.
 //
 // A placeholder is no example (`isPlaceholderExample`): Swagger's generated
 // `{ "id": 0, "name": "string" }` prefills exactly the meaningless sample this
@@ -29,29 +31,23 @@ export const operationExamples = {
       if (!contents.length) continue
       check(
         contents.some(({ content }) => hasExample(content)) ||
-          entry.parameters.some(({ param }) => hasExample(param)),
+          entry.parameters.some(({ param }) => parameterHasExample(param)),
         { op: entry },
       )
     }
   },
 }
 
-// Media Type Object and Parameter Object alike: both carry `example`,
-// `examples` and a schema, and the prefill reads them the same way.
 function hasExample(node) {
-  const schema = node.schema ?? node.itemSchema
-  if (isRealExample(node.example, schema)) return true
-  if (node.examples && typeof node.examples === 'object') {
-    if (Object.values(node.examples).some((example) => isRealExampleObject(example, schema)))
-      return true
-  }
-  // A schema-level example counts: the app uses it for the prefill just the
-  // same, whether it sits on the media type or on the schema.
-  return [node.schema, node.itemSchema].some(
-    (own) =>
-      own &&
-      typeof own === 'object' &&
-      (isRealExample(own.example, own) ||
-        (Array.isArray(own.examples) && own.examples.some((value) => isRealExample(value, own)))),
-  )
+  return hasRealExample(node, node.schema ?? node.itemSchema)
+}
+
+// A parameter serialized by media type has no schema of its own: its
+// examples illustrate its one media type's, which may carry examples too.
+function parameterHasExample(param) {
+  if (!isObject(param)) return false
+  const media = isObject(param.content) ? Object.values(param.content).filter(isObject) : []
+  const schema =
+    param.schema ?? (media.length === 1 ? (media[0].schema ?? media[0].itemSchema) : undefined)
+  return hasRealExample(param, schema) || media.some(hasExample)
 }

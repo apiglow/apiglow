@@ -1,5 +1,6 @@
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
+import { lastToken } from '../ref-pointer.js'
 import { SCHEMA_KEYWORDS } from '../schema-keywords.js'
 
 // A schema key that is no keyword in any OpenAPI version, but a near miss of
@@ -83,7 +84,6 @@ function oneEditAway(a, b) {
 
 // `…/properties/petId` → `petId`: the name the parent's `required` should list.
 function propertyName(dataPath) {
-  const segments = dataPath.split('/')
-  if (segments.at(-2) !== 'properties') return null
-  return segments.at(-1).replaceAll('~1', '/').replaceAll('~0', '~')
+  if (dataPath.split('/').at(-2) !== 'properties') return null
+  return lastToken(dataPath)
 }

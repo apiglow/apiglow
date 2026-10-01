@@ -16,8 +16,8 @@ import { isCleartext } from '../../openapi/mixed-content.js'
 // served over https: the login is a top-level navigation, which mixed-content
 // blocking does not stop, so the reader lands on the http login page and types
 // a password there; the token request is a `fetch()`, blocked as mixed
-// content, and the OAuth block reports a network failure. The client
-// credentials flow fails the same way, before the secret leaves.
+// content, and the OAuth block says so (`oauth.error.mixedContent`). The
+// client credentials flow fails the same way, before the secret leaves.
 //
 // Each URL is judged where it is used: a flow's URL only on a flow that uses
 // it (the spec's "Applies To"), and only under an `oauth2` scheme;

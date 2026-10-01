@@ -176,6 +176,44 @@ describe('enum-values-undescribed', () => {
     expect(result.findings.map((f) => f.dataPath)).toEqual(['/components/schemas/Tier'])
     expect(result.checks).toBe(1)
   })
+
+  it('takes prose from a holder only when every place holding the enum names the value', () => {
+    const sizes = (description) => ({
+      post: {
+        parameters: [
+          {
+            name: 'sizes',
+            in: 'query',
+            description,
+            schema: { type: 'array', items: { $ref: '#/components/schemas/Size' } },
+          },
+        ],
+        responses: okResponse,
+      },
+    })
+    const bare = {
+      post: {
+        ...jsonBody({
+          type: 'object',
+          properties: { size: { $ref: '#/components/schemas/Size' } },
+        }),
+        responses: okResponse,
+      },
+    }
+    const components = { schemas: { Size: { type: 'string', enum: ['s', 'm'] } } }
+    const described = sizes('s: small; m: medium.')
+    for (const paths of [
+      { '/a': described, '/b': bare },
+      { '/b': bare, '/a': described },
+    ]) {
+      const result = runRefs(enumValuesUndescribed, doc({ components, paths }))
+      expect(result.findings.map((f) => [f.dataPath, f.params.missing])).toEqual([
+        ['/components/schemas/Size', 's, m'],
+      ])
+    }
+    const both = { '/a': described, '/c': sizes('Either s or m.') }
+    expect(runRefs(enumValuesUndescribed, doc({ components, paths: both })).findings).toEqual([])
+  })
 })
 
 describe('parameter-name-collision', () => {
@@ -464,6 +502,16 @@ describe('request-example', () => {
     )
     expect(result).toMatchObject({ checks: 0, findings: [] })
   })
+
+  it('has nothing to ask of a body whose every property is read-only', () => {
+    const readOnly = { type: 'string', readOnly: true }
+    for (const schema of [
+      { type: 'object', properties: { id: readOnly, created: readOnly } },
+      { allOf: [{ type: 'object', properties: { id: readOnly } }] },
+    ]) {
+      expect(body(schema)).toMatchObject({ checks: 0, findings: [] })
+    }
+  })
 })
 
 describe('error-machine-readable', () => {
@@ -529,5 +577,35 @@ describe('error-machine-readable', () => {
       }),
     )
     expect(result).toMatchObject({ checks: 0, findings: [] })
+  })
+
+  it('reads an object the way the schema view does: required keys make one', () => {
+    const result = responses({
+      404: response({ 'application/json': { schema: { required: ['code'] } } }),
+    })
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('grades a shared error response once, at the component', () => {
+    const result = runRefs(
+      errorMachineReadable,
+      doc({
+        components: {
+          responses: { NotFound: response({ 'text/plain': { schema: { type: 'string' } } }) },
+        },
+        paths: {
+          '/a': { get: { responses: { 404: { $ref: '#/components/responses/NotFound' } } } },
+          '/b': { get: { responses: { 404: { $ref: '#/components/responses/NotFound' } } } },
+        },
+      }),
+    )
+    expect(result.checks).toBe(1)
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        location: 'components.responses.NotFound',
+        dataPath: '/components/responses/NotFound/content',
+        params: { status: '404' },
+      }),
+    ])
   })
 })

@@ -1,5 +1,6 @@
 import { placeOf } from '../locate.js'
-import { hasRawHtml, markdownFields, markdownLinks, openTags } from '../markdown-text.js'
+import { FORBIDDEN_TAGS } from '../../openapi/sanitize-policy.js'
+import { markdownFields, markdownLinks, openTags } from '../markdown-text.js'
 
 // Raw HTML in a description that the sanitizer removes: `<iframe>`, `<script>`,
 // `<svg>`, a form control, an `onclick`, a `javascript:` link — and the
@@ -13,16 +14,22 @@ import { hasRawHtml, markdownFields, markdownLinks, openTags } from '../markdown
 // The reader gets nothing where the author put the embed, the button or the
 // placeholder: no error, no trace.
 //
-// The lists below mirror DOMPurify 3.4.13's html profile (`html$1` tags, `html`
-// attributes, `IS_ALLOWED_URI`, `DATA_URI_TAGS`, `URI_SAFE_ATTRIBUTES` in
-// `purify.es.mjs`) — mirrored rather than imported: the audit bundle carries no
-// DOMPurify (docs/architecture.md §14.8). They move with the pinned version.
+// The lists below mirror DOMPurify's html profile at `DOMPURIFY_VERSION`
+// (`html$1` tags, `html` attributes, `IS_ALLOWED_URI`, `DATA_URI_TAGS`,
+// `URI_SAFE_ATTRIBUTES` in `purify.es.mjs`) — mirrored rather than imported:
+// the audit bundle carries no DOMPurify (docs/architecture.md §14.8). A test
+// holds the version to the one `package.json` pins: bumping DOMPurify fails
+// there until they are compared again.
 //
-// Text in code spans and code blocks is shown as typed and is not judged. One
-// check per CommonMark field holding raw HTML or a Markdown link (whose target
-// becomes an `href`/`src` the same sanitizer vets); the finding names the
-// first thing stripped, as written. A relative link target is
-// `markdown-links`'.
+// Fields are read as this documentation renders them (`markdownFields`): text
+// in code spans and code blocks is shown as typed and is not judged, and a
+// description shown as plain text has nothing stripped. One check per
+// rendered field holding raw HTML or a Markdown link (whose target becomes an
+// `href`/`src` the same sanitizer vets); the finding names the first thing
+// stripped, as written, in any of the views showing it. A relative link
+// target is `markdown-links`'.
+export const DOMPURIFY_VERSION = '3.4.13'
+
 const ALLOWED_TAGS = new Set(
   `a abbr acronym address area article aside audio b bdi bdo big blink blockquote body br
   canvas caption center cite code col colgroup content data datalist dd decorator del details
@@ -32,19 +39,6 @@ const ALLOWED_TAGS = new Set(
   section shadow slot small source spacer span strike strong sub summary sup table tbody td
   template tfoot th thead time tr track tt u ul var video wbr`.split(/\s+/),
 )
-// In the profile, forbidden by this documentation's own configuration
-// (`FORBID_TAGS` in `components/markdown.js`).
-const FORBIDDEN_TAGS = new Set([
-  'style',
-  'form',
-  'input',
-  'button',
-  'textarea',
-  'select',
-  'option',
-  'optgroup',
-])
-
 const ALLOWED_ATTRIBUTES = new Set(
   `accept action align alt autocapitalize autocomplete autopictureinpicture autoplay background
   bgcolor border capture cellpadding cellspacing checked cite class clear color cols colspan
@@ -92,11 +86,18 @@ export const markdownUnsafe = {
   category: 'readiness',
   severity: 'warning',
   run(ctx, check) {
-    for (const { dataPath, code } of markdownFields(ctx)) {
-      const tags = openTags(code)
-      const links = markdownLinks(code)
-      if (!tags.length && !links.length && !hasRawHtml(code)) continue
-      const construct = firstStripped(tags, links)
+    for (const { dataPath, renders } of markdownFields(ctx)) {
+      let judged = false
+      let construct = null
+      for (const { inline, code } of renders) {
+        const tags = openTags(code)
+        const links = markdownLinks(code, inline)
+        if (!tags.length && !links.length) continue
+        judged = true
+        construct = firstStripped(tags, links)
+        if (construct !== null) break
+      }
+      if (!judged) continue
       check(construct === null, {
         ...placeOf(ctx.operations, dataPath),
         dataPath,
@@ -123,7 +124,7 @@ function firstStripped(tags, links) {
 
 function strippedFromTag({ name, attributes }) {
   const tag = name.toLowerCase()
-  if (!ALLOWED_TAGS.has(tag) || FORBIDDEN_TAGS.has(tag)) return `<${name}>`
+  if (!ALLOWED_TAGS.has(tag) || FORBIDDEN_TAGS.includes(tag)) return `<${name}>`
   for (const { name: attribute, value } of attributes) {
     const lower = attribute.toLowerCase()
     if (DATA_ATTRIBUTE.test(lower) || ARIA_ATTRIBUTE.test(lower)) continue

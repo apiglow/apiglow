@@ -1,3 +1,4 @@
+import { TOKEN_PATTERN } from '../http-token.js'
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
 
@@ -10,10 +11,9 @@ import { pointer } from '../pointer.js'
 // classifies the body from it: a key it cannot read gives a body of unknown
 // kind, sent with a Content-Type no server recognises; a generator does no
 // better. One check per bad key.
-const TOKEN = "[!#$%&'*+.^_`|~0-9A-Za-z-]+"
 const QUOTED = '"(?:[^"\\\\]|\\\\.)*"'
 const MEDIA_RANGE = new RegExp(
-  `^${TOKEN}/${TOKEN}(?:[ \\t]*;[ \\t]*(?:${TOKEN}=(?:${TOKEN}|${QUOTED}))?)*$`,
+  `^${TOKEN_PATTERN}/${TOKEN_PATTERN}(?:[ \\t]*;[ \\t]*(?:${TOKEN_PATTERN}=(?:${TOKEN_PATTERN}|${QUOTED}))?)*$`,
 )
 
 const HOLDERS = new Set(['Parameter', 'Header', 'RequestBody', 'Response'])

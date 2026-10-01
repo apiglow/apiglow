@@ -1,4 +1,5 @@
 import { pathKeys, pathSegments, pathTarget } from '../path-segments.js'
+import { wellFormed } from '../path-template.js'
 
 // Two Paths keys a single URL can match, where concrete-first matching cannot
 // pick one: `/{entity}/me` and `/books/{id}` both match `/books/me`, each
@@ -10,16 +11,19 @@ import { pathKeys, pathSegments, pathTarget } from '../path-segments.js'
 //
 // True ambiguities only: `/pets/mine` against `/pets/{id}` is ordered by the
 // specification itself (concrete first) and is not reported; neither is a pair
-// differing only by variable names, which is `paths-identical`'s. One finding
-// per pair, on the later key. `info`: real routers mostly resolve these by
-// declaration order or by the values actually sent, and a large API carries
-// dozens of them (the GitHub REST description, 67).
+// differing only by variable names, which is `paths-identical`'s, nor a key
+// `path-syntax` rejects. One finding per pair, on the later key. `info`: real
+// routers mostly resolve these by declaration order or by the values actually
+// sent, and a large API carries dozens of them (the GitHub REST description,
+// 67).
 export const pathsAmbiguous = {
   id: 'paths-ambiguous',
   category: 'correctness',
   severity: 'info',
   run(ctx, check) {
-    const paths = pathKeys(ctx).map((path) => ({ path, segments: pathSegments(path) }))
+    const paths = pathKeys(ctx)
+      .filter(wellFormed)
+      .map((path) => ({ path, segments: pathSegments(path) }))
     const bySize = new Map()
     for (const entry of paths) {
       const size = entry.segments.length

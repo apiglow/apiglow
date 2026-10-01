@@ -1,4 +1,4 @@
-import { declaresHeader, responsesWithStatus } from '../response-sites.js'
+import { declaresHeader, responsesWhere } from '../response-sites.js'
 
 // A redirect that does not document where it redirects to. RFC 9110 says the
 // server SHOULD generate a Location header with the new URI in a 301 and a 308
@@ -26,10 +26,8 @@ export const redirectLocation = {
   category: 'completeness',
   severity: 'info',
   run(ctx, check) {
-    for (const status of REDIRECTS) {
-      for (const { response, ...site } of responsesWithStatus(ctx, status)) {
-        check(declaresHeader(response, 'location'), { ...site, params: { status } })
-      }
+    for (const { response, status, site } of responsesWhere(ctx, (s) => REDIRECTS.includes(s))) {
+      check(declaresHeader(response, 'location'), { ...site, params: { status } })
     }
   },
 }

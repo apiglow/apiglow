@@ -1,11 +1,11 @@
-import { listOf } from '../openapi/model.js'
-import { isSchemaObject } from './tool-inputs.js'
+import { inferType, listOf } from '../openapi/model.js'
+import { placeOf } from './locate.js'
+import { isObject } from './value-check.js'
 
 // What an input schema tells about its value, for the `agent-inputs` rules.
-// Types are read the way this documentation's model reads them
-// (src/openapi/model.js `inferType`): the declared `type`, else the keywords
-// that only make sense on one kind of value. Keeping the two in step is what
-// lets a rule say what the schema view and the try-it do with the schema.
+// A type left out is inferred the way this documentation's model infers it
+// (src/openapi/model.js `inferType`), so a rule says what the schema view and
+// the try-it do with the schema.
 
 const OBJECT_KEYWORDS = [
   'properties',
@@ -43,56 +43,52 @@ const SAYING_KEYWORDS = [
 // try-it offers a file picker, which is a statement about the value.
 export function saysNothing(schema) {
   if (schema === true) return true
-  if (!isSchemaObject(schema)) return false
+  if (!isObject(schema)) return false
   if (schema.format === 'binary') return false
   return !SAYING_KEYWORDS.some((keyword) => schema[keyword] !== undefined)
 }
 
 // The JSON types a schema admits, `null` left out — declared, else inferred;
 // empty when nothing tells. `integer` is reported as written: callers that
-// compare JSON kinds fold it into `number` themselves.
+// compare JSON kinds fold it into `number` themselves. Declared types are all
+// of them, where the model keeps the first: a rule asks whether one of them is
+// an object, and `[string, object]` is.
 export function valueTypes(schema) {
-  if (!isSchemaObject(schema)) return []
+  if (!isObject(schema)) return []
   const declared = (Array.isArray(schema.type) ? schema.type : [schema.type]).filter(
     (type) => typeof type === 'string' && type !== 'null',
   )
   if (declared.length || schema.type !== undefined) return declared
-  if (OBJECT_KEYWORDS.some((keyword) => schema[keyword] !== undefined)) return ['object']
-  if (ARRAY_KEYWORDS.some((keyword) => schema[keyword] !== undefined)) return ['array']
-  const values = Array.isArray(schema.enum)
-    ? schema.enum
-    : schema.const !== undefined
-      ? [schema.const]
-      : []
-  const sample = values.find((value) => value !== null)
-  if (sample === undefined) return []
-  return [Array.isArray(sample) ? 'array' : typeof sample]
+  const inferred = inferType(schema)
+  return inferred ? [inferred] : []
 }
 
 export function isObjectSchema(schema) {
   return valueTypes(schema).includes('object')
 }
 
-// A schema that stands for one value: `const`, or a one-value `enum`.
-export function isConstant(schema) {
-  if (!isSchemaObject(schema)) return false
-  return schema.const !== undefined || (Array.isArray(schema.enum) && schema.enum.length === 1)
-}
-
 // The schemas the walk reaches from `schema` that describe the same value
-// rather than a part of it: its composition members.
+// rather than a part of it: its composition members, and the conditional ones
+// (`then`, `else`, `dependentSchemas`).
 export function compositionMembers(schema) {
-  return ['allOf', 'oneOf', 'anyOf'].flatMap((keyword) => listOf(schema[keyword]))
+  return [
+    ...['allOf', 'oneOf', 'anyOf'].flatMap((keyword) => listOf(schema[keyword])),
+    schema.then,
+    schema.else,
+    ...(isObject(schema.dependentSchemas) ? Object.values(schema.dependentSchemas) : []),
+  ].filter(isObject)
 }
 
 // Where a finding on an input schema goes: the component it is written in when
 // it is one (or lies inside one) — reported once, where the author fixes it,
 // like the schema rules of §4.1 — else the operation's own position.
-// `ctx.schemas` is that index: it walks the components first.
+// `ctx.schemas` is that index: it walks the components first. `entry` null: a
+// payload written in a component that is no schema (a shared response), placed
+// at `dataPath`, which names it.
 export function placeInput(ctx, entry, schema, dataPath) {
   const site = schemaSites(ctx).get(schema)
   if (site && !site.op) return { op: null, location: site.location, dataPath: site.dataPath }
-  return { op: entry, dataPath }
+  return entry ? { op: entry, dataPath } : { ...placeOf(ctx.operations, dataPath), dataPath }
 }
 
 const SITES = new WeakMap()

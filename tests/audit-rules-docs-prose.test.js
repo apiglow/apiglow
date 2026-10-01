@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { runRule } from '../src/audit/engine.js'
-import { blankCode } from '../src/audit/markdown-text.js'
+import { readFileSync } from 'node:fs'
+import { blankCode, markdownLinks as linksOf } from '../src/audit/markdown-text.js'
 import { documentHasOperations } from '../src/audit/rules/document-has-operations.js'
 import { markdownLinks } from '../src/audit/rules/markdown-links.js'
-import { markdownUnsafe } from '../src/audit/rules/markdown-unsafe.js'
+import { DOMPURIFY_VERSION, markdownUnsafe } from '../src/audit/rules/markdown-unsafe.js'
 import { operationSummaryPresent } from '../src/audit/rules/operation-summary-present.js'
 import { operationSummaryStyle } from '../src/audit/rules/operation-summary-style.js'
 import { placeholderText } from '../src/audit/rules/placeholder-text.js'
@@ -279,6 +280,42 @@ describe('markdown text', () => {
   it('leaves an escaped backtick and an unmatched one as text', () => {
     expect(blankCode('\\`a` <b>')).toBe('\\`a` <b>')
   })
+
+  it('opens indented code wherever no paragraph is open, and never inline', () => {
+    const blanked = (text, inline) => !blankCode(text, inline).includes('<')
+    expect(blanked('# Title\n    <iframe>')).toBe(true)
+    expect(blanked('```\nx\n```\n    <iframe>')).toBe(true)
+    expect(blanked('Title\n---\n    <iframe>')).toBe(true)
+    expect(blanked('Text\n    <iframe>')).toBe(false)
+    expect(blanked('Intro.\n\n    <iframe>', true)).toBe(false)
+    // Inline, a fence is a code span, and a code span crosses a blank line.
+    expect(blanked('```\n<iframe>\n```', true)).toBe(true)
+    expect(blanked('a `x\n\n<b>` c', true)).toBe(true)
+    expect(blanked('a `x\n\n<b>` c')).toBe(false)
+  })
+
+  it('finds a link only where a bracket opens it, in one pass', () => {
+    expect(linksOf('text](./rel)')).toEqual([])
+    expect(linksOf('a [b] c [d](./x)').map((link) => link.target)).toEqual(['./x'])
+    expect(linksOf('\\[a](./x) ![i](./y)')).toEqual([{ target: './y', index: 11, image: true }])
+    expect(linksOf('[a\n\nb](./x)')).toEqual([])
+    expect(linksOf('[a\n\nb](./x)', true)).toHaveLength(1)
+    expect(linksOf('<javascript:alert(1)> <b>')).toEqual([
+      { target: 'javascript:alert(1)', index: 0, image: false },
+    ])
+    const line = 'a](x)'.repeat(40000)
+    const started = performance.now()
+    expect(linksOf(line)).toEqual([])
+    expect(linksOf(`${'['.repeat(100000)}](x)`)).toHaveLength(1)
+    linksOf(`${'[a'.repeat(50000)}\n${'[b]: c\n'.repeat(10000)}`)
+    expect(performance.now() - started).toBeLessThan(100)
+  })
+
+  it('honours a definition only as a block, and only when a reference uses it', () => {
+    const text = 'See [guide] or [docs](https://a.io).\n\n[guide]: ./guide.md\n[docs]: ./rel.md'
+    expect(linksOf(text).map((link) => link.target)).toEqual(['https://a.io', './guide.md'])
+    expect(linksOf(text, true).map((link) => link.target)).toEqual(['https://a.io'])
+  })
 })
 
 describe('markdown-unsafe', () => {
@@ -347,14 +384,16 @@ describe('markdown-unsafe', () => {
     })
   })
 
-  it('reads every CommonMark description, schemas and components included, each once', () => {
+  it('reads every rendered description, schemas and components included, each once', () => {
     const shared = { type: 'string', description: 'A <link rel="x">' }
     const result = run(
       markdownUnsafe,
       doc({
         info: { title: 'A', version: '1', description: '<script>x</script>' },
-        servers: [{ url: 'https://a.example', description: '<embed src="x">' }],
-        tags: [{ name: 't', description: '<object data="x"></object>' }],
+        // Shown as plain text: a tooltip, a label, a line of text.
+        servers: [{ url: 'https://a.example', description: '<embed src="x"> [x](./rel)' }],
+        tags: [{ name: 't', description: 'Returns List<Pet>' }],
+        externalDocs: { url: 'https://a.example', description: '<object data="x">' },
         components: { schemas: { Shared: shared, Other: { $ref: '#/components/schemas/Shared' } } },
         paths: {
           '/a': {
@@ -367,11 +406,76 @@ describe('markdown-unsafe', () => {
     )
     expect(result.findings.map((f) => [f.dataPath, f.params.construct])).toEqual([
       ['/info/description', '<script>'],
-      ['/servers/0/description', '<embed>'],
       ['/paths/~1a/get/parameters/0/description', '<math>'],
       ['/paths/~1a/get/parameters/0/schema/description', '<link>'],
-      ['/tags/0/description', '<object>'],
     ])
+  })
+
+  it('reads each field as its view renders it: a block, inline, or both', () => {
+    const hidden = 'Intro.\n\n    <iframe src="https://v.example"></iframe>'
+    const result = run(
+      markdownUnsafe,
+      doc({
+        components: {
+          securitySchemes: {
+            key: { type: 'apiKey', in: 'header', name: 'K', description: hidden },
+          },
+        },
+        paths: {
+          '/a': {
+            post: op({
+              description: hidden,
+              parameters: [
+                { name: 'q', in: 'query', schema: { type: 'string' }, description: hidden },
+              ],
+              callbacks: {
+                done: { '{$request.body#/url}': { post: op({ description: hidden }) } },
+              },
+            }),
+          },
+        },
+      }),
+    )
+    // The operation's description is a block, where the line is code.
+    expect(result.findings.map((f) => f.dataPath)).toEqual([
+      '/paths/~1a/post/parameters/0/description',
+      '/paths/~1a/post/callbacks/done/{$request.body#~1url}/post/description',
+      '/components/securitySchemes/key/description',
+    ])
+    expect(result.checks).toBe(3)
+  })
+
+  it('reads a 3.1 schema $ref with siblings once', () => {
+    const result = run(
+      markdownUnsafe,
+      doc({
+        components: {
+          schemas: {
+            Base: { type: 'string' },
+            Named: { $ref: '#/components/schemas/Base', description: '<script>x</script>' },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({
+      checks: 1,
+      findings: [{ dataPath: '/components/schemas/Named/description' }],
+    })
+  })
+
+  it('flags an autolink the sanitizer drops, and has nothing to check in a lone end tag', () => {
+    expect(run(markdownUnsafe, described('Try <javascript:alert(1)>.'))).toMatchObject({
+      checks: 1,
+      findings: [{ params: { construct: 'javascript:' } }],
+    })
+    expect(run(markdownUnsafe, described('Text </div>'))).toMatchObject({ checks: 0 })
+  })
+
+  it('mirrors the DOMPurify version package.json pins', () => {
+    const pinned = JSON.parse(readFileSync('package.json', 'utf8')).dependencies.dompurify
+    // A bump fails here: compare the lists in markdown-unsafe.js with the new
+    // purify.es.mjs, then move DOMPURIFY_VERSION.
+    expect(pinned).toBe(DOMPURIFY_VERSION)
   })
 })
 
@@ -417,6 +521,31 @@ describe('markdown-links', () => {
       '?page=2',
     ])
     expect(result.findings[0]).toMatchObject({ severity: 'warning', opRef: 'get-p0' })
+  })
+
+  it('reads a link as its view renders it, and not in plain text', () => {
+    const result = run(
+      markdownLinks,
+      doc({
+        servers: [{ url: 'https://a.example', description: '[x](./rel)' }],
+        paths: {
+          '/a': {
+            get: op({
+              description: 'See [docs](https://a.io).\n\n[docs]: ./rel.md',
+              parameters: [
+                {
+                  name: 'q',
+                  in: 'query',
+                  schema: { type: 'string' },
+                  description: 'See [guide].\n\n[guide]: ./guide.md',
+                },
+              ],
+            }),
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
   it('ignores an unused definition, a footnote and a stripped iframe', () => {

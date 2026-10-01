@@ -1,6 +1,9 @@
 import { unescapePointerToken } from '../../scenarios/pointer.js'
-import { inputChildren } from '../tool-inputs.js'
-import { isSchemaObject, toolInputs, toolOperations } from '../tool-inputs.js'
+import { componentNames } from '../locate.js'
+import { payloadChildren, toolInputs, toolOperations } from '../tool-inputs.js'
+import { hasText } from '../text.js'
+import { isObject } from '../value-check.js'
+import { SCHEMA_DEPTH } from '../schema-walk.js'
 
 // A request input that contains itself: a tree node with child nodes, a filter
 // combining filters. The data model is legitimate, and nothing in the document
@@ -21,33 +24,34 @@ import { isSchemaObject, toolInputs, toolOperations } from '../tool-inputs.js'
 // objects, and a cycle is a schema met again among its own ancestors on the
 // path (a schema merely shared by two properties is no cycle). The finding sits
 // where the input reaches back, named after the schema it re-enters — its
-// `components.schemas` key, else the last segment of where it was met.
+// `components.schemas` key, else its `title`, else the property it was met
+// as, else the input itself (the parameter's name, the body's media type).
 //
 // The walk follows what an agent sends (tool-inputs.js): `readOnly` properties
 // are not, so a cycle through one alone does not count. Bounded (rule 7); a
 // schema whose whole reach is known to be acyclic is never walked twice.
-const MAX_DEPTH = 24
 
 export const recursiveInput = {
   id: 'recursive-input',
   category: 'agent',
   severity: 'info',
   run(ctx, check) {
-    const names = componentNames(ctx.document)
+    const names = componentNames(ctx.document, 'schemas')
     const acyclic = new Set()
     for (const entry of toolOperations(ctx)) {
       const inputs = [...toolInputs(entry)]
       if (!inputs.length) continue
       let cycle = null
-      for (const { schema, dataPath } of inputs) {
-        cycle = findCycle(schema, dataPath, acyclic)
+      let input = null
+      for (input of inputs) {
+        cycle = findCycle(input.schema, input.dataPath, acyclic)
         if (cycle) break
       }
       if (!cycle) {
         check(true, { op: entry })
         continue
       }
-      const name = names.get(cycle.target) ?? lastSegment(cycle.targetPath)
+      const name = names.get(cycle.target) ?? inlineName(cycle, input)
       check(false, { op: entry, dataPath: cycle.dataPath, params: { name } })
     }
   },
@@ -62,10 +66,10 @@ function findCycle(root, rootPath, acyclic) {
   let found = null
   const explore = (schema, dataPath, depth) => {
     if (acyclic.has(schema)) return true
-    if (depth > MAX_DEPTH || visited.has(schema)) return false
+    if (depth > SCHEMA_DEPTH || visited.has(schema)) return false
     ancestors.set(schema, dataPath)
     let complete = true
-    for (const [child, childPath] of inputChildren(schema, dataPath)) {
+    for (const [child, childPath] of payloadChildren(schema, dataPath)) {
       if (ancestors.has(child)) {
         found = { target: child, targetPath: ancestors.get(child), dataPath: childPath }
         break
@@ -78,20 +82,25 @@ function findCycle(root, rootPath, acyclic) {
     if (complete && !found) acyclic.add(schema)
     return complete && !found
   }
-  if (isSchemaObject(root)) explore(root, rootPath, 0)
+  if (isObject(root)) explore(root, rootPath, 0)
   return found
 }
 
-function componentNames(document) {
-  const schemas = document.components?.schemas
-  const names = new Map()
-  if (!isSchemaObject(schemas)) return names
-  for (const [name, schema] of Object.entries(schemas)) {
-    if (isSchemaObject(schema) && !names.has(schema)) names.set(schema, name)
+// A schema with no component name: its title, else the last property on the
+// way to it from the input's root, else the input.
+function inlineName(cycle, input) {
+  if (hasText(cycle.target.title)) return cycle.target.title.trim()
+  const tokens = cycle.targetPath
+    .slice(input.dataPath.length)
+    .split('/')
+    .slice(1)
+    .map(unescapePointerToken)
+  let property = null
+  for (let at = 0; at < tokens.length - 1; at += 1) {
+    if (tokens[at] === 'properties' || tokens[at] === 'patternProperties') {
+      at += 1
+      property = tokens[at]
+    }
   }
-  return names
-}
-
-function lastSegment(dataPath) {
-  return unescapePointerToken(dataPath.slice(dataPath.lastIndexOf('/') + 1))
+  return property ?? (input.kind === 'parameter' ? input.param.name : input.mediaType)
 }

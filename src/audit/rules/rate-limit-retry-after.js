@@ -1,4 +1,4 @@
-import { declaresHeader, responsesWithStatus } from '../response-sites.js'
+import { declaresHeader, responsesWhere } from '../response-sites.js'
 
 // A 429 response that does not say when to come back. RFC 6585 §4: a 429 "MAY
 // include a Retry-After header indicating how long to wait before making a new
@@ -23,7 +23,7 @@ export const rateLimitRetryAfter = {
   category: 'security',
   severity: 'info',
   run(ctx, check) {
-    for (const { response, ...site } of responsesWithStatus(ctx, '429')) {
+    for (const { response, site } of responsesWhere(ctx, (status) => status === '429')) {
       check(declaresHeader(response, 'retry-after'), { ...site, params: { status: '429' } })
     }
   },

@@ -1,5 +1,5 @@
-import { resolvePointer } from '../../scenarios/pointer.js'
 import { placeOf } from '../locate.js'
+import { nodeAt } from '../ref-pointer.js'
 
 // A `style` the parameter's location or its type does not allow (OAS 3.x,
 // Parameter Object, "Style Values"): `matrix` on a query parameter, `form` on a
@@ -50,7 +50,7 @@ export const parameterStyleValid = {
         }
         continue
       }
-      const types = declaredTypes(resolvePointer(ctx.document, `${dataPath}/schema`).value)
+      const types = declaredTypes(nodeAt(ctx.document, `${dataPath}/schema`))
       const wanted = BY_TYPE[node.style]
       if (!wanted || !types.length || types.some((t) => wanted.includes(t))) continue
       check(false, {

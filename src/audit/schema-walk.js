@@ -5,24 +5,13 @@
 
 import { bodyKind } from '../openapi/body-kind.js'
 import { pointer } from './pointer.js'
+import { subschemas } from './schema-keywords.js'
 
-// Depth budget (rule 7). Identity dedup already terminates cycles materialized
+// Depth budget (rule 7), shared by every walk over the schemas of the
+// dereferenced document. Identity dedup already terminates cycles materialized
 // by ref-parser; the budget bounds the other unbounded case, a document that
 // nests fresh objects forever.
-const MAX_DEPTH = 24
-
-// Keywords whose value is one schema, and those whose value is a map of them.
-const KEYWORD_SCHEMAS = [
-  'if',
-  'then',
-  'else',
-  'not',
-  'contains',
-  'propertyNames',
-  'unevaluatedProperties',
-  'unevaluatedItems',
-]
-const KEYWORD_SCHEMA_MAPS = ['patternProperties', 'dependentSchemas', '$defs']
+export const SCHEMA_DEPTH = 24
 
 // Media types carried by an operation: request body then responses, each with
 // the pointer to its own declaration site.
@@ -67,30 +56,16 @@ export function collectSchemas(document, operations) {
 
   const visit = (schema, dataPath, op, location, depth = 0) => {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return
-    if (depth > MAX_DEPTH || seen.has(schema)) return
+    if (depth > SCHEMA_DEPTH || seen.has(schema)) return
     seen.add(schema)
     entries.push({ schema, dataPath, op, location })
     const child = (sub, ...segments) =>
       visit(sub, `${dataPath}${pointer(...segments)}`, op, location, depth + 1)
 
-    if (schema.properties && typeof schema.properties === 'object') {
-      for (const [name, sub] of Object.entries(schema.properties)) child(sub, 'properties', name)
-    }
-    if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-      child(schema.additionalProperties, 'additionalProperties')
-    }
-    child(schema.items, 'items')
-    for (const keyword of ['allOf', 'oneOf', 'anyOf', 'prefixItems']) {
-      if (!Array.isArray(schema[keyword])) continue
-      for (const [index, sub] of schema[keyword].entries()) child(sub, keyword, index)
-    }
-    // 2020-12 applicators: a schema hidden in a conditional branch or a `$defs`
-    // is a schema all the same, and every rule that grades one must see it.
-    for (const keyword of KEYWORD_SCHEMAS) child(schema[keyword], keyword)
-    for (const keyword of KEYWORD_SCHEMA_MAPS) {
-      if (!schema[keyword] || typeof schema[keyword] !== 'object') continue
-      for (const [name, sub] of Object.entries(schema[keyword])) child(sub, keyword, name)
-    }
+    // 2020-12 applicators included: a schema hidden in a conditional branch or
+    // a `$defs` is a schema all the same, and every rule that grades one must
+    // see it.
+    for (const [sub, ...segments] of subschemas(schema)) child(sub, ...segments)
   }
 
   // Components first: a schema shared by an operation and `components.schemas`
@@ -117,8 +92,13 @@ export function collectSchemas(document, operations) {
     }
     for (const [status, response] of Object.entries(entry.op.responses ?? {})) {
       for (const [name, header] of Object.entries(response?.headers ?? {})) {
-        const path = `${entry.pointer}${pointer('responses', status, 'headers', name, 'schema')}`
-        visit(header?.schema, path, entry, null)
+        const base = `${entry.pointer}${pointer('responses', status, 'headers', name)}`
+        visit(header?.schema, `${base}/schema`, entry, null)
+        // A header serialized by media type carries its schema there, like a
+        // parameter.
+        for (const [mediaType, content] of Object.entries(header?.content ?? {})) {
+          visit(content?.schema, `${base}${pointer('content', mediaType, 'schema')}`, entry, null)
+        }
       }
     }
   }

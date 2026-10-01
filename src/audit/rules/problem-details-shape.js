@@ -2,6 +2,7 @@ import { placeOf } from '../locate.js'
 import { mediaTypeAt } from '../media-family.js'
 import { pointer } from '../pointer.js'
 import { internalTarget, nodeAt } from '../ref-pointer.js'
+import { isObject } from '../value-check.js'
 
 // An `application/problem+json` response whose schema contradicts RFC 9457.
 // "The canonical model for problem details is a JSON object" (§3), and its
@@ -95,8 +96,4 @@ function excludes(type, allowed) {
   const types = typeof type === 'string' ? [type] : Array.isArray(type) ? type : null
   if (!types?.length) return false
   return !types.some((t) => allowed.includes(t))
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

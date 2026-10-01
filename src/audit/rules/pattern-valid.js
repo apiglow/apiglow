@@ -1,4 +1,5 @@
 import { pointer } from '../pointer.js'
+import { compilePattern } from '../schema-keywords.js'
 
 // A `pattern` — or a `patternProperties` key — that is no regular expression:
 // an unclosed group, a dangling quantifier, an unbalanced bracket. JSON Schema
@@ -15,7 +16,7 @@ export const patternValid = {
   severity: 'error',
   run(ctx, check) {
     for (const { schema, dataPath, op, location } of ctx.schemas) {
-      if (typeof schema.pattern === 'string' && !compiles(schema.pattern)) {
+      if (typeof schema.pattern === 'string' && !compilePattern(schema.pattern)) {
         check(false, {
           op,
           location,
@@ -26,7 +27,7 @@ export const patternValid = {
       const keys = schema.patternProperties
       if (!keys || typeof keys !== 'object' || Array.isArray(keys)) continue
       for (const pattern of Object.keys(keys)) {
-        if (compiles(pattern)) continue
+        if (compilePattern(pattern)) continue
         check(false, {
           op,
           location,
@@ -36,16 +37,4 @@ export const patternValid = {
       }
     }
   },
-}
-
-function compiles(pattern) {
-  for (const flags of ['u', '']) {
-    try {
-      new RegExp(pattern, flags)
-      return true
-    } catch {
-      // the other reading may accept it
-    }
-  }
-  return false
 }

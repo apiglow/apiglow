@@ -1,4 +1,4 @@
-import { identifierKey } from '../identifier-key.js'
+import { fileNameKey } from '../identifier-key.js'
 import { pointer } from '../pointer.js'
 
 // Two `components.schemas` names that differ and become one type in generated
@@ -11,7 +11,8 @@ import { pointer } from '../pointer.js'
 // system — macOS's, Windows' default — holds as one. (The roadmap's
 // `name-collision-after-sanitizing`, named for what it reads.)
 //
-// The key is `identifier-key.js`': case aside, separators dropped. One check
+// The key is `identifier-key.js`' `fileNameKey`: camelized, then case aside,
+// since a generated class is also a file. One check
 // per schema component; the finding on each one after the first of its key,
 // naming that first one.
 export const schemaNameCollision = {
@@ -23,7 +24,7 @@ export const schemaNameCollision = {
     if (!schemas || typeof schemas !== 'object' || Array.isArray(schemas)) return
     const first = new Map()
     for (const name of Object.keys(schemas)) {
-      const key = identifierKey(name)
+      const key = fileNameKey(name)
       const other = first.get(key)
       if (other === undefined) first.set(key, name)
       const dataPath = pointer('components', 'schemas', name)

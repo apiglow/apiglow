@@ -1,6 +1,8 @@
-import { placeOf } from '../locate.js'
+import { componentNames, placeOf } from '../locate.js'
 import { isStructuredMedia } from '../payload-media.js'
 import { pointer } from '../pointer.js'
+import { forbidsContent } from '../response-sites.js'
+import { isObject } from '../value-check.js'
 
 // A response media type with a structure to describe — JSON, XML, a form — and
 // no schema to describe it. The format is named, the payload is not: a client
@@ -16,20 +18,24 @@ import { pointer } from '../pointer.js'
 // anything said by its content, `response-substance`'s.
 //
 // Every operation, webhooks' and callbacks' included: a response is documented
-// for whoever reads it. A response written once under `components.responses`
-// is checked once, at the component, whatever status it is used under first.
+// for whoever reads it. A response HTTP gives no content (1xx, 204, 205, 304,
+// any to HEAD) is `bodyless-status`'s, whose fix is to remove the content, not
+// to describe it. A response written once under `components.responses` is
+// checked once, at the component, under the first status allowing content it
+// is used under.
 export const responseContentSchema = {
   id: 'response-content-schema',
   category: 'completeness',
   severity: 'warning',
   run(ctx, check) {
-    const components = componentResponses(ctx)
+    const components = componentNames(ctx.document, 'responses')
     const done = new Set()
     for (const entry of ctx.operations) {
       const responses = entry.op.responses
       if (!isObject(responses)) continue
       for (const [status, response] of Object.entries(responses)) {
         if (!isObject(response) || !isObject(response.content) || done.has(response)) continue
+        if (forbidsContent(status, entry.method)) continue
         const name = components.get(response)
         if (name !== undefined) done.add(response)
         const base =
@@ -49,20 +55,4 @@ export const responseContentSchema = {
       }
     }
   },
-}
-
-// Response object → its name under `components.responses`; the first name
-// wins when one component is a `$ref` to another.
-function componentResponses(ctx) {
-  const names = new Map()
-  const declared = ctx.document.components?.responses
-  if (!isObject(declared)) return names
-  for (const [name, response] of Object.entries(declared)) {
-    if (isObject(response) && !names.has(response)) names.set(response, name)
-  }
-  return names
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

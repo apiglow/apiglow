@@ -13,18 +13,21 @@ import { toolOperations } from '../tool-inputs.js'
 //
 // Three verdicts, told apart by the severity and the `access` param:
 // - open by omission (`access: omitted`), no `security` on the operation and
-//   none at the root: `warning` on a method that changes state, `info` on a
-//   safe one (RFC 9110 §9.2.1: GET, HEAD, OPTIONS, TRACE, plus 3.2's QUERY and
-//   the safe methods of the IANA registry a 3.2 `additionalOperations` may
-//   name — SEARCH, PROPFIND, REPORT). Any other custom method may write, so it
-//   is graded as one;
-// - open on purpose (`access: declared`), `security: []` or a `{}`
-//   alternative: `info` whatever the method — the author decided, and an
-//   access review wants the list of what is public;
+//   none at the root, or a root `security: []`: `warning` on a method that
+//   changes state, `info` on a safe one (RFC 9110 §9.2.1: GET, HEAD, OPTIONS,
+//   TRACE, plus 3.2's QUERY and the safe methods of the IANA registry a 3.2
+//   `additionalOperations` may name — SEARCH, PROPFIND, REPORT). Any other
+//   custom method may write, so it is graded as one. A root `[]` is what
+//   generators and templates emit when nobody thought about it, and it says
+//   nothing about any one operation;
+// - open on purpose (`access: declared`), `security: []` on the operation, or
+//   an empty `{}` alternative at either level (optional authentication is a
+//   written statement): `info` whatever the method — the author decided, and
+//   an access review wants the list of what is public;
 // - secured: passes, graded at the severity an omission would have had.
 //
-// A document with no security scheme and no `security` anywhere documents no
-// authentication at all: one check on the whole document instead of one per
+// A document with no security scheme and no `security` anywhere (a root `[]`
+// aside) documents no authentication at all: one check on the whole document instead of one per
 // operation, since every operation would fire for the same single gap. It sits
 // at `/components/securitySchemes`, where the fix starts — `/` would give the
 // finding no location to show.
@@ -63,13 +66,12 @@ export const operationUnsecured = {
     }
     for (const entry of operations) {
       const { alternatives, declared, anonymous } = effectiveSecurity(ctx, entry)
-      const params = { method: entry.method.toUpperCase() }
-      if (anonymous) {
+      if (declared && anonymous) {
         check(false, {
           op: entry,
           dataPath: Array.isArray(entry.op.security) ? `${entry.pointer}/security` : entry.pointer,
           severity: 'info',
-          params: { ...params, access: 'declared' },
+          params: { access: 'declared' },
         })
         continue
       }
@@ -77,7 +79,7 @@ export const operationUnsecured = {
       check(declared, {
         op: entry,
         severity: SAFE_METHODS.has(entry.method) ? 'info' : 'warning',
-        params: { ...params, access: 'omitted' },
+        params: { access: 'omitted' },
       })
     }
   },
@@ -86,6 +88,5 @@ export const operationUnsecured = {
 function documentsNoAuthentication(ctx, operations) {
   const schemes = ctx.document.components?.securitySchemes
   if (schemes && typeof schemes === 'object' && Object.keys(schemes).length) return false
-  if (Array.isArray(ctx.document.security)) return false
-  return !operations.some((entry) => Array.isArray(entry.op.security))
+  return !operations.some((entry) => effectiveSecurity(ctx, entry).declared)
 }

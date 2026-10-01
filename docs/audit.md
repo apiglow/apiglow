@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (146 rules across the seven §4
+2. **Curated, doc-oriented ruleset** (147 rules across the seven §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -69,11 +69,15 @@ drifting.
      `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
      Options apply to the whole document: an override changes severities
      only, since a threshold that moved from one path to the next would
-     grade one document by two yardsticks. Each value is checked against
-     what the rule declares; `apiglow audit --explain <id>` lists a rule's
-     options with their defaults and bounds.
+     grade one document by two yardsticks — it takes a severity in either
+     form, `"warning"` or `{ "severity": "warning" }`, and refuses an
+     option. Each value is checked against what the rule declares;
+     `apiglow audit --explain <id>` lists a rule's options with their
+     defaults and bounds.
    - Per spec: rules merge by id (the spec's last), overrides accumulate,
-     root first.
+     root first. A rule set in the object form on either side merges
+     field by field: a root `{ "maxLength": 128 }` under a spec's
+     `"warning"` keeps its `maxLength`, the spec's severity on top.
    - `reason` is free text for the next reader of the config — JSON has no
      comments — and the audit only checks it is text.
    - Every entry is checked against the registry: the page names a wrong
@@ -175,9 +179,9 @@ with one occurrence's values could not speak for all of them. The two
 others split the actionable half, which is the product: `.why` says why it
 matters, in one or two sentences; `.fix` is the recipe — what to write, and
 where — shown under it on the page and in both exports, and what an agent
-fixing the document reads. A `.fix` may interpolate the finding's params
-like the message does. `tests/audit-strings.test.js` checks all four over
-the registry, in both languages.
+fixing the document reads. A `.why` or a `.fix` may interpolate the
+finding's params like the message does. `tests/audit-strings.test.js`
+checks all four over the registry, in both languages.
 
 ### Scoring
 
@@ -195,7 +199,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-146 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+147 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -234,6 +238,11 @@ that contradicts the declared version is a correctness finding.
   this one is composed into — a `oneOf` branch requiring what its parent
   lists, an `allOf` member requiring what a sibling defines, the usual way
   to write a variant — or when a `patternProperties` pattern matches it.
+  Above a `oneOf` / `anyOf` branch or a conditional, only what surely
+  applies with it counts — the parent's own declarations and its `allOf`
+  members — never a sibling branch, which applies instead of it. A `$ref`
+  the loader left in place (`ref-resolves`') may declare anything and
+  matches every name.
   A schema whose whole family declares no property is a free-form object
   and is skipped, unless it says `additionalProperties: false`: then no
   name is declarable and every required one fails. One check per required
@@ -246,33 +255,39 @@ that contradicts the declared version is a correctness finding.
   one authoring mistake; one check per required element, so the score
   reads as the share of the mandatory surface that does not contradict
   itself.
-- `example-type-mismatch` (`error`) — an `example` / `examples` value
-  (schema, parameter, media type; Example `value` / `dataValue`) its own
+- `example-type-mismatch` (`error`, per check) — an `example` / `examples` value
+  (schema, parameter, response header, media type — a parameter's or
+  header's `content` entry included, its own examples then judged against
+  that one media type's schema; Example `value` / `dataValue`) its own
   schema rejects, validated in depth by `src/audit/value-validate.js`:
   `type` (with 3.0's `nullable`), `enum`, `const`, string lengths in code
   points, `pattern` (ECMA-262, `u`), the numeric bounds in both spellings,
   `multipleOf`, array and object sizes, `uniqueItems`, `required`,
-  `properties`, `patternProperties`, `additionalProperties` (`false` only
-  with no composition beside it), `items`, `prefixItems`, `allOf` (every
+  `properties`, `patternProperties`, `additionalProperties` (only with no
+  composition beside it), `items`, `prefixItems`, `allOf` (every
   member), `oneOf` / `anyOf` (failing only when every branch does — the
-  finding then names the branch the value got furthest into), and the
+  finding then names the branch the value got furthest into, or, when a
+  branch failed on a format alone, that branch, graded `warning`), and the
   formats `date`, `date-time`, `time` (RFC 3339), `uuid`, `ipv4`, `ipv6`,
   `email`, `uri`, `int32`, `int64`. Three-valued: what it does not read
   (`not`, conditionals, `unevaluated*`, `dependent*`, an unresolved
-  `$ref`, an invalid pattern, another format) gives no verdict, never a
-  failure. `required` follows the example's direction: a request example
-  owes no `readOnly` member, a response example no `writeOnly` one, a
-  component's own example neither. The finding names the keyword and the
+  `$ref`, an invalid pattern, another format, an empty or unknown `type`)
+  gives no verdict, never a failure. `required` follows the example's
+  direction, read off where it sits under the operation: a request example
+  owes no `readOnly` member, a response example no `writeOnly` one — the
+  flag counts on whichever `allOf` member declares the property — and a
+  component's own example neither, nor a webhook's or a callback's, whose
+  request the API sends. The finding names the keyword and the
   place, a JSONPath into the value (`$.tags[0].name`). A broken format
   alone is graded `warning` — JSON Schema 2020-12 §7.2.1 makes format
   assertion "MUST be disabled by default", so validators let it through
   while readers and generated clients trip on it. A lone
   `{ "$ref": … }` value is `example-has-ref`'s.
-- `default-allowed` (`error`) — a `default` its own schema rejects, judged
-  by the same validator (type, enum, lengths, pattern, bounds, sizes,
-  members, compositions, formats): the form prefills a value the API will
-  refuse, and every client generator copies it. Same keyword-and-place
-  finding, same `warning` for a format alone.
+- `default-allowed` (`error`, per check) — a `default` its own schema
+  rejects, judged by the same validator (type, enum, lengths, pattern,
+  bounds, sizes, members, compositions, formats): the form prefills a value
+  the API will refuse, and every client generator copies it. Same
+  keyword-and-place finding, same `warning` for a format alone.
 - `unused-component` (`warning`) — component defined but never
   referenced, in every `components` section the spec defines, `pathItems`
   included. Reads the **source** document: once dereferenced, a `$ref` is
@@ -304,12 +319,16 @@ that contradicts the declared version is a correctness finding.
   description "The signed mandate" plus an empty field "as uploaded by
   the client" — and the description then shows cut short everywhere, which
   reads as a bug of whatever displays it. A bare `description:` or an
-  unquoted `type: null` lands here too. Read on the source document, so a
-  component is reported once at its declaration. Skipped: what takes any
-  value — `example`, `default`, `const`, `enum`, an Example's `value` /
-  `dataValue`, a Schema's `examples` list, a Link's `parameters` and
-  `requestBody`, `x-*` extensions — and the payloads under them; array
-  elements, whose `null` is a value. One check per empty field and none
+  unquoted `type: null` lands here too. Read on the typed walk of the
+  source document (`ctx.objects`, below), so a component is reported once at
+  its declaration, and a property named `value` or `default` is a schema
+  like any other, not the keyword. A field is a key of an object or a
+  member of a map (`responses: { 200: }`, a component left empty). Skipped:
+  what takes any value — `example`, `default`, `const`, `enum`, an
+  Example's `value` / `dataValue`, a Schema's `examples` list, a Link's
+  `parameters` and `requestBody`, `x-*` extensions — and the payloads under
+  them; list members, whose `null` is a value of the wrong kind
+  (`field-value-kind`'s). One check per empty field and none
   otherwise, like the version rules: a clean document is not graded on the
   fields it got right.
 - `schema-dialect` (`info`) — a `jsonSchemaDialect` this app does not
@@ -323,18 +342,22 @@ table (`src/audit/openapi-objects.js`) — every object's fields, version by
 version — and one typed walk of the **source** document built from it
 (`ctx.objects`): every OpenAPI object in document order, a `$ref` standing
 where an object may stand typed as a Reference to it. Each object is seen
-once, at its declaration; a `$ref` into another file is followed through
-what the loader read there and reported under the `$ref`'s own pointer,
-which the CLI's positions follow into that file. Every rule from here to
-the end of §4.1 is graded like `field-without-value`: one check per defect,
-none otherwise — a document is not graded on the thousands of fields it got
-right, and a clean one keeps its score.
+once, at its declaration; a `$ref` into another file — a Path Item split
+into its own file included — is followed through what the loader read
+there and reported under the `$ref`'s own pointer, which the CLI's
+positions follow into that file. From 3.1 a Schema's `$ref` combines with
+its other keywords, so one with siblings is typed a Schema as well, and
+the siblings are read like any schema's. Every rule from here to
+the HTTP semantics group is graded like `field-without-value`: one check
+per defect, none otherwise — a document is not graded on the thousands of
+fields it got right, and a clean one keeps its score.
 
 - `unknown-field` (`error`) — a field the object does not have in the
   declared version: `descripton`, `requried`, a 3.0 `allowEmptyValue` left
   on a 3.2 Header. An object holds its fixed fields and `x-` extensions
   only; no tool reads anything else, this app included. A field a later
-  version introduced is `version-construct`'s; a Schema Object's keywords
+  version introduced is `version-construct`'s, a Media Type's `$ref` before
+  3.2 included; a Schema Object's keywords
   are open in 3.1 (`schema-keyword-typo` has the misspelled ones); a
   Reference Object's extra keys are `ref-siblings`'.
 - `required-field-missing` (`error`) — a required field absent: `info.version`,
@@ -349,12 +372,19 @@ right, and a clean one keeps its score.
   a Parameter's `in` (`body` is Swagger 2.0's) and `style`, a security
   scheme's `type` and an apiKey's `in`, a Header's `style`, a Schema's
   `type` (a list only from 3.1), an XML `nodeType`, a Security
-  Requirement's scope list. The app reads such a field as absent — a
+  Requirement's scope list. A list or a map is held to its members too,
+  each reported where it sits: `security: [api_key]` (names where Security
+  Requirement objects belong — the API is left unsecured without a word),
+  root `tags: [pets]`, `parameters: [id]`, `responses: { 200: OK }`, a path
+  whose value is no object. A Schema may be `true` / `false` from 3.1; its
+  `items` is never a list (draft-04 tuples: neither 3.0 nor 2020-12, whose
+  `prefixItems` replaced them). The app reads such a field as absent — a
   parameter with no location, a scheme with no type — and never fails on
   it: `tests/malformed-documents.test.js` swaps every field of two real
   documents for a value of another kind, then for `null`, and the model and
-  the audit both come through. `null` is `field-without-value`'s; a value only a later
-  version allows (`in: querystring` in 3.1) is `version-construct`'s.
+  the audit both come through. `null` is `field-without-value`'s, except as
+  a list member; a value only a later version allows (`in: querystring` in
+  3.1) is `version-construct`'s.
 - `parameter-schema-or-content` (`error`) — a Parameter or Header Object
   without exactly one of `schema` and `content`, or whose `content` map holds
   more than one media type (OAS 3.x, Parameter Object: "MUST contain either a
@@ -362,11 +392,14 @@ right, and a clean one keeps its score.
   contain one entry"). With both, tools pick different ones; with neither,
   the value has no type — a bare text box in the try-it. A field present
   without a value is `field-without-value`'s, a `content` that is not a map
-  `field-value-kind`'s.
+  `field-value-kind`'s. An `x-` key of `content` counts as an entry: the map
+  holds media types and takes no extension (`media-type-key-syntax` reports
+  it too).
 - `exclusive-fields` (`error`) — two fields the specification makes mutually
   exclusive, both set: a Parameter's, Header's or Media Type's `example` and
   `examples`; an Example's `value` and `externalValue`, and from 3.2
-  `dataValue` with `value` and `serializedValue` with `externalValue`
+  `dataValue` with `value`, `serializedValue` with `value` and with
+  `externalValue`
   ("If this field is present, … MUST be absent"); a Link's `operationRef` and
   `operationId`; a License's `identifier` and `url` (3.1+). Which one a tool
   keeps is undefined — this app shows `examples` over `example`, `value` over
@@ -382,7 +415,9 @@ right, and a clean one keeps its score.
 - `component-key-format` (`error`) — a key of any `components` map not
   matching `^[a-zA-Z0-9.\-_]+$` (OAS 3.x, Components Object, MUST): spaces,
   slashes, accents. Validators reject it, generators turning the name into a
-  type or a file fail or mangle it, and every `$ref` must escape it.
+  type or a file fail or mangle it, and every `$ref` must escape it. Only
+  the maps the declared version has: a 3.0 `pathItems` or a 3.1
+  `mediaTypes` is `version-construct`'s.
 - `status-code-valid` (`error`) — a Responses key that is neither `default`,
   a status code from 100 to 599, nor a range with the uppercase wildcard
   (`2XX`) (OAS 3.x, Responses Object): `200 OK`, `2xx`, `600`. Generators
@@ -406,7 +441,7 @@ right, and a clean one keeps its score.
   `oauth2MetadataUrl`, an Example's `externalValue`, `jsonSchemaDialect`, and
   an XML `namespace`, which must also be absolute. A relative reference
   passes ("Relative References in URIs"). This app leaves out a link it
-  cannot parse. `$self` is `self-uri`'s, a server URL `server-variables`'.
+  cannot parse. `$self` is `self-uri`'s, a server URL `server-url-form`'s.
 - `license-identifier-spdx` (`warning`) — 3.1+: an `info.license.identifier`
   that is not an SPDX license expression (OAS 3.1, License Object), checked
   against the SPDX expression grammar (SPDX 2.3 Annex D) and the SPDX License
@@ -437,14 +472,16 @@ right, and a clean one keeps its score.
 - `paths-identical` (`error`) — two Paths keys equal once their variable
   names are set aside (`/pets/{id}`, `/pets/{petId}`) — OAS 3.x Path
   Templating Matching, MUST NOT. A request pasted into the import dialog
-  fits both, and the reader has to choose. One finding on each later key.
+  fits both, and the reader has to choose. One finding on each later key; a
+  key `path-syntax` rejects is left out.
 - `paths-ambiguous` (`info`) — two keys a single URL can match where
   concrete-first matching cannot order them: same segment count, compatible
   at every position, each literal where the other is templated
   (`/{entity}/me`, `/books/{id}`). The specification leaves the choice to the
   tooling; the import dialog asks the reader. True ambiguities only:
-  `/pets/mine` against `/pets/{id}` is ordered by the spec. A segment holding
-  any `{…}` counts as templated. On the demo GitHub schema: 67 pairs, mostly
+  `/pets/mine` against `/pets/{id}` is ordered by the spec; a key
+  `path-syntax` rejects is left out. A segment holding any `{…}` counts as
+  templated. On the demo GitHub schema: 67 pairs, mostly
   `/…/{role_id}/teams` against `/…/teams/{team_slug}`.
 - `parameters-unique` (`error`) — a Path Item's or an Operation's
   `parameters` naming the same `name` + `in` twice (OAS 3.x, MUST NOT);
@@ -452,11 +489,12 @@ right, and a clean one keeps its score.
   own — an operation redeclaring a Path Item parameter overrides it. This
   documentation keeps the last declaration; a generator may keep the first.
 - `header-parameter-ignored` (`warning`) — an `in: header` parameter named
-  `Accept`, `Content-Type` or `Authorization`, and a Response header named
-  `Content-Type` (OAS 3.x, SHALL be ignored). Generators drop them; this
-  documentation shows such a parameter in the try-it and sends what is typed
-  in it, over the body's Content-Type and the injected credential. Reported
-  at the definition, a shared parameter once.
+  `Accept`, `Content-Type` or `Authorization`, and a Response's or an
+  Encoding's header named `Content-Type` (OAS 3.x, SHALL be ignored).
+  Generators drop them; this documentation drops the Encoding's one too, so
+  its value is never sent, but shows such a parameter in the try-it and
+  sends what is typed in it, over the body's Content-Type and the injected
+  credential. Reported at the definition, a shared parameter once.
 - `header-name-token` (`error`) — a header name that is not an RFC 9110
   token (§5.1, §5.6.2): an `in: header` parameter's `name`, the keys of a
   Response's and an Encoding's `headers`. The browser's `fetch` refuses the
@@ -470,21 +508,31 @@ right, and a clean one keeps its score.
   style is `field-value-kind`'s, `cookie` before 3.2 `version-construct`'s;
   no declared type, no verdict on it.
 - `querystring-parameter` (`error`) — 3.2 `in: querystring` (Parameter
-  Locations, MUST): described with `schema` instead of `content`, a second
+  Locations and Fixed Fields for use with `schema`, MUST): carrying `schema`,
+  `explode` or `allowReserved` (described with `content` instead), a second
   one on the same operation (Path Item's counted), or one next to an
-  `in: query` parameter. Read on each operation's merged list; `schema` is
-  reported once per declaration. The demo petstore's and two e2e fixtures'
-  `filter` parameters use `schema`.
+  `in: query` parameter. The fields are read on each declaration, a shared
+  parameter once, in components — its `style` is `parameter-style-valid`'s;
+  the count and the neighbours on each operation's merged list. Before 3.2
+  the location is `version-construct`'s.
 - `additional-operation-method` (`error`) — a 3.2 `additionalOperations` key
   the Path Item has a field for, whatever its case (`POST`, `query`) — MUST
   NOT — or one that is no RFC 9110 method token (`GET users`). This
   documentation drops the first kind (its operation never appears); the
   browser refuses to send the second.
-- `server-variables` (`error`) — a server URL `{name}` with no `variables`
-  entry, a `default` outside its `enum` (MUST), an empty `enum` (3.1+, MUST
-  NOT). Every Server Object: root, Path Item, Operation, a Link's `server`.
-  The base URL this documentation builds keeps the literal braces. A
-  variable declared but unused is not reported.
+- `server-variables` (`error`) — a server URL variable with no valid
+  value: a `{name}` with no `variables` entry, and from 3.1 a `default`
+  outside its `enum` (MUST) or an empty `enum` (MUST NOT) — 3.0 only says
+  SHOULD for both. Every Server Object: root, Path Item, Operation, a
+  Link's `server`. The base URL this documentation builds keeps the literal
+  braces. A variable declared but unused is not reported; an undeclared one
+  is reported once, however often the URL uses it.
+- `server-url-form` (`error`) — a server URL that is no URL template: no
+  URL once its `{…}` variables are set aside (whitespace, characters a URL
+  never holds unescaped, a stray or empty brace — 3.2's
+  `server-url-template` grammar, "a URL" before), or from 3.2 a variable
+  used twice (MUST NOT). Every Server Object, as above; the base URL this
+  documentation builds keeps the literal text.
 - `ref-siblings` (`warning`) — a key next to a `$ref` that the declared
   version says to ignore (Reference Object, every version: "cannot be
   extended with additional properties, and any properties added SHALL be
@@ -547,9 +595,11 @@ right, and a clean one keeps its score.
   describing a body the API does not send. Before 3.2 these fields are
   `version-construct`'s.
 - `responses-success` (`warning`) — an operation documenting no 2XX or 3XX
-  code or range and no `default`, an empty Responses Object included (every
-  version: it MUST contain at least one response code, and "if only one response code is provided it
-  SHOULD be the response for a successful operation call"). Generators
+  code or range (uppercase `X`, the only range spelling; `2xx` is
+  `status-code-valid`'s) and no `default`, an empty Responses Object
+  included (every version: it MUST contain at least one response code, and
+  "if only one response code is provided it SHOULD be the response for a
+  successful operation call"). Generators
   type a method's return value from it; the doc shows only failures.
   Webhooks and callbacks are out (the integrator's server answers them);
   an operation with no Responses at all is legal from 3.1, and
@@ -586,7 +636,8 @@ not.
   values nobody can send; a duplicate becomes two constants of one name in a
   generated client — a compile error in Java or C#. This app offers every
   entry as written. Reported per entry (`detail` names it: `"2" ≠ type:
-  integer`, `1 ×2`, `[]`). A nullable schema whose enum lacks `null` is
+  integer`, `1 ×2`, `[]`); two objects with the same members in another
+  order are one entry twice. A nullable schema whose enum lacks `null` is
   `nullable-enum-null`'s.
 - `nullable-enum-null` (`error`) — null declared allowed — 3.0's
   `nullable: true` next to a `type` (OAS 3.0.3 §4.7.24.1: it adds null to
@@ -631,7 +682,9 @@ not.
   JSON Schema 2020-12 §7.1: a format applies to one type and is ignored on
   the others), or a curated misspelling of a registered format (`datetime`,
   `date_time`, `dateTime`, `e-mail`, `uuid4`…). Never "unknown format": the
-  registry is open and custom formats are legitimate.
+  registry is open and custom formats are legitimate. `int64` / `uint64` on
+  a string passes: past 2^53 a JSON number loses digits in JavaScript, so
+  the proto3 JSON mapping — every Google API — writes them as strings.
 - `schema-keyword-typo` (`warning`) — a schema key that no OpenAPI version
   knows but that is a near miss of a keyword: the same letters in another
   case (`readonly`), or one edit away for keys of five letters or more
@@ -652,7 +705,9 @@ not.
   accepts nothing. A single member next to any other keyword (`description`,
   `nullable`) is the 3.0 idiom for decorating a `$ref`, and a single-member
   `allOf` is never flagged. The first two read the source (a `$ref` is its
-  target's name there); the third the dereferenced schemas.
+  target's name there); the third the dereferenced schemas. `defect` says
+  which, in notation that reads in any language: `oneOf: [#/…/Cat]`,
+  `#/…/Cat ×2`, `string ∩ object`.
 - `readonly-writeonly` (`error`) — a schema both `readOnly` and `writeOnly`
   (OAS 3.0 Schema Object, MUST NOT; 3.1 leaves both to JSON Schema, which
   gives the pair no meaning). The value is never sent nor returned: the doc's
@@ -734,20 +789,22 @@ the RFCs it builds on say a message can carry.
   under one of these codes is checked once, at the component; a HEAD
   response is checked where the operation lists it, since it usually
   reuses its GET's response, whose content is right for GET.
-- `http-date-headers` (`warning`) — a `Retry-After`,
-  `Last-Modified` (RFC 9110 §10.2.3, §8.8.2), `Expires` (RFC 9111 §5.3) or
-  `Sunset` (RFC 8594 §3) response header declared as something other than
-  an HTTP-date, which a sender MUST write as IMF-fixdate (RFC 9110 §5.6.7:
-  `Sun, 06 Nov 1994 08:49:37 GMT`). Fails on the first of: `format:
-  date-time` or `date` (RFC 3339, which HTTP date parsers are not required
-  to read); a numeric `type` (`Retry-After` excepted: its delay-seconds is
-  an integer); an example — the Header's `example`/`examples`, the schema's
+- `http-date-headers` (`warning`) — a `Retry-After`, `Last-Modified` (RFC
+  9110 §10.2.3, §8.8.2), `Expires` (RFC 9111 §5.3) or `Sunset` (RFC 8594 §3)
+  response header declared as something other than an HTTP-date, which a
+  sender MUST write as IMF-fixdate (RFC 9110 §5.6.7: `Sun, 06 Nov 1994
+  08:49:37 GMT`). Fails on the first of: `format: date-time` or `date` (RFC
+  3339, which HTTP date parsers are not required to read); a numeric `type`
+  (`Retry-After` excepted: its delay-seconds is an integer); an example —
+  the Header's `example`/`examples`, its `content` entry's, the schema's
   `example`/`examples` — that is a string but no IMF-fixdate (nor, for
-  `Retry-After`, digits), or a number other than a `Retry-After` delay. A
-  client generated from the declaration parses every real response wrong.
-  One check per Header Object with a schema, header names compared without
-  case; a `components.headers` entry once, named by the key a response uses
-  it under (or its own key). Multipart part headers are out. Other kinds of
+  `Retry-After`, digits), or a number other than a `Retry-After` delay. The
+  schema is `schema`, or that of the Header's `content` entry. A client
+  generated from the declaration parses every real response wrong. One check
+  per Header Object with a schema or an example, header names compared
+  without case; a `components.headers` entry once, named by the first of
+  these names a response uses it under — by its own key only when no
+  response references it. Multipart part headers are out. Other kinds of
   example are `example-type-mismatch`'s; `Deprecation`, a Structured Field
   date, is `deprecation-header-format`'s.
 - `query-method-body` (`warning`) — a 3.2 QUERY operation with no
@@ -860,21 +917,24 @@ that merely mentions its name ("User id of the account owner") is substance.
   they are still documented, as badges. One check per declared tag.
 - `response-content-schema` (`warning`) — a response media type with
   a structure to describe — the JSON family (as `body-kind.js` recognizes
-  it), XML (`application/xml`, `text/xml`, `+xml`), forms — and neither
-  `schema` nor 3.2 `itemSchema`. The format is named, the payload is not: a
+  it), XML (`application/xml`, `text/xml`, `+xml`), YAML
+  (`application/yaml`, `+yaml`), forms — and neither `schema` nor 3.2
+  `itemSchema`. The format is named, the payload is not: a
   generated client gets no type for it, and this app shows the body
   as `any`, with `null` as its generated example (none at all for XML). A
   file or plain text (`image/png`, `text/plain`) is its own description,
   and a media range (`*/*`) names no format. Every operation, webhooks' and
   callbacks' included; a `components.responses` entry is checked once, at
-  the component, with the status of its first use. A request body with no
+  the component, with the status of its first use allowing content. A
+  response HTTP gives no content (1xx, 204, 205, 304, any to HEAD) is
+  `bodyless-status`'s, which asks for the content to go. A request body with no
   schema is `untyped-input`'s; a response saying nothing at all,
   `response-substance`'s — the two fire together on `{ "application/json":
   {} }` with no description, one asking for the description, the other for
   the schema.
 - `example-placeholder` (`info`) — an example that is a placeholder
   rather than a value: a string whose normalized text (the normalization of
-  `isSubstantive`) is a JSON type name, `todo`, `tbd`, `fixme`, `xxx`,
+  `isSubstantive`) is a JSON type name, `todo`, `to do`, `tbd`, `fixme`, `xxx`,
   `placeholder`, or starts with `lorem ipsum`; an object or array whose
   string leaves are all such words (one at least) and whose other leaves
   are `0`, `false`, `true` or `""` — Swagger Editor's generated `{ "id": 0,
@@ -902,9 +962,13 @@ that merely mentions its name ("User id of the account owner") is substance.
   scores 100 %, one deprecated operation out of fifty barely moves the
   needle, and a document that is half legacy says so.
 - `deprecation-replacement` (`warning`) — deprecated element whose
-  description does not mention a replacement or sunset (heuristic:
-  description absent or free of any "use/instead/sunset/replaced" hint; a
-  `sunset` or `x-sunset` field answers too). A deprecated operation also
+  description does not mention a replacement or sunset (heuristic, on the
+  description and summary: absent, or free of any whole word naming a
+  successor — `use`, `instead`, `replaced`, `replacement`, `superseded`,
+  `successor`, `migrat…`, `sunset`, `prefer`, `in favor of`; `utilisez`,
+  `utiliser`, `remplacé`, `remplaçant`, `successeur`, `migrer`, `préférez`,
+  `privilégiez`, `au profit`, `à la place` — and of any `YYYY-MM-DD` date;
+  a `sunset` or `x-sunset` field answers too). A deprecated operation also
   answers on the wire: one of its responses, any status, declares a
   `Sunset` or `Deprecation` header, or a `Link` header whose description or
   examples name the `successor-version`, `latest-version` (RFC 5829),
@@ -975,30 +1039,35 @@ kebab-case at once.
   six "copies".
 - `operation-id-collision` (`warning`) — two different operationIds that
   generate one name: `getUser`, `get_user`, `GetUser`, `get-user`. The key
-  drops case and the separators openapi-generator's `sanitizeName` turns
-  into `_` (`.`, `-`, `:`, `|`, space, `/`, `\`, brackets, parentheses);
-  other symbols stay, since generators spell them out (`+1` → `plus1`).
-  openapi-generator camelizes an operationId into its method name and,
-  when two land on one name within a tag, renames the later `getUser_0`
-  with a warning: the method name depends on declaration order. Compared
-  over the whole document (the space the spec makes unique), webhooks and
-  callbacks included. One check per operation with an operationId; the
-  finding on each one after the first of its key, naming an earlier one
-  spelled otherwise. Identical strings are `duplicate-operation-id`'s.
+  is the name camelized as openapi-generator does it: the separators its
+  `sanitizeName` turns into `_` (`.`, `-`, `:`, `|`, space, `/`, `\`,
+  brackets, parentheses) dropped, the first letter and each letter after a
+  separator taken in either case, every other letter's case kept —
+  `getUserId` and `getUserid` stay two methods. Other symbols stay, since
+  generators spell them out (`+1` → `plus1`). openapi-generator camelizes an
+  operationId into its method name and, when two land on one name within a
+  tag, renames the later `getUser_0` with a warning: the method name depends
+  on declaration order. Compared over the whole document (the space the spec
+  makes unique), webhooks and callbacks included. One check per operation
+  with an operationId; the finding on each one after the first of its key,
+  naming an earlier one spelled otherwise. Identical strings are
+  `duplicate-operation-id`'s.
 - `property-name-collision` (`warning`) — two properties of one schema
   whose names differ and share the key: `user_id` and `userId` both
   generate openapi-generator's `userId` field and `getUserId()`, a Java
   model that does not compile (issues #8291, #20484; the answer is a
-  per-name mapping option). Own `properties` only, each schema once, a
-  component's at the component. One check per schema with two properties
-  or more; a finding per colliding name, on the later property. GitHub's
-  reaction counts `+1` and `-1` do not collide.
+  per-name mapping option). The key is `operation-id-collision`'s:
+  `userId` and `userid` stay two fields. Own `properties` only, each schema
+  once, a component's at the component. One check per schema with two
+  properties or more; a finding per colliding name, on the later property.
+  GitHub's reaction counts `+1` and `-1` do not collide.
 - `schema-name-collision` (`warning`) — two `components.schemas` names
   sharing the key (`Pet.Status`, `pet_status`, `PetStatus`): openapi-generator
   writes one `PetStatus` class, the last schema silently winning, and every
   operation typed with a lost schema returns another's shape; names
   differing by case alone are two files a case-insensitive file system
-  holds as one. One check per schema component; the finding on each one
+  holds as one. The key is therefore the camelized name in either case.
+  One check per schema component; the finding on each one
   after the first of its key. (The roadmap's
   `name-collision-after-sanitizing`.)
 
@@ -1022,14 +1091,15 @@ Each message states the concrete degradation *in this app*:
 - `oauth-flow-urls` (`warning`) — OAuth2 flow missing
   `authorizationUrl`/`tokenUrl` → the try-it "Get a token" block cannot
   run.
-- `operation-examples` (`info`) — no example anywhere on the
-  operation → try-it prefills fall back to generated samples. Any example
-  counts, parameters included: a parameter example prefills the try-it just
-  as well. A placeholder does not (`example-placeholder`): it prefills
-  exactly the meaningless sample the rule asks to replace. Only payloads
-  that can carry an example count: an operation whose only payloads are
-  files (a download, an upload) has nothing to check, like one that
-  exchanges no payload at all.
+- `operation-examples` (`info`) — no example anywhere on the operation →
+  try-it prefills fall back to generated samples. Any example counts,
+  parameters included: a parameter example prefills the try-it just as well,
+  on the parameter or, for one serialized by media type (`content`, 3.2's
+  `querystring`), on its media type. A placeholder does not
+  (`example-placeholder`): it prefills exactly the meaningless sample the
+  rule asks to replace. Only payloads that can carry an example count: an
+  operation whose only payloads are files (a download, an upload) has
+  nothing to check, like one that exchanges no payload at all.
 - `schema-expand-walls` (`info`) — schemas nested deeper than the
   lazy-expansion default → readers will hit "expand" walls. Info only —
   the app handles it, but authors should know. Recursion is not flagged: a
@@ -1078,14 +1148,28 @@ Each message states the concrete degradation *in this app*:
   allow-list (`script`, `iframe`, `object`, `embed`, `svg`, `math`, an
   unknown or custom element), an attribute outside it (`on*` handlers,
   `target`), a URL whose scheme the sanitizer refuses (`javascript:`,
-  `vbscript:`, `data:` except on an image or media element), in raw HTML or
-  in a Markdown link. Also catches the accidental tag: `List<Pet>` or
-  `/users/<id>` is an element to CommonMark, and vanishes. Text in code
-  spans and code blocks is shown as typed and not judged; HTML comments are
-  meant to be hidden. Every `description` the spec marks CommonMark, schema
-  descriptions included, each node once where it is written. One check per
-  description holding raw HTML or a Markdown link; the finding names the
-  first thing stripped, as written.
+  `vbscript:`, `data:` except on an image or media element), in raw HTML,
+  in a Markdown link or in an autolink (`<javascript:…>`). Also catches the
+  accidental tag: `List<Pet>` or `/users/<id>` is an element to CommonMark,
+  and vanishes. A test holds the mirrored lists to the `dompurify` version
+  `package.json` pins. Each description is read the way this documentation
+  renders it, each node once where it is written:
+  - as a block (`marked.parse`: paragraphs, fenced and indented code blocks,
+    reference definitions) — `info`, an operation (a webhook's included);
+  - inline (`marked.parseInline`: no code block — an indented line is text,
+    a fence a code span — and no reference definition) — a parameter, a
+    request body, a response, a header, a link, a schema, a callback's
+    operation, and a Reference Object's `description` where it stands for
+    one of these;
+  - both — a security scheme: a block in the authentication overview,
+    inline in an operation's security box; a finding in either counts;
+  - not read — a tag (a plain-text tooltip), a server and an External
+    Documentation (plain text), a server variable, an example and a Path
+    Item (not shown): nothing there is stripped.
+
+  Text in code spans and code blocks is shown as typed and not judged; HTML
+  comments are meant to be hidden. One check per description holding raw
+  HTML or a link; the finding names the first thing stripped, as written.
 - `markdown-links` (`warning`) — a link or image in a CommonMark
   description whose target is relative (`./auth.md`, `../x`, `/docs/errors`,
   `diagram.png`, `?page=2`) → OpenAPI resolves it "in their rendered
@@ -1095,10 +1179,13 @@ Each message states the concrete degradation *in this app*:
   image does not load, the link lands on a 404 of the documentation host. A
   lone `#fragment` passes (it scrolls to that anchor without changing the
   route), and so does a protocol-relative `//host`. Inline links and
-  images, the reference definitions a reference uses, raw `<a href>`,
-  `<area href>` and the `src` of `<img>` and the media elements. One check
-  per description with a link; the finding names the first relative
-  target.
+  images, autolinks, the reference definitions a reference uses (in a
+  description rendered as a block only), raw `<a href>`, `<area href>` and
+  the `src` of `<img>` and the media elements. Descriptions are read as
+  `markdown-unsafe` reads them — block, inline, both, or not at all for
+  those shown as plain text — so a link in a code span or block, or in a
+  server's description, is no link. One check per description with a link;
+  the finding names the first relative target.
 - `document-has-operations` (`warning`) — no operation under `paths` and no
   webhook → nothing to document: the home page says the schema declares no
   operations, the navigation is empty, a generator produces a client with no
@@ -1138,11 +1225,15 @@ Each message states the concrete degradation *in this app*:
   ones left out; 3.2 `itemSchema` judged like a body root. A schema
   `untyped-input` walks (any tool input) is that rule's: only its children
   outside the inputs get a verdict here — a shared component's `readOnly`
-  property, for one. A composition member and an `additionalProperties`
-  value are not judged on their own; a response media type with no schema
-  is `response-content-schema`'s; a file has no type to give. This app
-  shows the value as `any` and its generated example holds `null` there. A
-  schema in `components.schemas` is graded once, at the component.
+  property, for one. A schema met only as a composition member, an
+  `additionalProperties` or a `patternProperties` value is not judged on
+  its own (one that holds a value elsewhere is, whatever the order of the
+  operations); a response media type with no schema is
+  `response-content-schema`'s; a file has no type to give; a status or a
+  method that allows no content (204, a HEAD response) is
+  `bodyless-status`'. This app shows the value as `any` and its generated
+  example holds `null` there. A schema in `components.schemas` is graded
+  once, at the component, and so is a response in `components.responses`.
 - `forbidden-in-browser` (`info`) — what a browser refuses to send,
   by the Fetch standard's lists, shared with the try-it
   (`src/openapi/forbidden.js`): an `in: header` parameter that is a
@@ -1166,7 +1257,8 @@ Each message states the concrete degradation *in this app*:
   server or the first root server: from this one, every request goes to a
   host that is not the API. `.test` and `localhost` are not placeholders
   (RFC 6761 testing and local names). One check per Server the client
-  calls — root, Path Item, Operation — with an absolute URL; not a Link's
+  calls — root, Path Item, Operation — with an absolute URL, a relative one
+  resolved against the document's 3.2 `$self` when it declares one; not a Link's
   `server`, nor one inside a webhook or a callback. Plain http is
   `server-https`'s, an undeclared variable `server-variables`'.
 - `server-described` (`info`) — with two top-level servers or more,
@@ -1188,7 +1280,7 @@ They run against the **raw** document and read its declared version
 as "does this spelling match the declared version" — the same `nullable`
 PASSES in a 3.0 document instead of being punished for it.
 
-- `version-legacy` (`warning`) — a spelling a later version replaced,
+- `version-legacy` (`warning`, per check) — a spelling a later version replaced,
   used in a document of that later version, with the exact rewrite built
   from the schema itself as `replacement`: `nullable: true` (→
   `type: ["string", "null"]` from the schema's own type, or a
@@ -1198,7 +1290,9 @@ PASSES in a 3.0 document instead of being punished for it.
   `x-nullable: true` in any 3.x document (→ `nullable: true` in 3.0, the
   type list from 3.1). Those are silent failures: the newer reader ignores
   the older spelling. Two more are deprecated but still read, hence graded
-  `info`: a Schema Object's `example` from 3.1 on (→ `examples: [<value>]`;
+  `info`: a Schema Object's `example` from 3.1 on (→ `examples: [<value>]`,
+  the value written out in full — one longer than 200 characters elided as
+  `examples: [...]`;
   3.1.1: "Deprecated: The example field has been deprecated in favor of the
   JSON Schema examples keyword"), and the XML `attribute` / `wrapped`
   booleans from 3.2 on (→ `nodeType`) — the threshold travels per
@@ -1214,14 +1308,18 @@ PASSES in a 3.0 document instead of being punished for it.
   `mediaType.itemSchema`, `prefixEncoding` / `itemEncoding`,
   `discriminator.defaultMapping`, XML `nodeType`, a Server's `name`, a
   Response's `summary`, a Tag's `summary` / `parent` / `kind`, an
-  Example's `dataValue` / `serializedValue`, `components.mediaTypes`, the
-  device-authorization flow… — wherever they sit, components included. A
-  Reference Object's 3.1 `summary` / `description` are `ref-siblings`'.
-  On schemas: type arrays, `const`, and the JSON Schema 2020-12 keywords a
-  3.0 Schema Object does not have — `if`/`then`/`else`, `$defs`,
-  `patternProperties`, `propertyNames`, `dependent*`, `unevaluated*`,
-  `contains` and its bounds, `content*`; not `not`, which 3.0 already
-  carries.
+  Example's `dataValue` / `serializedValue`, `components.mediaTypes`, a
+  Media Type's `$ref`, the device-authorization flow… — wherever they sit,
+  components included. A Reference Object's 3.1 `summary` / `description`
+  are `ref-siblings`'. On schemas: type arrays, and every JSON Schema
+  2020-12 keyword a 3.0 Schema Object does not have (3.0's list is
+  `SCHEMA_KEYWORDS_30`, `src/audit/schema-keywords.js`) — `const`,
+  `if`/`then`/`else`, `$defs`, `prefixItems`, `patternProperties`,
+  `propertyNames`, `dependent*`, `unevaluated*`, `contains` and its bounds,
+  `content*`, `examples`, `$id`, `$schema`, `$anchor`, `$dynamic*`,
+  `$vocabulary`, `$comment`; not `not`, which 3.0 already carries, nor the
+  spellings of the drafts in between (`definitions`, `dependencies`,
+  `additionalItems`, `$recursive*`), which no OpenAPI version introduced.
 - `conversion-approximation` (`info`) — a construct the Swagger 2.0
   conversion could only approximate. The converter
   (`src/openapi/swagger2.js`) marks what 3.0 cannot spell with
@@ -1279,16 +1377,33 @@ An operation's inputs are its parameters and its non-file request bodies
 - `bridge-degradation` (`info`) — an operation the MCP server this
   documentation exports cannot call as written: a cookie parameter (neither
   bridge sends cookies), or an effective security (the operation's, else the
-  document's) with no alternative whose schemes all travel in a header — an
-  `apiKey` in a query or a cookie, `mutualTLS`. The verdict is the export's
-  own (`credentialHeader`, `src/export/mcp.js`), so the rule and the
-  generated config cannot disagree, and a deprecated scheme counts as not
-  carried — the export leaves it out; an empty alternative (`{}`) is
-  anonymous access and passes. An undeclared scheme gives no verdict:
-  `security-scheme-declared`'s.
-- `untyped-input` — bullet unchanged: its predicate and value
-  positions moved to `src/audit/untyped.js`, shared with `type-missing`,
-  behaviour identical (same checks and findings on every real document).
+  document's) with no alternative whose schemes the generated config all
+  holds — an `apiKey` in a query or a cookie, `mutualTLS`, a deprecated
+  scheme, or a scheme whose header an earlier declared one already fills
+  (`basic` then `bearer`: one `Authorization` header, the first scheme's).
+  The verdict is the export's own (`carriedSchemes`, `src/export/mcp.js`),
+  so the rule and the generated config cannot disagree; an empty
+  alternative (`{}`) is anonymous access and passes. An undeclared scheme
+  gives no verdict: `security-scheme-declared`'s.
+- `untyped-input` (`warning`) — an input schema that says nothing about
+  its value: no `type`, no `enum`/`const`, no structure, no composition —
+  `{}`, `true`, or annotations only (`description`, `example`, `format`) —
+  at the root of a parameter or of a JSON body, or at a property, array
+  item or tuple item below; a JSON body declared with no schema is flagged
+  at its media type. Bridges copy the schema into the tool as it is, so the
+  agent guesses the type. In this app the schema view shows `any`, the
+  try-it offers a bare text box and sends what is typed as a string
+  (`coerceValue` has no type to convert to), and the generated sample is
+  `null`. Left to other rules: a schema met only as a composition member
+  (it describes the value with its siblings — one that also holds a value
+  elsewhere is judged, whatever the order of the operations), an
+  `additionalProperties` or `patternProperties` value (`free-form-input`),
+  the root of a form body (`multipart-schema-object`), a parameter with
+  neither `schema` nor `content` (`parameter-schema-or-content`); a text
+  body's media type already says text, and `format: binary` is a file. An
+  unresolved `$ref` is `ref-resolves`'. A schema shared through
+  `components.schemas` is graded once, at the component. Its predicate and
+  positions are shared with `type-missing` (`src/audit/untyped.js`).
 - `free-form-input` (`info`) — an input object with no shape: `type:
   object` (or an object by its keywords) with no `properties`, no
   `patternProperties`, no `propertyNames`, no composition, and
@@ -1296,8 +1411,14 @@ An operation's inputs are its parameters and its non-file request bodies
   every key to invent; OpenAI's strict mode requires declared properties
   and `additionalProperties: false`. A typed map (`additionalProperties: {
   type: string }`) has a shape, and `additionalProperties: false` alone is
-  a closed, empty object. A composition member is not judged on its own,
-  nor the root of a form body (`multipart-schema-object`'s).
+  a closed, empty object. Not judged on their own, as they complete what
+  holds them: an `allOf`, `then`, `else` or `dependentSchemas` member, and
+  a `oneOf` / `anyOf` branch of an object with a shape of its own
+  (`properties`, `patternProperties`, `propertyNames`, a closed or typed
+  `additionalProperties`); a branch of a union with no shape of its own is
+  all an agent gets for that choice, and is judged. Nor is the root of a
+  form body (`multipart-schema-object`'s). A schema reached through a
+  judged position anywhere is judged, whatever the order of the operations.
 - `union-ambiguous` (`info`) — an input `oneOf`/`anyOf` of two or more
   branches, with no `discriminator`, where two branches take the same JSON
   type (`integer` and `number` are one) and neither has a `title` or a
@@ -1305,12 +1426,18 @@ An operation's inputs are its parameters and its non-file request bodies
   base names neither. Bridges inline the union, component names gone, and
   the agent picks a branch blind. Not ambiguous: two object branches that
   each require a key the other does not declare (the key is an implicit
-  discriminator), two arrays whose items differ in type, a single-constant
-  branch. A union made only of constants is an enum
-  (`enum-values-undescribed`). OpenAI's strict mode and Gemini do not
+  discriminator), two object branches that both require a key whose
+  `const` / `enum` values they hold apart (`kind: { const: a }` and
+  `kind: { const: b }`), two arrays whose items differ in type, a
+  single-constant branch. A union made only of constants, as this
+  documentation reads one (`enumOf`), is an enum
+  (`enum-values-undescribed`); one whose constant branch says more than its
+  value (a `format`) is graded here. OpenAI's strict mode and Gemini do not
   support `oneOf` at all — stated, not graded.
 - `input-root-shape` (`info`) — a JSON request body whose root is an
-  array, a scalar, or a `oneOf`/`anyOf` (even of objects). GPT Actions
+  array, a scalar, or only a `oneOf`/`anyOf` (even of objects): a root
+  stating an object type that also holds a union (`{ type: object,
+  properties, oneOf: [{ required: [email] }, …] }`) is an object. GPT Actions
   skips the operation; `@ivotoby/openapi-mcp-server` wraps an array or a
   scalar under a `body` property and makes a union the tool's root;
   Anthropic's API types `input_schema.type` as `"object"` and OpenAI's
@@ -1323,7 +1450,9 @@ An operation's inputs are its parameters and its non-file request bodies
   sends (`readOnly` properties are not sent, so a cycle through one alone
   does not count). One check per tool operation with inputs; the finding
   sits where the input reaches back, named after the `components.schemas`
-  entry it re-enters. `@ivotoby/openapi-mcp-server` cuts the cycle into
+  entry it re-enters — for an inline schema, its `title`, else the property
+  it was met as, else the input (the parameter's name, the body's media
+  type). `@ivotoby/openapi-mcp-server` cuts the cycle into
   `{}`; Anthropic's strict mode and Gemini refuse recursion; OpenAI's
   strict mode supports it. Info: the data model is legitimate, the finding
   says what agents receive.
@@ -1347,7 +1476,9 @@ An operation's inputs are its parameters and its non-file request bodies
   value read back counts as none (`isSubstantive`). Or by prose naming it as
   a whole word, case-insensitive: the schema's `description`, and through
   `items` and composition the one of the array, wrapper or parameter holding
-  it. The message names the first three unexplained values. The fix leads
+  it — an enum held in several places is explained by that prose only when
+  every place's names the value, whatever the order of the operations. The
+  message names the first three unexplained values. The fix leads
   with the description, which travels to every tool: OpenAI strict mode keeps
   standard keywords only and drops the `x-` extensions. `null` and boolean
   enums are skipped; one check per input enum, each schema object once, a
@@ -1376,16 +1507,20 @@ An operation's inputs are its parameters and its non-file request bodies
   through its items, a wrapper or union through a member; a file part of a
   form has nothing to show. One check per distinct schema among an
   operation's non-file request media types: the same payload as JSON, form
-  and XML is one example to write.
+  and XML is one example to write. An object whose declared properties are
+  all `readOnly` has nothing to send, and is not checked.
 - `error-machine-readable` (`info`) — an error response (`4XX` / `5XX` codes
   and ranges, `default`) whose content is all prose: `text/*` or HTML only,
   or JSON / XML with no schema, or one with no shape (a bare `string`, an
   empty schema) → an agent whose call fails reads a sentence and cannot
-  branch on the error (which field, retry or not). One structured media type
-  among several is enough. One check per error response declaring content,
-  tool operations only; a response with no content leaves the status as the
-  signal and is not checked. Documenting error responses at all is
-  `error-responses-documented`'s.
+  branch on the error (which field, retry or not). A shape is an object or
+  an array, declared or inferred as the schema view reads it (`{ required:
+  [code] }` is an object), or reached through a composition. One structured
+  media type among several is enough. One check per error response
+  declaring content, tool operations only, a response shared through
+  `components.responses` once, at the component; a response with no content
+  leaves the status as the signal and is not checked. Documenting error
+  responses at all is `error-responses-documented`'s.
 
 ### 4.8 Security
 
@@ -1396,7 +1531,9 @@ says is what generated clients, gateways and this documentation do.
 Operation-level rules read the document's paths operations, hidden ones
 included — a webhook or a callback is a request the API sends, and its
 security is the receiver's. An operation's effective security and its
-servers come from `src/audit/security.js`; what counts as cleartext from
+servers come from `src/audit/security.js`, on the readings the try-it uses
+(`securityRequirements` in `src/openapi/auth.js`, `serverUrl` in
+`src/openapi/servers.js`); what counts as cleartext from
 `src/openapi/mixed-content.js`, which the try-it's mixed-content diagnosis
 and the OAuth block share — `http:` to any host but the machine itself (`localhost`, `127.0.0.0/8`,
 `[::1]`, which W3C Secure Contexts holds potentially trustworthy). Three rules
@@ -1411,8 +1548,11 @@ applies to all of them).
   Content) — the try-it of any hosted install cannot reach it without a
   CORS proxy, and diagnoses the failure as mixed content. `localhost`,
   `127.0.0.0/8` and `[::1]` are exempt (W3C Secure Contexts: potentially
-  trustworthy, and nothing leaves the machine); a relative URL takes the
-  page's scheme; an undeclared variable in the host gives no verdict
+  trustworthy, and nothing leaves the machine); a relative URL is resolved
+  against the document's 3.2 `$self`, as the try-it does — `/v1` under an
+  http `$self` is cleartext — and without `$self` takes the scheme of
+  wherever the document is served from, which the audit is not told (no
+  verdict); an undeclared variable in the host gives no verdict
   (`server-variables`'). Servers the client calls: root, Path Item,
   Operation, a Link's `server`; one inside a webhook or a callback is the
   receiver's. One check per Server with a string URL. The credential an
@@ -1434,7 +1574,8 @@ applies to all of them).
   `uri-form`'s.
 - `auth-scheme-weak` (`error`, per check) — a tool operation whose
   effective security names, in any alternative, a credential that needs
-  TLS, while one of the servers it goes to is cleartext http. A bearer
+  TLS, while one of the servers it goes to is cleartext http (read like
+  `server-https`'s, a relative URL against `$self`). A bearer
   token — `http` `bearer`, and the access token of an `oauth2` or
   `openIdConnect` scheme, sent as `Authorization: Bearer` too — is an
   `error` (RFC 6750 §5.3, MUST); `mutualTLS` is an `error` (the client
@@ -1469,15 +1610,18 @@ applies to all of them).
   contract: a generated client sends no credential, and this documentation
   shows no authentication section and a try-it with no credentials form
   (`applicableSchemes`). Open by omission — no `security` on the operation
-  nor at the root — is a `warning` on a method that changes state and an
-  `info` on a safe one (GET, HEAD, OPTIONS, TRACE, QUERY, and the safe
-  methods a 3.2 `additionalOperations` may name: SEARCH, PROPFIND, REPORT;
-  any other custom method counts as a write). Open by declaration —
-  `security: []` or an empty `{}` alternative — is an `info` whatever the
-  method: the inventory of what is public on purpose, told apart by the
-  `access` param (`omitted` / `declared`). A secured operation passes,
-  graded at the severity an omission would have had. A document with no
-  security scheme and no `security` anywhere gets one check instead, at
+  nor at the root, or a root `security: []`, which generators emit by
+  default and which says nothing of any one operation — is a `warning` on a
+  method that changes state and an `info` on a safe one (GET, HEAD,
+  OPTIONS, TRACE, QUERY, and the safe methods a 3.2 `additionalOperations`
+  may name: SEARCH, PROPFIND, REPORT; any other custom method counts as a
+  write). Open by declaration — `security: []` on the operation, or an
+  empty `{}` alternative at either level (optional authentication) — is an
+  `info` whatever the method: the inventory of what is public on purpose,
+  told apart by the `access` param (`omitted` / `declared`). A secured
+  operation passes, graded at the severity an omission would have had. A
+  document with no security scheme and no `security` anywhere (a root `[]`
+  aside) gets one check instead, at
   `/components/securitySchemes`: one gap, not one per operation. Hidden
   operations count; webhooks and callbacks are the receiver's. A `security`
   list of malformed entries gives no verdict (`field-value-kind`'s); a
@@ -1525,12 +1669,14 @@ applies to all of them).
   (Broken Object Property Level Authorization) is the reference. Generated
   clients type the response with the field, and this app's response sample
   shows it filled in (`pa55w0rd`), where a writeOnly property is left out.
-  By the document's word only, never by property name: a `token` may be
-  what the operation exists to return. Response bodies only (`schema` and
-  3.2 `itemSchema`), readOnly properties included; not response headers,
-  not request schemas, not webhook or callback responses (the integrator
-  writes them), and nothing under a writeOnly schema. One check per
-  password schema, each schema object once, a component's at the
+  By the document's word only, never by property name: a `token` may be what
+  the operation exists to return. Response bodies only (`schema` and 3.2
+  `itemSchema`) and everything below them — properties, readOnly ones
+  included, map and `patternProperties` values, array and tuple items,
+  composition members, `then`, `else` and `dependentSchemas`; not response
+  headers, not request schemas, not webhook or callback responses (the
+  integrator writes them), and nothing under a writeOnly schema. One check
+  per password schema, each schema object once, a component's at the
   component. A schema both readOnly and writeOnly is `readonly-writeonly`'s.
   No demo document returns one: the petstore's `User.password` has no
   format.
@@ -1542,21 +1688,28 @@ applies to all of them).
   already caps (RFC 9110 §4.1 asks for 8000 octets of URI and answers 414
   past its own limit, RFC 6585 §5 431 for headers) — a body has no such
   ceiling short of the upload limit. Every value position below the body
-  root — properties (readOnly ones skipped; those declared in `then`,
-  `else` or `dependentSchemas` included), map and `patternProperties`
-  values, array and tuple items. A string is bounded by `maxLength`,
+  root — properties (readOnly ones skipped, the keyword on the property or
+  on an `allOf` member; those declared in `then`, `else` or
+  `dependentSchemas` included), map and `patternProperties` values, array
+  and tuple items. A string is bounded by `maxLength`,
   `enum`, `const`, a fixed-shape `format` (`date`, `date-time`, `time`,
   `uuid`, `ipv4`, `ipv6`, `duration`) or a `pattern` whose every top-level
   alternative is anchored `^…$` with no `*`, `+` or `{n,}` outside a
   character class or a lookaround; an array by `maxItems`, `enum`, `const`,
   or `prefixItems` with `items: false`. A bound in an `allOf` member bounds
-  the value; a `oneOf`/`anyOf` bounds it when every branch does. A file
-  (`format: binary`) is not a string to bound; numbers are out of scope; an
-  untyped input is `untyped-input`'s. One check per operation with at least
-  one string or array in its body, its finding counting the unbounded
-  values and naming the first three (`owner.name`, `tags[]`, `labels.*`, a
-  body root by its media type). Graded per operation, so a shared
-  component left unbounded shows in each operation accepting it.
+  the value; a `oneOf`/`anyOf` bounds it when every branch able to hold
+  the value's type does — a branch with no type of its own constrains the
+  parent's (`{ type: string, anyOf: [{ maxLength: 5 }, { format: uuid }] }`
+  is bounded), a branch typed otherwise does not apply. A file (`format:
+  binary`, or a binary `contentMediaType` with no `contentEncoding`) is not
+  a string to bound; numbers are out of scope; an untyped input is
+  `untyped-input`'s. One check per operation with at least one string or
+  array in its body, its finding counting the unbounded values and naming
+  the first three (`owner.name`, `tags[]`, `labels.*`, a body root by its
+  media type); a component used at two places of the body (`billing`,
+  `shipping`) counts at each, the walk bounded at 5000 positions per
+  operation. Graded per operation, so a shared component left unbounded
+  shows in each operation accepting it.
 
 ## 5. Architecture
 
@@ -1708,7 +1861,7 @@ applies to all of them).
   scoring test with a synthetic mixed report; a full-report **snapshot on
   the demo petstore schema** (`tests/audit-petstore.test.js`) pins the
   end-to-end behavior (regenerated deliberately, per the snapshot
-  policy). `tests/audit-strings.test.js` checks `label`/`message`/`why`
+  policy). `tests/audit-strings.test.js` checks `label`/`message`/`why`/`fix`
   over the whole registry, in both languages — fixture-driven coverage
   alone would only catch rules a fixture happens to fire.
 - **Export**: Markdown report generator snapshot-tested like the others.

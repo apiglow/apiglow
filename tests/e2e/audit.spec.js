@@ -55,7 +55,7 @@ test('the report grades the schema and scores each category', async ({ page }) =
   await expect(header).toContainText('A')
   await expect(header).toContainText('90 / 100')
   await expect(header).toContainText('12 warning(s)')
-  await expect(header).toContainText('43 note(s)')
+  await expect(header).toContainText('45 note(s)')
   // One bar per scored category, including the one with no finding: a 100 % is
   // exactly what the author wants to see.
   await expect(header).toContainText('Correctness')

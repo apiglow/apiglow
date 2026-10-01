@@ -91,6 +91,15 @@ describe('version-legacy', () => {
     })
   })
 
+  it('rewrites an example in full, eliding only one too long for a line', () => {
+    const pet = { id: 7, name: 'Rex', tags: [{ name: 'good boy' }], owner: { name: 'Ada' } }
+    const rewrite = (example) =>
+      run(versionLegacy, withSchema('3.1.0', { type: 'object', example })).findings[0].params
+        .replacement
+    expect(rewrite(pet)).toBe(`examples: [${JSON.stringify(pet)}]`)
+    expect(rewrite({ text: 'x'.repeat(300) })).toBe('examples: [...]')
+  })
+
   it('leaves the 3.1 numeric bound alone', () => {
     const result = run(versionLegacy, withSchema('3.1.0', { type: 'integer', exclusiveMinimum: 0 }))
     expect(result.checks).toBe(0)
@@ -232,6 +241,18 @@ describe('version-construct', () => {
             maxContains: 2,
             contentEncoding: 'base64',
             contentMediaType: 'image/png',
+            contentSchema: { type: 'object' },
+            prefixItems: [{ type: 'string' }],
+            examples: [{ name: 'Rex' }],
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
+            $id: 'https://example.com/pet',
+            $anchor: 'pet',
+            $dynamicAnchor: 'node',
+            $dynamicRef: '#node',
+            $vocabulary: { 'https://json-schema.org/draft/2020-12/vocab/core': true },
+            $comment: 'Shared by every pet endpoint.',
+            // A draft-07 spelling: no OpenAPI version's, so nothing ahead of 3.0.
+            definitions: { Legacy: { type: 'string' } },
           },
         },
       },
@@ -241,21 +262,31 @@ describe('version-construct', () => {
     const result = run(versionConstruct, keywords('3.0.3'))
     expect(result.findings.map((finding) => finding.params.construct)).toEqual([
       'jsonSchemaDialect',
+      '$schema',
+      '$id',
+      '$anchor',
+      '$dynamicRef',
+      '$dynamicAnchor',
+      '$vocabulary',
+      '$comment',
+      '$defs',
       'if',
       'then',
       'else',
-      '$defs',
+      'dependentSchemas',
+      'prefixItems',
+      'contains',
       'patternProperties',
       'propertyNames',
-      'dependentRequired',
-      'dependentSchemas',
-      'unevaluatedProperties',
       'unevaluatedItems',
-      'contains',
-      'minContains',
+      'unevaluatedProperties',
       'maxContains',
+      'minContains',
+      'dependentRequired',
+      'examples',
       'contentEncoding',
       'contentMediaType',
+      'contentSchema',
     ])
     // `not` sits alongside allOf/oneOf/anyOf in 3.0: flagging it would be wrong.
     expect(result.findings.some((finding) => finding.params.construct === 'not')).toBe(false)
@@ -263,6 +294,30 @@ describe('version-construct', () => {
 
   it('leaves every one of them alone in a 3.1 document', () => {
     expect(run(versionConstruct, keywords('3.1.0')).findings).toEqual([])
+  })
+
+  it('flags a Media Type $ref before 3.2', () => {
+    const mediaRef = (openapi) =>
+      doc({
+        openapi,
+        paths: {
+          '/a': {
+            get: {
+              responses: {
+                200: {
+                  description: 'OK',
+                  content: { 'application/json': { $ref: '#/components/mediaTypes/Json' } },
+                },
+              },
+            },
+          },
+        },
+      })
+    expect(run(versionConstruct, mediaRef('3.1.0')).findings[0]).toMatchObject({
+      dataPath: '/paths/~1a/get/responses/200/content/application~1json/$ref',
+      params: { construct: 'mediaType.$ref', since: '3.2', declared: '3.1.0' },
+    })
+    expect(run(versionConstruct, mediaRef('3.2.0'))).toMatchObject({ checks: 1, findings: [] })
   })
 
   // The discriminator object is 3.0; only 3.2 added a fallback target.

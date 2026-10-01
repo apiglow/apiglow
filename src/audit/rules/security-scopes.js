@@ -25,7 +25,7 @@ export const securityScopes = {
     for (const { type, node, dataPath } of ctx.objects) {
       if (type !== 'SecurityRequirement') continue
       for (const [name, scopes] of Object.entries(node)) {
-        const scheme = schemes[name]
+        const scheme = Object.hasOwn(schemes, name) ? schemes[name] : undefined
         if (!scheme || typeof scheme !== 'object' || !Array.isArray(scopes)) continue
         const declared = declaredScopes(scheme, ctx.version.minor)
         if (declared === null) continue

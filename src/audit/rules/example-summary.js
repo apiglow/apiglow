@@ -1,7 +1,8 @@
-import { placeOf } from '../locate.js'
+import { componentNames, placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
 import { nodeAt } from '../ref-pointer.js'
 import { isSubstantive } from '../text.js'
+import { isObject } from '../value-check.js'
 
 // Named examples side by side with nothing to tell them apart. This
 // documentation lists each entry of an `examples` map as "Example — <key>
@@ -21,7 +22,7 @@ export const exampleSummary = {
   category: 'readiness',
   severity: 'info',
   run(ctx, check) {
-    const components = componentExamples(ctx)
+    const components = componentNames(ctx.document, 'examples')
     const done = new Set()
     for (const { type, dataPath } of ctx.objects) {
       if (type !== 'Parameter' && type !== 'Header' && type !== 'MediaType') continue
@@ -49,18 +50,4 @@ export const exampleSummary = {
       }
     }
   },
-}
-
-function componentExamples(ctx) {
-  const names = new Map()
-  const declared = ctx.document.components?.examples
-  if (!isObject(declared)) return names
-  for (const [name, example] of Object.entries(declared)) {
-    if (isObject(example) && !names.has(example)) names.set(example, name)
-  }
-  return names
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

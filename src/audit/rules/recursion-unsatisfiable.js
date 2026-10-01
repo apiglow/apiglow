@@ -64,21 +64,29 @@ function requiredTargets(schema) {
   return targets
 }
 
+// Through arrays of arrays too: the `items` chain is followed iteratively, and
+// a recursive array (`A = array of A`) forces nothing — no object ever ends it.
 function forcedObject(schema) {
-  if (!schema || typeof schema !== 'object' || nullable(schema)) return null
-  if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf)) return null
-  const types = Array.isArray(schema.type)
-    ? schema.type
-    : schema.type === undefined
-      ? []
-      : [schema.type]
-  if (types.length === 1 && types[0] === 'array') {
-    return typeof schema.minItems === 'number' && schema.minItems >= 1
-      ? forcedObject(schema.items)
-      : null
+  const seen = new Set()
+  let current = schema
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current)
+    if (nullable(current) || Array.isArray(current.oneOf) || Array.isArray(current.anyOf))
+      return null
+    const types = Array.isArray(current.type)
+      ? current.type
+      : current.type === undefined
+        ? []
+        : [current.type]
+    if (types.length === 1 && types[0] === 'array') {
+      if (!(typeof current.minItems === 'number' && current.minItems >= 1)) return null
+      current = current.items
+      continue
+    }
+    if (types.length) return types.length === 1 && types[0] === 'object' ? current : null
+    return current.properties || current.allOf || current.required ? current : null
   }
-  if (types.length) return types.length === 1 && types[0] === 'object' ? schema : null
-  return schema.properties || schema.allOf || schema.required ? schema : null
+  return null
 }
 
 function nullable(schema) {

@@ -1,10 +1,10 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`audit report on the demo petstore > matches the recorded report 1`] = `
-"OpenAPI 3.2.0 — grade A (94/100)
-error 0 · warning 14 · info 120
+"OpenAPI 3.2.0 — grade A (93/100)
+error 0 · warning 14 · info 133
 
-## correctness — 99 % over 379 checks
+## correctness — 99 % over 409 checks
   warning responses-success — failForbidden
   warning responses-success — failRateLimit
   warning responses-success — failServerError
@@ -12,17 +12,17 @@ error 0 · warning 14 · info 120
 
 ## security — 77 % over 117 checks
   warning oauth-legacy-flows — /components/securitySchemes/petstore_auth/flows/implicit {"flow":"implicit"}
-  warning operation-unsecured — failValidation {"method":"POST","access":"omitted"}
-  info operation-unsecured — failCors {"method":"GET","access":"omitted"}
-  info operation-unsecured — failHang {"method":"GET","access":"omitted"}
-  info operation-unsecured — failMalformed {"method":"GET","access":"omitted"}
-  info operation-unsecured — failRateLimit {"method":"GET","access":"omitted"}
-  info operation-unsecured — failServerError {"method":"GET","access":"omitted"}
-  info operation-unsecured — failSlow {"method":"GET","access":"omitted"}
-  info operation-unsecured — failUnavailable {"method":"GET","access":"omitted"}
-  info operation-unsecured — failUnreachable {"method":"GET","access":"omitted"}
-  info secured-op-errors — failForbidden {"status":"401","missing":"WWW-Authenticate"}
-  info secured-op-errors — failProtected {"status":"401","missing":"WWW-Authenticate"}
+  warning operation-unsecured — failValidation {"access":"omitted"}
+  info operation-unsecured — failCors {"access":"omitted"}
+  info operation-unsecured — failHang {"access":"omitted"}
+  info operation-unsecured — failMalformed {"access":"omitted"}
+  info operation-unsecured — failRateLimit {"access":"omitted"}
+  info operation-unsecured — failServerError {"access":"omitted"}
+  info operation-unsecured — failSlow {"access":"omitted"}
+  info operation-unsecured — failUnavailable {"access":"omitted"}
+  info operation-unsecured — failUnreachable {"access":"omitted"}
+  info secured-op-errors — failForbidden {"missing":"WWW-Authenticate"}
+  info secured-op-errors — failProtected {"missing":"WWW-Authenticate"}
   info secured-op-errors — addPet {"missing":"401 / 403"}
   info secured-op-errors — updatePet {"missing":"401 / 403"}
   info secured-op-errors — findPetsByStatus {"missing":"401 / 403"}
@@ -35,7 +35,7 @@ error 0 · warning 14 · info 120
   info secured-op-errors — streamPetEvents {"missing":"401 / 403"}
   info secured-op-errors — subscribeToPet {"missing":"401 / 403"}
   info secured-op-errors — uploadFile {"missing":"401 / 403"}
-  info secured-op-errors — purgeInventory {"status":"401","missing":"WWW-Authenticate"}
+  info secured-op-errors — purgeInventory {"missing":"WWW-Authenticate"}
   info secured-op-errors — getInventory {"missing":"401 / 403"}
   info secured-op-errors — placeOrder {"missing":"401 / 403"}
   info secured-op-errors — deleteOrder {"missing":"401 / 403"}
@@ -122,7 +122,7 @@ error 0 · warning 14 · info 120
   info response-example — getUserByName {"status":"200"}
 
 ## deprecation — 99 % over 198 checks
-  info deprecated-inventory — /components/securitySchemes/api_key {"name":"api_key"}
+  info deprecated-inventory — /components/securitySchemes/api_key
   info deprecated-inventory — findPetsByTags
 
 ## consistency — 99 % over 120 checks
@@ -135,9 +135,22 @@ error 0 · warning 14 · info 120
   info operation-examples — failMalformed
   info security-scheme-described — /components/securitySchemes/basicAuth {"name":"basicAuth"}
 
-## agent — 96 % over 341 checks
+## agent — 93 % over 341 checks
   warning parameter-name-collision — updateUser {"name":"username","first":"path","second":"body"}
+  info bridge-degradation — failForbidden {"names":"bearerAuth"}
+  info bridge-degradation — failProtected {"names":"bearerAuth"}
   info bridge-degradation — purgeInventory {"names":"api_key"}
+  info bridge-degradation — getInventory {"names":"bearerAuth"}
+  info bridge-degradation — placeOrder {"names":"bearerAuth"}
+  info bridge-degradation — deleteOrder {"names":"bearerAuth"}
+  info bridge-degradation — getOrderById {"names":"bearerAuth"}
+  info bridge-degradation — createUser {"names":"basicAuth"}
+  info bridge-degradation — createUsersWithListInput {"names":"basicAuth"}
+  info bridge-degradation — loginUser {"names":"basicAuth"}
+  info bridge-degradation — logoutUser {"names":"basicAuth"}
+  info bridge-degradation — deleteUser {"names":"basicAuth"}
+  info bridge-degradation — getUserByName {"names":"basicAuth"}
+  info bridge-degradation — updateUser {"names":"basicAuth"}
   info enum-values-undescribed — /components/schemas/Order/properties/status {"count":3,"missing":"placed, approved, delivered"}
   info enum-values-undescribed — /components/schemas/PetSearch/properties/status/items {"count":3,"missing":"available, pending, sold"}
   info enum-values-undescribed — findPetsByStatus {"count":3,"missing":"available, pending, sold"}

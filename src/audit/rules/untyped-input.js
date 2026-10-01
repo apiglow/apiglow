@@ -1,7 +1,5 @@
-import { placeInput } from '../input-shape.js'
-import { pointer } from '../pointer.js'
 import { toolOperations } from '../tool-inputs.js'
-import { inputPayloads, judgeValues, untypedState } from '../untyped.js'
+import { inputPayloads, judgeUntyped } from '../untyped.js'
 
 // An input an agent must fill in whose schema says nothing about its value: no
 // `type`, no values, no structure, no composition — `{}`, `true`, or
@@ -22,8 +20,9 @@ import { inputPayloads, judgeValues, untypedState } from '../untyped.js'
 // a JSON body, and every property, array item and tuple item below. A JSON body
 // declared with no schema at all is the same blank and is flagged at its media
 // type. Left alone:
-// - a composition member (`allOf: [{ description }, …]`): it describes the
-//   value together with its siblings, and the parent says something;
+// - a schema met only as a composition member (`allOf: [{ description }, …]`):
+//   it describes the value together with its siblings, and the parent says
+//   something — one that also holds a value elsewhere is judged;
 // - an `additionalProperties` value: an open map's extra keys are
 //   `free-form-input`'s;
 // - the root of a form or text body: `multipart-schema-object` grades a form
@@ -36,15 +35,10 @@ export const untypedInput = {
   severity: 'warning',
   run(ctx, check) {
     // One verdict per schema object, however many operations share it.
-    const state = untypedState()
-    for (const entry of toolOperations(ctx)) {
-      const report = (schema, dataPath, verdicts) => {
-        const place = schema ? placeInput(ctx, entry, schema, dataPath) : { op: entry, dataPath }
-        for (const [segments, untyped] of verdicts) {
-          check(!untyped, { ...place, dataPath: `${place.dataPath}${pointer(...segments)}` })
-        }
-      }
-      for (const payload of inputPayloads(entry)) judgeValues(payload, 'request', state, report)
-    }
+    judgeUntyped(
+      ctx,
+      toolOperations(ctx).flatMap((entry) => [...inputPayloads(entry)]),
+      check,
+    )
   },
 }

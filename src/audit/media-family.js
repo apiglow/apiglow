@@ -1,12 +1,12 @@
 import { mediaEssence } from '../openapi/body-kind.js'
+import { lastToken } from './ref-pointer.js'
 
 // The media type a Media Type Object stands for, read off its pointer: the key
 // it sits under in a `content` map. A 3.2 `components/mediaTypes` entry is
 // keyed by a name, not a media type → null, and so is anything else.
 export function mediaTypeAt(dataPath) {
-  const tokens = dataPath.split('/')
-  if (tokens.at(-2) !== 'content') return null
-  return mediaEssence(tokens.at(-1).replaceAll('~1', '/').replaceAll('~0', '~'))
+  if (dataPath.split('/').at(-2) !== 'content') return null
+  return mediaEssence(lastToken(dataPath))
 }
 
 // Name-value media types: what an `encoding` map applies to.

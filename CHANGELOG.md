@@ -37,10 +37,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   no longer matches anything fails the run until `--prune-baseline` drops
   it. Reports as console text, Markdown (for a pull request or a GitHub job
   summary) or a versioned JSON report whose findings carry a stable
-  fingerprint and whose rules come with their rationale and fix — what a
-  script or an agent reads. One run writes several of them with
-  `--report <format>=<file>`, including the formats CI platforms display
-  themselves: SARIF for GitHub code scanning, GitHub annotations on the
+  fingerprint and whose rules come with their message template, rationale
+  and fix — what a script or an agent reads. One run writes several of
+  them with `--report <format>=<file>`, including the formats CI platforms
+  display themselves: SARIF for GitHub code scanning, GitHub annotations on the
   pull request's diff, GitLab Code Quality for the merge-request widget.
   `--min-severity` and `--only-new` trim what a report lists without
   changing the verdict. Every finding is placed at `file:line:column` in
@@ -71,8 +71,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   Paths and parameters: a path that is no path template, two paths that are
   the same once their variables are renamed, a parameter listed twice, a
   header name `fetch` refuses, a style the parameter's location does not
-  allow, a server URL variable with no definition, the 3.2 `querystring`
-  parameter and `additionalOperations` used against their rules.
+  allow, a server URL that is no URL or whose variable has no definition,
+  the 3.2 `querystring` parameter and `additionalOperations` used against
+  their rules.
   References and the rest: a `$ref` that leads nowhere or to the wrong kind
   of object, siblings next to a `$ref` other tools ignore, a runtime
   expression that does not parse, an encoding the payload never uses, an
@@ -99,7 +100,7 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   OAuth password and implicit flows RFC 9700 retires, a 429 without
   `Retry-After`, a `format: password` field returned in a response, and
   request bodies whose strings and arrays have no maximum size.
-- A sixth audit category, agent readiness: what an AI agent gets when it
+- An agent readiness category in the audit: what an AI agent gets when it
   calls your API through a tool — an MCP bridge, a GPT Action, Semantic
   Kernel. Fifteen rules, each naming what concretely goes wrong: an
   `operationId` OpenAI refuses as a tool name, two operations whose tools
@@ -111,7 +112,7 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   where no tool sees them, errors returned as prose, and what this
   documentation's own MCP export cannot carry (cookies, credentials outside
   a header).
-- 31 more audit rules, 146 in all. HTTP semantics: a body on a GET, HEAD
+- 31 more audit rules, 147 in all. HTTP semantics: a body on a GET, HEAD
   or TRACE, content on a 204, a 304 or any HEAD response, a redirect with no
   `Location`, a 405 with no `Allow`, a 206 with no `Content-Range`, a date
   header declared as RFC 3339 instead of an HTTP-date, a 3.2 QUERY with no
@@ -129,8 +130,7 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   apart, a document with no operation at all.
 - `apiglow audit --explain <rule>` prints one rule — why it matters, how to
   fix it, its severity and options — and `--list-rules` prints them all as
-  JSON. The JSON report now carries each rule's message template next to
-  its rationale and fix.
+  JSON.
 - The npm package ships an agent skill, `skills/apiglow-audit/SKILL.md`:
   drop it where your coding agent reads skills and it runs the audit, fixes
   the findings and audits again — without inventing what your API does, and

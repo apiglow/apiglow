@@ -1,4 +1,5 @@
 import { listOf } from '../../openapi/model.js'
+import { isObject } from '../value-check.js'
 
 // A discriminator naming a property the payload is not bound to carry. The
 // discriminating property is what tells a client which variant it received;
@@ -83,5 +84,3 @@ function childrenByParent(components) {
   }
   return children
 }
-
-const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)

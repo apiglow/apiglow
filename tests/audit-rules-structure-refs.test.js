@@ -458,6 +458,11 @@ describe('responses-success', () => {
     expect(run(responsesSuccess, operation({})).findings).toHaveLength(1)
   })
 
+  it('reads a lowercase range as no success, as status-code-valid does', () => {
+    const result = run(responsesSuccess, operation({ '2xx': { description: 'OK' } }))
+    expect(result.findings).toHaveLength(1)
+  })
+
   it('leaves webhooks and callbacks alone', () => {
     const result = run(
       responsesSuccess,
@@ -575,5 +580,11 @@ describe('security-scopes', () => {
       '/security/0/oauth/0 pets:write oauth2',
       '/security/1/key/0 admin apiKey',
     ])
+  })
+
+  it('finds no scheme in what a requirement name inherits', () => {
+    const requirement = JSON.parse('{ "__proto__": ["x"], "constructor": ["y"] }')
+    const result = run(securityScopes, document('3.0.3', [requirement]))
+    expect(result.findings).toEqual([])
   })
 })

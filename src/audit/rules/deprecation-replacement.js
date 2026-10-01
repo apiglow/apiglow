@@ -1,17 +1,21 @@
 import { deprecableElements, isDeprecated } from '../deprecated.js'
 import { headerExamples } from '../deprecation-headers.js'
 import { hasText } from '../text.js'
+import { isObject } from '../value-check.js'
 
 // A deprecation that says nothing is a dead end: the reader learns the thing is
 // going away and not what to do about it. Only the deprecated elements are
 // checked here — the rest is the inventory rule's business.
 //
 // The heuristic is deliberately loose. It catches the flag set and then
-// forgotten, not the badly worded migration note: any hint of "there is a
-// successor" or "there is a date" passes. Both languages the product ships in
-// are covered, since the schema's prose is the author's, not ours.
+// forgotten, not the badly worded migration note: any word pointing to a
+// successor, or a date, passes. Both languages the product ships in are
+// covered, since the schema's prose is the author's, not ours. Whole words
+// only — "Removes a pet" or "utilisateurs" name no successor — and bounded by
+// letters rather than `\b`, which takes `é` and `à` for word breaks.
 const HINT_RE =
-  /(instead|replac|superseded|migrat|prefer|sunset|remov|will be dropped|utilis|remplac|à la place|préfér|supprim)/i
+  /(?<![\p{L}\p{N}])(use|instead|replaced|replacement|superseded|successor|migrat\p{L}*|sunset|prefer|in favou?r of|utilisez|utiliser|remplacée?s?|remplaçant|successeur|migrer|préférez|privilégiez|au profit|à la place)(?![\p{L}\p{N}])/iu
+const DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/
 
 // `sunset` as a field (or the `x-sunset` extension) is the machine-readable
 // half of the same information: a date is an answer.
@@ -37,7 +41,7 @@ export const deprecationReplacement = {
       const prose = [node.description, node.summary].filter(hasText).join(' ')
       const dated = SUNSET_FIELDS.some((field) => node[field] !== undefined)
       const announced = node === target.op?.op && answersOnTheWire(node)
-      check(dated || announced || HINT_RE.test(prose), target)
+      check(dated || announced || HINT_RE.test(prose) || DATE_RE.test(prose), target)
     }
   },
 }
@@ -57,8 +61,4 @@ function answersOnTheWire(operation) {
     }
   }
   return false
-}
-
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

@@ -1,5 +1,6 @@
 import { isSelfDescribingMedia } from '../payload-media.js'
 import { pointer } from '../pointer.js'
+import { hasText } from '../text.js'
 
 // A response with no word of description and no content that says anything
 // renders as an empty status line: the reader learns that the code exists and
@@ -26,9 +27,7 @@ export const responseSubstance = {
         )
         // 3.2 makes `description` optional and adds `summary`: either one is
         // substance.
-        const described = [response.description, response.summary].some(
-          (text) => typeof text === 'string' && text.trim(),
-        )
+        const described = [response.description, response.summary].some(hasText)
         check(hasContent || described, {
           op: entry,
           dataPath: `${entry.pointer}${pointer('responses', status)}`,

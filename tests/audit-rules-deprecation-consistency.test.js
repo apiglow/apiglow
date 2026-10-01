@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { runRule } from '../src/audit/engine.js'
-import { identifierKey } from '../src/audit/identifier-key.js'
+import { fileNameKey, identifierKey } from '../src/audit/identifier-key.js'
 import { deprecatedButRequired } from '../src/audit/rules/deprecated-but-required.js'
 import { deprecationHeaderFormat } from '../src/audit/rules/deprecation-header-format.js'
 import { operationIdCollision } from '../src/audit/rules/operation-id-collision.js'
@@ -26,10 +26,17 @@ const withHeaders = (headers, extra = {}) =>
   })
 
 describe('identifierKey', () => {
-  it('drops case and the separators a generator turns into one identifier', () => {
+  it('camelizes like the generator: separators dropped, other letters keep their case', () => {
     const keys = ['getUser', 'get_user', 'GetUser', 'get-user', 'get.user', 'get user']
-    expect(new Set(keys.map(identifierKey))).toEqual(new Set(['getuser']))
+    expect(new Set(keys.map(identifierKey))).toEqual(new Set(['getUser']))
     expect(identifierKey('Pet.Status')).toBe(identifierKey('pet_status'))
+    expect(identifierKey('userId')).not.toBe(identifierKey('userid'))
+    expect(identifierKey('items[0]')).toBe(identifierKey('items_0'))
+  })
+
+  it('takes a file name in either case', () => {
+    expect(fileNameKey('PetStatus')).toBe(fileNameKey('Petstatus'))
+    expect(fileNameKey('Pet.Status')).toBe(fileNameKey('petstatus'))
   })
 
   it('keeps the symbols a generator spells out', () => {
@@ -340,8 +347,11 @@ describe('operation-id-collision', () => {
     })
 
   it('passes distinct identifiers', () => {
-    const result = run(operationIdCollision, operations('getUser', 'listUsers', 'getUserById'))
-    expect(result).toMatchObject({ checks: 3, findings: [] })
+    const result = run(
+      operationIdCollision,
+      operations('getUser', 'listUsers', 'getUserById', 'getuser', 'getUserid'),
+    )
+    expect(result).toMatchObject({ checks: 5, findings: [] })
   })
 
   it('flags each later spelling of one identifier', () => {
@@ -379,8 +389,11 @@ describe('property-name-collision', () => {
   const schemaDoc = (properties) =>
     doc({ components: { schemas: { User: { type: 'object', properties } } } })
 
-  it('passes properties with distinct identifiers, `+1` and `-1` included', () => {
-    const result = run(propertyNameCollision, schemaDoc({ id: {}, name: {}, '+1': {}, '-1': {} }))
+  it('passes properties with distinct identifiers, `+1` and `-1` and case included', () => {
+    const result = run(
+      propertyNameCollision,
+      schemaDoc({ id: {}, name: {}, '+1': {}, '-1': {}, userId: {}, userid: {}, USERID: {} }),
+    )
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
@@ -418,6 +431,13 @@ describe('schema-name-collision', () => {
   it('passes distinct names', () => {
     const result = run(schemaNameCollision, schemas('Pet', 'PetStatus', 'Owner'))
     expect(result).toMatchObject({ checks: 3, findings: [] })
+  })
+
+  it('flags names differing by case alone: one file on a case-insensitive file system', () => {
+    const result = run(schemaNameCollision, schemas('PetStatus', 'Petstatus'))
+    expect(result.findings.map((finding) => finding.params)).toEqual([
+      { name: 'Petstatus', other: 'PetStatus' },
+    ])
   })
 
   it('flags every later name generating the same type', () => {

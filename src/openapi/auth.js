@@ -48,15 +48,41 @@ export function platformLimits(scheme) {
   return limits
 }
 
-// Effective security requirements of an operation: its own `security`
-// if it has one — including [] which disables auth — otherwise the document's
-// global one. An empty requirement {} in the list makes auth optional.
+// The security that applies to an operation, read from the raw `security`
+// values (OAS Security Requirement Object) — the one reading the try-it and
+// the audit share. The operation's own list when it has one, `[]` included,
+// else the document's. → { alternatives, declared, anonymous }:
+// - `alternatives`: the requirement objects, one of which is enough; a
+//   malformed entry (`null`, a string) is left out, and a `security` that is
+//   not a list at all counts as absent;
+// - `anonymous`: a caller without credentials gets in — no requirement
+//   applies, or one alternative is empty (`{}`, optional security);
+// - `declared`: the access the operation has was written on purpose — a
+//   non-empty list, or an empty one on the operation itself. A root
+//   `security: []` reads as nothing written: generators and templates emit it
+//   by default, where `[]` on one operation is a decision about that one. A
+//   root `{}` alternative is still a statement (optional authentication).
+// A list holding only malformed entries is neither anonymous nor secured.
+export function securityRequirements(own, root) {
+  const list = Array.isArray(own) ? own : Array.isArray(root) ? root : []
+  const alternatives = list.filter(
+    (entry) => entry !== null && typeof entry === 'object' && !Array.isArray(entry),
+  )
+  return {
+    alternatives,
+    declared: list.length > 0 || Array.isArray(own),
+    anonymous: !list.length || alternatives.some((entry) => !Object.keys(entry).length),
+  }
+}
+
+// The schemes an operation's credentials form offers, and whether sending
+// none is allowed too (`optional`: an empty `{}` alternative).
 export function applicableSchemes(model, op) {
-  const requirements = op.security ?? model.security ?? []
+  const { alternatives } = securityRequirements(op.security, model.security)
   const byName = new Map(model.securitySchemes.map((s) => [s.name, s]))
   const schemes = []
   let optional = false
-  for (const requirement of requirements) {
+  for (const requirement of alternatives) {
     const names = Object.keys(requirement)
     if (!names.length) {
       optional = true

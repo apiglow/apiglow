@@ -1,4 +1,4 @@
-import { placeOf } from '../locate.js'
+import { placeOf, sentByTheApi } from '../locate.js'
 import { serverDefaultUrl } from '../security.js'
 
 // A server URL left at the documentation placeholder: a host RFC 2606 reserves
@@ -9,10 +9,12 @@ import { serverDefaultUrl } from '../security.js'
 // root server: from this one, every request goes to a host that is not the
 // API, and the reader learns it from a network error.
 //
-// The URL is read with its variables at their defaults (`serverDefaultUrl`),
-// the base this documentation sends to. `.test` and `localhost` are not
+// The URL is read as this documentation sends to it (`serverDefaultUrl`):
+// variables at their defaults, a relative URL resolved against the document's
+// 3.2 `$self` — without one, it takes the host of wherever the document is
+// served from, which the audit is not told. `.test` and `localhost` are not
 // placeholders: RFC 6761 sets them aside for testing and local servers, which
-// a document may legitimately point at. A relative URL takes the page's host.
+// a document may legitimately point at.
 // Every Server the client calls: root, Path Item, Operation; not a Link's
 // `server`, nor one inside a webhook or a callback (the API calls those).
 // Plain http is `server-https`'s; an undeclared variable, `server-variables`'.
@@ -24,8 +26,8 @@ export const serverPlaceholder = {
     for (const { type, node, dataPath } of ctx.objects) {
       if (type !== 'Server' || typeof node.url !== 'string') continue
       if (dataPath.endsWith('/server')) continue
-      if (dataPath.startsWith('/webhooks/') || dataPath.includes('/callbacks/')) continue
-      const url = serverDefaultUrl(node)
+      if (sentByTheApi(dataPath)) continue
+      const url = serverDefaultUrl(ctx, node)
       const host = hostOf(url)
       if (host === null) continue
       check(!isReserved(host), {
