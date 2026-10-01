@@ -575,9 +575,21 @@ function rationale(finding) {
 // rationale is what makes it actionable, so it shows straight away rather than
 // behind a second disclosure. A group passes its first finding — the two
 // rationales that interpolate a finding's own value then name that one, which
-// the occurrences listed right below make readable.
+// the occurrences listed right below make readable. Why it matters, then what
+// to do: the second line is the recipe, kept apart so it reads as one.
 function rationaleText(finding) {
-  return el('p', 'text-xs text-subtle', text(t(`audit.rule.${finding.ruleId}.why`, finding.params)))
+  const key = `audit.rule.${finding.ruleId}`
+  return el(
+    'div',
+    'flex flex-col gap-1 text-xs',
+    el('p', 'text-subtle', text(t(`${key}.why`, finding.params))),
+    el(
+      'p',
+      '',
+      el('span', 'font-semibold', text(`${t('audit.howToFix')} `)),
+      text(t(`${key}.fix`, finding.params)),
+    ),
+  )
 }
 
 function emptyState() {

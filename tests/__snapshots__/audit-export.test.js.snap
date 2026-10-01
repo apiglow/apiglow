@@ -20,16 +20,19 @@ Operations: 19 · Groups: 3 · Webhooks: 2 · Security schemes: 2 · Schemas: 64
 
 - **Error** — operationId “getPet” is used by more than one operation.
   \`GET /pet/{petId}\` · \`/paths/~1pet~1{petId}/get\`
-  *Why it matters*: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation. Rename one of them.
+  *Why it matters*: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.
+  *How to fix:* Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).
 
 ## Docs readiness — 74 % · 1 warning(s) · 1 note(s)
 
 - **Warning** — Security scheme “apiKey” has no description.
   \`components.securitySchemes.apiKey\` · \`/components/securitySchemes/apiKey\`
   *Why it matters*: The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
+  *How to fix:* Add a description to the scheme saying where to get the credential and in what form to paste it.
 - **Note** — This operation carries no tag.
   \`DELETE /admin/reset\` · (Hidden operation) · \`/paths/~1admin~1reset/delete\`
-  *Why it matters*: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to. Give it at least one tag.
+  *Why it matters*: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
+  *How to fix:* Add at least one tag, and declare it with a description in the top-level tags list.
 "
 `;
 
@@ -66,7 +69,8 @@ Operations: 19 · Groups: 3 · Webhooks: 2 · Security schemes: 2 · Schemas: 64
 Correctness — 60 %
 
   Error · Duplicate operationId (1) [duplicate-operation-id]
-    Why it matters: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation. Rename one of them.
+    Why it matters: An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.
+    How to fix: Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).
     - operationId “getPet” is used by more than one operation.
       GET /pet/{petId} · /paths/~1pet~1{petId}/get
 
@@ -74,11 +78,13 @@ Docs readiness — 74 %
 
   Warning · Security scheme without description (1) [security-scheme-described]
     Why it matters: The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
+    How to fix: Add a description to the scheme saying where to get the credential and in what form to paste it.
     - Security scheme “apiKey” has no description.
       components.securitySchemes.apiKey · /components/securitySchemes/apiKey
 
   Note · Operation without tag (1) [operation-tagged]
-    Why it matters: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to. Give it at least one tag.
+    Why it matters: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
+    How to fix: Add at least one tag, and declare it with a description in the top-level tags list.
     - This operation carries no tag.
       DELETE /admin/reset · (Hidden operation) · /paths/~1admin~1reset/delete
 "

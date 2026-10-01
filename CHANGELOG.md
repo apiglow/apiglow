@@ -37,6 +37,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   description "The signed mandate" plus an empty field — and the description
   then shows cut short in the documentation and its exports, which looks like
   their bug.
+- Every audit rule now says how to fix what it found, next to why it matters:
+  on the page, in the Markdown report and in the CLI's console output.
 
 ### Changed
 

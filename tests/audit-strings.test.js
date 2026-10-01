@@ -4,14 +4,15 @@ import { CATEGORIES, SEVERITIES } from '../src/audit/constants.js'
 import { RULES } from '../src/audit/rules/index.js'
 
 // Every audit string, checked against the registry rather than against whatever
-// a fixture happens to trigger. A rule shipped without its three strings shows
+// a fixture happens to trigger. A rule shipped without its strings shows
 // up on the page as a raw key — and only on the documents that fire it, which
 // is the worst way to find out.
 //
 // `label` is the one the grouped report added: it names the rule when its
 // findings are folded together, where a message interpolated with one
-// occurrence's own values would speak for all of them.
-const FIELDS = ['message', 'why', 'label']
+// occurrence's own values would speak for all of them. `fix` is the recipe
+// next to the `why`, and what an agent fixing the document reads.
+const FIELDS = ['message', 'why', 'fix', 'label']
 
 const EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8'))
 const FR = JSON.parse(readFileSync(new URL('../i18n/fr.json', import.meta.url), 'utf8'))

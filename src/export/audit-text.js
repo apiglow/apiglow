@@ -50,6 +50,7 @@ export function toAuditText(report) {
         // The rationale with the first occurrence's values, as the page shows
         // it: hoisted to the group, stated once.
         `    ${t('audit.why')}: ${t(`audit.rule.${first.ruleId}.why`, first.params)}`,
+        `    ${t('audit.howToFix')} ${t(`audit.rule.${first.ruleId}.fix`, first.params)}`,
       )
       for (const finding of group) lines.push(...occurrenceLines(finding))
     }

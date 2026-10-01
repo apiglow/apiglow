@@ -120,12 +120,15 @@ The report also carries its own identity and perimeter:
   "callbacks" figure: the scope counts the same units as the home page,
   and nothing in the app counts callbacks.
 
-Every rule ships three mandatory i18n strings — `audit.rule.{id}.label`,
-`.message`, `.why` — in both `en` and `fr` (rules 9/17 of CLAUDE.md). The
-label names a folded group, where a message interpolated with one
-occurrence's values could not speak for all of them; the rationale says
-*why it matters and what to do*, in one or two sentences — the actionable
-half is the product. `tests/audit-strings.test.js` checks all three over
+Every rule ships four mandatory i18n strings — `audit.rule.{id}.label`,
+`.message`, `.why`, `.fix` — in both `en` and `fr` (rules 9/17 of
+CLAUDE.md). The label names a folded group, where a message interpolated
+with one occurrence's values could not speak for all of them. The two
+others split the actionable half, which is the product: `.why` says why it
+matters, in one or two sentences; `.fix` is the recipe — what to write, and
+where — shown under it on the page and in both exports, and what an agent
+fixing the document reads. A `.fix` may interpolate the finding's params
+like the message does. `tests/audit-strings.test.js` checks all four over
 the registry, in both languages.
 
 ### Scoring
@@ -488,7 +491,7 @@ PASSES in a 3.0 document instead of being punished for it.
   and a chevron at the far right turning with the fold state (the native
   marker is suppressed, and nothing else would say the row opens; at the
   edge the chevrons line up in a column instead of reading as punctuation
-  mid-row). Expanding shows the rationale once — hoisted to the group,
+  mid-row). Expanding shows the rationale and its fix once — hoisted to the group,
   stated expanded rather than behind a second disclosure — then the
   occurrences: message, deep link (or "hidden" badge), **50 at a time**,
   materialized on first expansion and never before. The count is always

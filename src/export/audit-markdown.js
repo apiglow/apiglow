@@ -130,5 +130,6 @@ function findingLines(finding) {
   if (finding.dataPath) where.push(`\`${finding.dataPath}\``)
   if (where.length) item.push(`  ${where.join(' · ')}`)
   item.push(`  *${t('audit.why')}*: ${t(`audit.rule.${finding.ruleId}.why`, finding.params)}`)
+  item.push(`  *${t('audit.howToFix')}* ${t(`audit.rule.${finding.ruleId}.fix`, finding.params)}`)
   return item
 }

@@ -164,7 +164,7 @@ test('each category section carries its own counts', async ({ page }) => {
   await expect(heading).not.toContainText('error(s)')
 })
 
-test('a finding names its rule, its rationale and where it applies', async ({ page }) => {
+test('a finding names its rule, its rationale, its fix and where it applies', async ({ page }) => {
   await gotoApp(page, '#/audit')
   // A rule that fired once has nothing to fold: its own message is shown, and
   // the rationale stays one click away as on every other row.
@@ -172,9 +172,12 @@ test('a finding names its rule, its rationale and where it applies', async ({ pa
   await expect(finding).toContainText('Warning')
   await expect(finding).toContainText('documents no error response')
   const why = finding.locator('details')
-  await expect(why.locator('p')).toBeHidden()
+  const [rationale, fix] = [why.locator('p').first(), why.locator('p').nth(1)]
+  await expect(rationale).toBeHidden()
   await why.locator('summary').click()
-  await expect(why.locator('p')).toContainText('validation, conflict and permission errors')
+  await expect(rationale).toContainText('validation, conflict and permission errors')
+  // The recipe sits under the reason, as its own line.
+  await expect(fix).toContainText('How to fix: Document the 4xx responses')
 
   // A finding outside any operation is located by its pointer into the document.
   const scheme = report(page).locator('[data-rule-id="security-scheme-described"]')
