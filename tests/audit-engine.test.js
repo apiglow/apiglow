@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gradeFor } from '../src/audit/constants.js'
+import { gradeFor, shareCredit } from '../src/audit/constants.js'
 import { auditSchema, createAuditContext, runRule } from '../src/audit/engine.js'
 import { auditContext, auditInput, doc, okResponse } from './audit-context.js'
 
@@ -239,6 +239,32 @@ describe('audit context', () => {
 })
 
 describe('audit scoring', () => {
+  it('gives a check standing for several items a degressive partial credit', () => {
+    expect(shareCredit(0, 15)).toBe(1)
+    expect(shareCredit(15, 15)).toBe(0)
+    expect(shareCredit(1, 15)).toBeCloseTo(0.742, 3)
+    expect(shareCredit(10, 15)).toBeCloseTo(0.184, 3)
+    // Each next failing item costs less than the one before.
+    const costs = [1, 2, 3, 4].map((k) => shareCredit(k - 1, 15) - shareCredit(k, 15))
+    expect(costs).toEqual([...costs].sort((a, b) => b - a))
+    expect(shareCredit(0, 0)).toBe(1)
+  })
+
+  it('scores a partial credit as that share of the check, and still reports it', () => {
+    const partial = {
+      id: 'p',
+      category: 'correctness',
+      severity: 'info',
+      run(_ctx, check) {
+        check(0.25)
+        check(1)
+      },
+    }
+    const report = auditSchema(auditInput(doc()), [partial])
+    expect(report.categories[0]).toMatchObject({ score: 63, checks: 2 })
+    expect(report.counts.total).toBe(1)
+  })
+
   it('weighs a check by its rule severity', () => {
     // error (3) failed, info (1) passed → 1 point out of 4.
     const report = auditSchema(auditInput(minimal()), [

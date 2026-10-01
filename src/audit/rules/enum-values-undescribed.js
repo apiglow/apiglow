@@ -1,4 +1,5 @@
 import { enumOf } from '../../openapi/model.js'
+import { shareCredit } from '../constants.js'
 import { placeInput } from '../input-shape.js'
 import { abbreviate, isSubstantive } from '../text.js'
 import { SCHEMA_DEPTH } from '../schema-walk.js'
@@ -70,7 +71,7 @@ export const enumValuesUndescribed = {
     for (const [schema, { entry, dataPath, contexts }] of reached) {
       const missing = unexplained(schema, [...contexts.values()])
       if (!missing) continue
-      check(!missing.list.length, {
+      check(shareCredit(missing.list.length, missing.count), {
         ...placeInput(ctx, entry, schema, dataPath),
         params: { count: missing.count, missing: abbreviate(missing.list) },
       })

@@ -178,6 +178,14 @@ checks all four over the registry, in both languages.
 
 - Each rule application is a pass/fail check against a target (an
   operation, a parameter, a component, the document).
+- A check standing for several items — a schema's properties
+  (`property-described`), an enum's values (`enum-values-undescribed`), an
+  operation's inputs (`unbounded-input`) — earns partial credit,
+  `1 − √(failing ÷ items)` (`shareCredit`): in between failing the whole
+  unit on one item and counting every item alone, and degressive — the
+  first wrong item costs the most, each next one less. One of fifteen costs
+  a quarter of the check, five a little over half, ten four-fifths, all of
+  them the whole check. Anything short of full credit is a finding.
 - Category score = weighted pass rate over its applicable checks, weights
   by severity: error 3, warning 2, info 1. Not-applicable checks don't
   count (an API with no deprecations scores 100 % on deprecation hygiene,
@@ -875,7 +883,8 @@ that merely mentions its name ("User id of the account owner") is substance.
   `description` (a `title` counts unless it reads the name back). One check
   per schema, its finding naming the undescribed properties: the author
   writes them in one sitting, and self-explanatory `id` / `created_at`
-  fields must not read — or weigh — as hundreds of findings.
+  fields must not read as hundreds of findings. The check's credit is
+  degressive in the share left undescribed (Scoring, §3).
 - `error-responses-documented` (`warning`) — no error responses at all
   (no 4xx, and no `default`, which covers them) on a mutating operation —
   3.2's `query` method counts as a read. Skips webhooks and callbacks:
@@ -1412,7 +1421,8 @@ An operation's inputs are its parameters and its non-file request bodies
   enum of such words is not checked, and in a mixed one only the codes
   (`A1`, `3`, `x_ok`) are asked for. `null` and boolean enums are skipped;
   one check per input enum holding a code, each schema object once, a
-  component's at the component.
+  component's at the component, its credit degressive in the share of
+  values left unexplained (Scoring, §3).
   Whether the enum is described at all is `property-described`'s and
   `parameter-described`'s.
 - `parameter-name-collision` (`warning`) — two inputs of one tool operation
@@ -1636,7 +1646,8 @@ applies to all of them).
   binary`, or a binary `contentMediaType` with no `contentEncoding`) is not
   a string to bound; numbers are out of scope; an untyped input is
   `untyped-input`'s. One check per operation with at least one string or
-  array in its body, its finding counting the unbounded values and naming
+  array in its body, its credit degressive in the share of them left
+  unbounded (Scoring, §3), its finding counting the unbounded values and naming
   the first three (`owner.name`, `tags[]`, `labels.*`, a body root by its
   media type); a component used at two places of the body (`billing`,
   `shipping`) counts at each, the walk bounded at 5000 positions per
@@ -1912,11 +1923,14 @@ npx apiglow audit --config apidoc.config.json
   - What the text itself gets wrong (`document-syntax`) is placed at the
     line and column the parser reported: where a text is broken, a pointer
     means nothing.
-  - One parser for both syntaxes: the `yaml` package's document, which keeps
-    the source range of every node, keys included (JSON is YAML), and reads
-    a text no strict parser accepts too. A schema fetched from a URL or
-    inline in a config has no file, and its findings no position. Cost on
-    the repo's 12 MB schema: about a second and a half.
+  - The text is read once, by the same tolerant reader the loader falls
+    back to (`src/openapi/read-document.js`), so a broken file is placed as
+    it was audited. A JSON text is placed by a scan of its own tokens; a
+    YAML one by the source ranges the `yaml` package's document keeps. The
+    index is built on first use, a byte order mark counts as no column. A
+    schema fetched from a URL or inline in a config has no file, and its
+    findings no position. Cost on the repo's 12 MB schema: under 0.2 s, the
+    whole `apiglow audit` run about 1.2 s.
 - **`--output <file>`** writes the report to a file instead of stdout.
 - **`--report <format>=<file>`**, repeatable, writes one more report per
   occurrence from the same run — the JSON for a script, the Markdown for
@@ -1925,7 +1939,7 @@ npx apiglow audit --config apidoc.config.json
   empty. Two reports aimed at one file are refused.
 - **What a report lists**, in every format: `--min-severity
   error|warning|info` keeps the findings that severe or worse — the
-  GitHub REST schema yields some 33 600 findings, 32 500 of them `info`;
+  GitHub REST schema yields some 5 000 findings, 4 000 of them `info`;
   `--only-new`, with `--baseline`, keeps those the baseline does not list.
   - The counts, the scores, the grade and every check still read the whole
     report: a filter changes what is shown, never the verdict. Text and

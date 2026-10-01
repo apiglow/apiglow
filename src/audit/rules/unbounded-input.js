@@ -1,3 +1,4 @@
+import { shareCredit } from '../constants.js'
 import { listOf } from '../../openapi/model.js'
 import { valueTypes } from '../input-shape.js'
 import { lastToken } from '../ref-pointer.js'
@@ -55,12 +56,12 @@ export const unboundedInput = {
   run(ctx, check) {
     const verdicts = new Map()
     for (const entry of toolOperations(ctx)) {
-      let sized = false
+      const sized = new Set()
       const unbounded = new Set()
       const visit = (schema, label) => {
         const verdict = verdictOf(schema, [], verdicts, 0)
         if (!verdict.sized.size) return
-        sized = true
+        sized.add(label)
         if (verdict.unbounded.size) unbounded.add(label)
       }
       const budget = { positions: POSITIONS }
@@ -69,8 +70,8 @@ export const unboundedInput = {
         // array, by its media type.
         if (input.kind === 'body') walkValues(input.schema, input.mediaType, visit, budget)
       }
-      if (!sized) continue
-      check(!unbounded.size, {
+      if (!sized.size) continue
+      check(shareCredit(unbounded.size, sized.size), {
         op: entry,
         params: { count: unbounded.size, names: abbreviate([...unbounded]) },
       })

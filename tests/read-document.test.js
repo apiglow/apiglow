@@ -5,8 +5,13 @@ import { readDocument } from '../src/openapi/read-document.js'
 // The tolerant reader (docs/architecture.md §14.21): whatever state a text is
 // in, the best document it holds and what is wrong with it, line and column.
 
-const read = (name) =>
-  readDocument(readFileSync(new URL(`fixtures/broken/${name}`, import.meta.url), 'utf8'))
+// What the reader says of a text; its `ast` is the CLI's positions' business.
+const read = (name) => {
+  const { document, problems } = readDocument(
+    readFileSync(new URL(`fixtures/broken/${name}`, import.meta.url), 'utf8'),
+  )
+  return { document, problems }
+}
 const at = ({ problems }) => problems.map(({ code, line, column }) => [code, line, column])
 
 const DOC = { openapi: '3.1.0', info: { title: 'T', version: '1' } }

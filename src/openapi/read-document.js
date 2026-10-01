@@ -5,7 +5,10 @@ import { isAlias, LineCounter, parseDocument, Scalar, visit } from 'yaml'
 // strict parser would have returned had it accepted it, `undefined` when the
 // text holds nothing — and `problems` says what is wrong with the text, each at
 // its 1-based line and column, `detail` being the parser's own one-line
-// message: [{ code, line, column, detail }]. The loader turns to it only once
+// message: [{ code, line, column, detail }]. A text read as YAML also hands
+// back `ast`, the parsed `yaml` Document, whose nodes keep their source ranges
+// (the CLI's positions walk it rather than parse the text twice). The loader
+// turns to it only once
 // the strict read has failed, so a healthy schema never pays for this module;
 // the browser fetches it as a file of its own, next to app.js.
 
@@ -81,7 +84,7 @@ function readYaml(text) {
     if (node?.anchor) anchors.add(node.anchor)
     return undefined
   })
-  return { document: toJS(doc, problems, at), problems: placed(problems) }
+  return { document: toJS(doc, problems, at), problems: placed(problems), ast: doc }
 }
 
 // In line order, one per place: a defect the parser trips over twice — a

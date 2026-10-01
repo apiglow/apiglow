@@ -1,3 +1,4 @@
+import { shareCredit } from '../constants.js'
 import { abbreviate, isSubstantive } from '../text.js'
 import { isObject } from '../value-check.js'
 
@@ -5,11 +6,12 @@ import { isObject } from '../value-check.js'
 // next to each field; without them the reader gets a name and a type and has to
 // guess the rest.
 //
-// One check per schema with properties, failing on any property left
-// undescribed, and naming them: a schema is where the author writes them, in
-// one sitting, and a document with hundreds of self-explanatory `id` and
-// `created_at` fields would otherwise read as hundreds of findings — and
-// weigh as much in the score. `info`, where the other completeness rules are
+// One check per schema with properties, naming those left undescribed: a
+// schema is where the author writes them, in one sitting, and a document with
+// hundreds of self-explanatory `id` and `created_at` fields would otherwise
+// read as hundreds of findings. Its credit is degressive in the share left
+// undescribed (`shareCredit`): one gap does not fail the whole schema, and
+// each next one costs less than the last. `info`, where the other completeness rules are
 // warnings: it is a polishing pass, not a documentation hole the size of an
 // undocumented operation.
 export const propertyDescribed = {
@@ -32,7 +34,7 @@ export const propertyDescribed = {
             !isSubstantive(property.title, { name }),
         )
         .map(([name]) => name)
-      check(!missing.length, {
+      check(shareCredit(missing.length, properties.length), {
         op,
         location,
         dataPath: `${dataPath}/properties`,

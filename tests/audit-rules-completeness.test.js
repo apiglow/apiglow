@@ -146,6 +146,8 @@ describe('property-described', () => {
       dataPath: '/components/schemas/Pet/properties',
       params: { count: 1, names: 'id' },
     })
+    // One gap out of three costs the schema part of its check, not all of it.
+    expect(result.passedWeight).toBeCloseTo(1 + (1 - Math.sqrt(1 / 3)), 5)
   })
 
   // What code generators emit for every property: the name, title-cased.

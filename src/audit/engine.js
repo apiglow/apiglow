@@ -158,13 +158,17 @@ export function runRule(rule, ctx, severityAt = (_dataPath, own) => own) {
   let checks = 0
   let weight = 0
   let passedWeight = 0
+  // `passed`: a boolean, or the credit earned in [0, 1] by a check standing
+  // for several items (`shareCredit`); anything short of full credit is a
+  // finding.
   const check = (passed, target = {}) => {
     const severity = severityAt(dataPathOf(target), target.severity ?? rule.severity)
     if (!severity) return
+    const credit = typeof passed === 'number' ? Math.max(0, Math.min(1, passed)) : passed ? 1 : 0
     checks += 1
     weight += SEVERITY_WEIGHT[severity]
-    if (passed) passedWeight += SEVERITY_WEIGHT[severity]
-    else findings.push({ ...buildFinding(rule, target), severity })
+    passedWeight += SEVERITY_WEIGHT[severity] * credit
+    if (credit < 1) findings.push({ ...buildFinding(rule, target), severity })
   }
   rule.run(ctx, check)
   return { checks, weight, passedWeight, findings }

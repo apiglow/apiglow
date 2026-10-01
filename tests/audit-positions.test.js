@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.js'
+import { sourceIndex, sourcePointer } from '../src/audit/positions.js'
 
 // Where a finding sits in the file its author edits (docs/audit.md §8.1).
 
 const place = (text, pointer) => {
-  const { offset, exact } = pointerIndex(text).find(pointer)
-  return { ...lineIndex(text)(offset), exact }
+  const index = sourceIndex(text)
+  return { ...index.locate(pointer), exact: index.find(pointer).exact }
 }
 
-describe('pointerIndex', () => {
+describe('sourceIndex', () => {
   const json =
     '{\n  "paths": {\n    "/pets": {\n      "get": { "parameters": [{ "name": "id" }] }\n    }\n  }\n}\n'
 
@@ -25,6 +25,16 @@ describe('pointerIndex', () => {
       column: 33,
       exact: true,
     })
+  })
+
+  it('scans JSON past escapes, nested arrays, a byte order mark and a repeated key', () => {
+    const text = '﻿{"a\\"b": [[1, {"c": "x\\\\"}], "]"], "d": 1, "d": 2}'
+    expect(place(text, '/a"b/0/1/c')).toEqual({ line: 1, column: 16, exact: true })
+    expect(place(text, '/a"b/1')).toEqual({ line: 1, column: 30, exact: true })
+    // `JSON.parse` keeps the last value of a repeated key; its place goes with it.
+    expect(place(text, '/d')).toEqual({ line: 1, column: 44, exact: true })
+    // The mark is no column: YAML text is placed the same way.
+    expect(place('\ufeffa:\n  b: 1\n', '/a/b')).toEqual({ line: 2, column: 3, exact: true })
   })
 
   it('falls back to the deepest node the text holds', () => {
@@ -68,7 +78,7 @@ describe('pointerIndex', () => {
   })
 })
 
-describe('pointerIndex on texts no strict parser accepts', () => {
+describe('sourceIndex on texts no strict parser accepts', () => {
   it('places a duplicate key at its last occurrence, the one whose value counts', () => {
     const text = 'info:\n  title: A\n  title: B\n'
     expect(place(text, '/info/title')).toEqual({ line: 3, column: 3, exact: true })

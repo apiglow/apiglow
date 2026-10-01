@@ -164,8 +164,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 ### Changed
 
 - The audit reports one thing to fix once. Undescribed properties make one
-  finding per schema, naming them (`property-described`), and weigh as one
-  check: GitHub's schema goes from 28,324 findings to 2,751. A missing
+  finding per schema, naming them (`property-described`): GitHub's schema
+  goes from 28,324 findings to 2,751. Such a schema — like an enum with
+  unexplained values, or an operation with unbounded inputs — loses part of
+  its check, more with each gap but less for each next one: one gap in
+  fifteen costs a quarter of it, all fifteen the whole. A missing
   example is asked of success responses only, once per payload — at the
   shared schema or response when there is one (`response-example`). A body
   on a GET or HEAD is reported once, as a body to remove, rather than also

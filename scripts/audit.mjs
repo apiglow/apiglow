@@ -22,7 +22,7 @@ import {
   toBaseline,
 } from '../src/audit/baseline.js'
 import { readAuditConfig } from '../src/audit/config.js'
-import { lineIndex, pointerIndex, sourcePointer } from '../src/audit/positions.js'
+import { sourceIndex, sourcePointer } from '../src/audit/positions.js'
 import { auditSchema } from '../src/audit/engine.js'
 import { SEVERITIES } from '../src/audit/constants.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
@@ -38,7 +38,6 @@ import { toAuditJson, toAuditRulesJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditRuleText, toAuditText } from '../src/export/audit-text.js'
 import { useDictionary } from '../src/i18n/index.js'
-import { readDocument } from '../src/openapi/read-document.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
 import { CliError, catalog, loadSpecModel, refUrl } from './cli-support.mjs'
 
@@ -136,14 +135,8 @@ async function placed(report, rootUrl) {
     if (!files.has(url.href)) {
       try {
         const text = await readFile(url, 'utf8')
-        const find = pointerIndex(text).find
-        const at = lineIndex(text)
-        const { document } = readDocument(text)
-        files.set(url.href, {
-          document,
-          file: displayPath(url),
-          locate: (pointer) => at(find(pointer).offset),
-        })
+        const { document, locate } = sourceIndex(text)
+        files.set(url.href, { document, file: displayPath(url), locate })
       } catch {
         files.set(url.href, null)
       }
