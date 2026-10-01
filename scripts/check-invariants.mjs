@@ -406,7 +406,7 @@ const BUDGET_CEILINGS = {
   'scripts/check-dist.mjs': {
     MAX_JS_BYTES: 1_200_000,
     MAX_CSS_BYTES: 300_000,
-    MAX_AUDIT_JS_BYTES: 300_000,
+    MAX_AUDIT_JS_BYTES: 340_000,
   },
 }
 

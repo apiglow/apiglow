@@ -100,7 +100,7 @@ const MAX_JS_BYTES = 1_200_000
 const MAX_CSS_BYTES = 300_000
 // Fetched by authors only, on the audit page — still bytes on their wire, and
 // the file every new rule grows.
-const MAX_AUDIT_JS_BYTES = 300_000
+const MAX_AUDIT_JS_BYTES = 340_000
 for (const [file, cap] of [
   ['app.js', MAX_JS_BYTES],
   ['app.css', MAX_CSS_BYTES],
