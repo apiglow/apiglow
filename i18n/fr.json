@@ -948,6 +948,7 @@
   "audit.settings.hint": "Analyse le schéma OpenAPI derrière cette documentation et signale ce qui est faux ou manquant, avec une note par catégorie.",
   "audit.intro": "Ce que ce schéma donne à voir aux outils qui le lisent, cette documentation comprise. Tout est calculé dans votre navigateur — rien n’est envoyé nulle part.",
   "audit.disabled": "L’audit du schéma est désactivé sur cette documentation.",
+  "audit.loadFailed": "L’audit du schéma n’a pas pu être chargé. Rechargez la page pour réessayer.",
   "audit.specOverlaid": "Cet audit note le schéma avec {count} overlay(s) OpenAPI que cette documentation applique ; le téléchargement donne le fichier publié, sans eux.",
   "audit.specOverlaidUser": "Cet audit note le schéma avec {count} overlay(s) OpenAPI appliqués, votre correctif local compris ; le téléchargement donne le fichier publié, sans eux.",
   "audit.api.version": "Version {version}",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { auditSchema, createAuditContext, gradeFor, runRule } from '../src/audit/engine.js'
+import { gradeFor } from '../src/audit/constants.js'
+import { auditSchema, createAuditContext, runRule } from '../src/audit/engine.js'
 import { auditContext, auditInput, doc, okResponse } from './audit-context.js'
 
 // Synthetic rules: the scoring must be verifiable without depending on what

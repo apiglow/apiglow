@@ -13,10 +13,11 @@ work. Design rationale: `docs/architecture.md` §14. Contributor guide: `CONTRIB
 ## Commands
 
 - `npm run dev` — Vite dev server (unbundled ESM sources)
-- `npm run build` — two passes that share nothing: the browser bundle
-  (`dist/app.js`, `dist/app.css`, `dist/i18n/*.json`, `dist/fonts/`) and the
-  author-side CLI (`dist/cli.js`, shipped as the `apiglow` bin —
-  `docs/seo.md` §4)
+- `npm run build` — three passes that share nothing: the browser bundle
+  (`dist/app.js`, `dist/app.css`, `dist/i18n/*.json`, `dist/fonts/`), the
+  schema audit it loads on demand (`dist/audit.js`, `docs/architecture.md`
+  §14.8) and the author-side CLI (`dist/cli.js`, shipped as the `apiglow`
+  bin — `docs/seo.md` §4)
 - `npm test` — Vitest (pure core only); must be green before any commit
   touching the core
 - `npm run test:e2e` — Playwright (Chromium) against the CDN simulation;
@@ -71,7 +72,7 @@ Rationale for each lives in `CONTRIBUTING.md` and `docs/architecture.md` §14.
 3. **The built CSS includes all standard daisyUI themes** (Tailwind/daisyUI
    config accordingly), otherwise `theme.available` silently breaks for end
    users.
-4. **All runtime asset paths** (`app.css`, `i18n/*.json`) resolve via
+4. **All runtime asset paths** (`app.css`, `i18n/*.json`, `audit.js`) resolve via
    `new URL('./…', import.meta.url)`. **Never `document.currentScript`**
    (null in an ES module). Verify the Vite build preserves this.
 5. **All HTML from external content** (OpenAPI descriptions, examples,

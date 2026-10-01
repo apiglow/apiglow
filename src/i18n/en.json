@@ -948,6 +948,7 @@
   "audit.settings.hint": "Analyzes the OpenAPI schema behind this documentation and reports what is wrong or missing, scored by category.",
   "audit.intro": "What this schema looks like to the tools that read it, this documentation included. Everything is computed in your browser — nothing is sent anywhere.",
   "audit.disabled": "The schema audit is disabled on this documentation.",
+  "audit.loadFailed": "The schema audit could not be loaded. Reload the page to try again.",
   "audit.specOverlaid": "This audit grades the schema with {count} OpenAPI overlay(s) this documentation applies; the download is the published file, without them.",
   "audit.specOverlaidUser": "This audit grades the schema with {count} OpenAPI overlay(s) applied, your own local patch included; the download is the published file, without them.",
   "audit.api.version": "Version {version}",

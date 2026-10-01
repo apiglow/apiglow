@@ -11,7 +11,7 @@
 
 import { operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
 import { auditProfile, severityResolver } from './config.js'
-import { CATEGORIES, GRADES, LOWEST_GRADE, SEVERITIES, SEVERITY_WEIGHT } from './constants.js'
+import { CATEGORIES, SEVERITIES, SEVERITY_WEIGHT, gradeFor } from './constants.js'
 import { pointer } from './pointer.js'
 import { RULES } from './rules/index.js'
 import { collectSchemas } from './schema-walk.js'
@@ -126,11 +126,6 @@ function countTags(ctx) {
       if (typeof tag === 'string' && !labels.has(tag)) tags.add(tag)
   }
   return tags.size
-}
-
-export function gradeFor(score) {
-  for (const [grade, threshold] of GRADES) if (score >= threshold) return grade
-  return LOWEST_GRADE
 }
 
 // Exported for the per-rule tests: a rule is a pure function of the context,

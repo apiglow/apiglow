@@ -1,9 +1,9 @@
-// Files under src/ unreachable from the two things the repo builds: the app
-// (dist/app.js) and the CLI (dist/cli.js), which walks into export generators
-// the app itself never loads.
+// Files under src/ unreachable from what the repo builds: the app
+// (dist/app.js), the audit it loads on demand (dist/audit.js), and the CLI
+// (dist/cli.js), which walks into export generators the app itself never loads.
 import { headline, read, section, walk } from './lib.mjs'
 
-const ENTRIES = ['src/app.js', 'scripts/cli.mjs']
+const ENTRIES = ['src/app.js', 'src/audit.js', 'scripts/cli.mjs']
 
 function resolveImport(fromRel, spec) {
   if (!spec.startsWith('.')) return null

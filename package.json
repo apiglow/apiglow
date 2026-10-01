@@ -44,7 +44,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.cli.config.js",
+    "build": "vite build && vite build --config vite.audit.config.js && vite build --config vite.cli.config.js",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:e2e": "playwright test --project=chromium",
@@ -71,7 +71,7 @@
     "check:invariants": "node scripts/check-invariants.mjs",
     "check:dist": "node scripts/check-dist.mjs",
     "check:surface": "node scripts/check-public-surface.mjs",
-    "check:syntax": "es-check checkBrowser dist/app.js --module --checkFeatures",
+    "check:syntax": "es-check checkBrowser dist/app.js dist/audit.js --module --checkFeatures",
     "check:version": "node scripts/sync-version.mjs --check"
   },
   "dependencies": {

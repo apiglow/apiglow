@@ -27,6 +27,28 @@ test('the settings panel is the only entry point, and it routes to #/audit', asy
   await expect(report(page).locator('h1')).toHaveText('Schema audit')
 })
 
+// docs/architecture.md §14.8: every reader would otherwise download the rules
+// of a page only authors open.
+test('the audit is its own file, fetched on the first visit to #/audit only', async ({ page }) => {
+  const fetched = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('/audit.js')) fetched.push(request.url())
+  })
+  await gotoApp(page)
+  await expect(page.locator('api-nav a[data-op-id]').first()).toBeAttached()
+  expect(fetched).toEqual([])
+
+  await page.evaluate(() => {
+    window.location.hash = '#/audit'
+  })
+  // A rule's English label is in that file, not in app.js: seeing one is seeing
+  // the strings merged into the catalog.
+  await expect(report(page).locator('li[data-rule-id="parameter-described"]')).toContainText(
+    'Parameter without description',
+  )
+  expect(fetched).toHaveLength(1)
+})
+
 test('the report grades the schema and scores each category', async ({ page }) => {
   await gotoApp(page, '#/audit')
   const header = report(page).locator('[data-audit-summary]')

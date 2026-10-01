@@ -59,8 +59,9 @@ What it does:
 - **Bundler: Vite** — dev server for development (readable, unbundled ESM
   sources), library-mode build for distribution. Output: `dist/app.js`
   (minified ESM) + `dist/app.css` + `dist/i18n/*.json` + `dist/fonts/`,
-  plus — from a second pass that shares nothing with the first — the
-  author-side `dist/cli.js` CLI (§3, [seo.md](seo.md) §4).
+  plus — from passes that share nothing with the first — `dist/audit.js`,
+  the schema audit `app.js` loads on demand (§14.8), and the author-side
+  `dist/cli.js` CLI (§3, [seo.md](seo.md) §4).
 - **Runtime dependencies** — short by design, open only for spec/format
   work. An addition must do **spec or format work** *and* correspond to a
   job we actually want done in full, then be justified in this list with its
@@ -122,8 +123,9 @@ Hard requirements behind this install mode:
   mechanism for lazy-loaded i18n files. See
   §14.9.
 - The bundle is a **single file** (`codeSplitting: false`, `undici`
-  externalized) — a one-script install cannot chase dynamic chunks. See
-  §14.8.
+  externalized) — a one-script install cannot chase dynamic chunks. The
+  files it fetches itself, by fixed name next to it, are the exception:
+  the language files, and `audit.js`, the schema audit. See §14.8.
 - The repo stays readable in dev: separate ESM sources, Vite dev server, no
   bundling needed to develop.
 - Distribution is validated by `npm pack` + a local static server simulating
@@ -2266,7 +2268,8 @@ else states a version:
    fallbacks the baseline needs: deriving it keeps some 35 kB of duplicated
    pre-`oklch` color declarations out of `dist/app.css`.
 3. `npm run check:syntax` (`es-check checkBrowser … --checkFeatures`) reads
-   the same field and validates `dist/app.js` after every CI build. It is
+   the same field and validates `dist/app.js` and `dist/audit.js` after
+   every CI build. It is
    the only guard between a `build.target` regression and a bundle no
    baseline browser can parse — CI's own browsers are all far above the
    floor, so no test suite would notice. Invariant 17 fails if the workflow
@@ -2472,7 +2475,7 @@ reader the language their browser asks for. It resolves to the first offered
 language when the browser asks for none of them — never to a code the
 switcher could not show as current.
 
-### 14.8 Single-file bundle
+### 14.8 Single-file bundle, and the audit beside it
 
 One `<script>` tag is the install contract, so the lib build sets
 `codeSplitting: false` and externalizes `undici` (pulled transitively by
@@ -2483,9 +2486,30 @@ that drops either silently breaks the CDN install while dev mode keeps
 working — the packed-tarball e2e and `npm run check:dist` are what catch
 it.
 
+The one exception is the schema audit. Its engine and rules — a hundred of
+them by design, each with four texts — are read by an API's authors on a
+page readers never open, and every reader would otherwise download them.
+So they ship as `dist/audit.js`, built by a pass of their own
+(`vite.audit.config.js`) and imported by `app.js` on the first visit to
+`#/audit`, resolved through `import.meta.url` like the language files
+(§14.9) — a fixed name next to `app.js`, never a hashed chunk.
+
+- The English catalog stays one source file and becomes two slices at
+  build time (`scripts/catalog-slice.mjs`): the rule texts
+  (`audit.rule.*`) go with the audit, the rest with the app, and
+  `extendEnglish` merges the audit's slice into the fallback when it
+  arrives. The translations are lazy files already and stay whole.
+- The two bundles share pure helpers only, each carrying its own copy; the
+  engine holds no state the app would need to see. The rule configuration
+  is validated in the audit file, where the registry is.
+- `check:dist` fails when the engine or the rule texts reappear in
+  `app.js`, and `audit.js` has its own size budget.
+- Cost: a self-hosted copy of `app.js` alone loses the audit page, which
+  then says it could not load; every other page works.
+
 ### 14.9 Assets resolve via `import.meta.url`
 
-`app.js` must find `app.css` and `i18n/*.json` wherever the host page lives
+`app.js` must find `app.css`, `i18n/*.json` and `audit.js` wherever the host page lives
 and whatever CDN path serves it. `document.currentScript` is `null` inside
 an ES module, so every runtime asset resolves via
 `new URL('./…', import.meta.url)` and `app.js` injects its own stylesheet

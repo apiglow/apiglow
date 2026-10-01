@@ -22,3 +22,11 @@ export const GRADES = [
   ['D', 50],
 ]
 export const LOWEST_GRADE = 'F'
+
+// Here rather than in the engine: the page colors a category by its grade, and
+// the page is in the app bundle while the engine loads with the audit
+// (docs/architecture.md §14.8).
+export function gradeFor(score) {
+  for (const [grade, threshold] of GRADES) if (score >= threshold) return grade
+  return LOWEST_GRADE
+}

@@ -20,7 +20,7 @@ npx playwright install --with-deps firefox webkit   # only for `test:e2e:all`
 | `npm run test:e2e` | Playwright (Chromium) against the CDN simulation |
 | `npm run test:e2e:all` | The same suite on all five projects — three engines plus two emulated phones |
 | `npm run test:coverage` | Vitest + a coverage summary over the pure core |
-| `npm run build` | → `dist/app.js` + `dist/app.css` + `dist/i18n/*.json` |
+| `npm run build` | → `dist/app.js` + `dist/app.css` + `dist/i18n/*.json` + `dist/audit.js` (+ `dist/cli.js`) |
 | `npm run preview:cdn` | build + `npm pack` + jsDelivr simulation on :4173 |
 | `npm run check:invariants` | The cross-cutting rules a test suite cannot see (rules 1, 2, 5, 6, 9, 10, 12, 13, 14, 20) |
 | `npm run check:dist` | Post-build gate on `dist/`: one JS file, no `document.currentScript`, every daisyUI theme, size budgets (rules 3, 4, 8, 14) |

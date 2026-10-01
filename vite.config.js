@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import browserslistToEsbuild from 'browserslist-to-esbuild'
 import { defineConfig } from 'vite'
+import { AUDIT_STRING, catalogSlice } from './scripts/catalog-slice.mjs'
 
 // The non-bundled language files (i18n/*.json) are loaded at runtime via
 // new URL(..., import.meta.url): Rollup never sees them in the module graph,
@@ -72,7 +73,14 @@ const pkg = JSON.parse(
 )
 
 export default defineConfig({
-  plugins: [tailwindcss(), copyI18n(), displayFont(), demoServiceWorker()],
+  plugins: [
+    tailwindcss(),
+    copyI18n(),
+    displayFont(),
+    demoServiceWorker(),
+    // The audit's rule texts ship with the audit (vite.audit.config.js).
+    catalogSlice((key) => !AUDIT_STRING(key)),
+  ],
   define: {
     __APP_NAME__: JSON.stringify(pkg.name),
     __APP_VERSION__: JSON.stringify(pkg.version),

@@ -126,6 +126,7 @@
     "audit.howToFix",
     "audit.intro",
     "audit.jump",
+    "audit.loadFailed",
     "audit.noFinding",
     "audit.omitted.known",
     "audit.omitted.lessSevere",

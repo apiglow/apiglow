@@ -443,6 +443,11 @@ PASSES in a 3.0 document instead of being punished for it.
   source itself outlives the switch, because the user overlay's dry run
   and the schema download still read it (they are the raw document's
   other consumers, `architecture.md` §14.13).
+- **Loaded on demand**: the engine, the rules and their English texts are
+  `dist/audit.js`, a file of its own next to `app.js`, imported on the
+  first visit to `#/audit` (`architecture.md` §14.8) — a reader who never
+  opens the page never downloads a rule. The rule configuration is
+  validated there, once loaded, and its console warnings appear then.
 - **Lazy, sliced and cached**: nothing is computed at boot. The report is
   computed on first visit to `#/audit`, in-memory-cached per spec,
   recomputed on spec switch. The run is handed out one rule at a time

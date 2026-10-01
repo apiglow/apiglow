@@ -65,7 +65,7 @@ Enforcement chain (single source of truth: the `browserslist` field in
    (a devDependency — the closed-runtime-dependencies rule restricts
    *runtime* deps only), never hardcoded.
 3. CI tripwire in the quality job: `es-check` validates `dist/app.js`
-   syntax after build, catching a config regression that would silently
+   and `dist/audit.js` syntax after build, catching a config regression that would silently
    ship too-new syntax.
 
 Runtime *API* compatibility (as opposed to syntax) is covered by the live

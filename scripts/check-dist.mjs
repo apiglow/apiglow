@@ -10,20 +10,23 @@ import { fileURLToPath } from 'node:url'
 const dist = fileURLToPath(new URL('../dist', import.meta.url))
 const problems = []
 
-// Rule 8 (architecture.md §14.8): one script tag, one file. A second chunk means code
-// splitting crept into the lib build — every CDN install breaks on the next
-// publish. (An accidental `undici` re-inline lands in the same single file;
-// the size budget below is what catches it.)
+// Rule 8 (architecture.md §14.8): one script tag, one file — plus the files it
+// fetches itself, by name, next to it. A chunk means code splitting crept into
+// the lib build, and its hashed name is one no CDN install can be told about.
+// (An accidental `undici` re-inline lands in the same single file; the size
+// budget below is what catches it.)
+// `audit.js` is the schema audit, which app.js imports on the first visit to
+// #/audit (vite.audit.config.js).
 // `cli.js` is the author-side CLI (`apiglow bake`, docs/seo.md §4), built for
 // Node by vite.cli.config.js and exposed as the `apiglow` bin: no browser ever
 // fetches it, which is also why no budget below counts it.
-const EXPECTED_JS = ['app.js', 'cli.js']
+const EXPECTED_JS = ['app.js', 'audit.js', 'cli.js']
 const jsFiles = readdirSync(dist)
   .filter((f) => f.endsWith('.js'))
   .sort()
 if (jsFiles.join(' ') !== EXPECTED_JS.join(' ')) {
   problems.push(
-    `dist/ holds ${jsFiles.length} JS files (${jsFiles.join(', ')}) — expected exactly ${EXPECTED_JS.join(' and ')}`,
+    `dist/ holds ${jsFiles.length} JS files (${jsFiles.join(', ')}) — expected exactly ${EXPECTED_JS.join(', ')}`,
   )
 }
 
@@ -43,10 +46,19 @@ if (jsFiles.includes('cli.js')) {
 // means an asset path stopped resolving via `new URL(…, import.meta.url)`
 // and every CDN install gets a broken css/i18n URL.
 const bundle = readFileSync(join(dist, 'app.js'), 'utf8')
-if (bundle.includes('document.currentScript')) {
-  problems.push(
-    'document.currentScript found in dist/app.js — rule 4 forbids it (null in an ES module)',
-  )
+for (const file of ['app.js', 'audit.js']) {
+  if (readFileSync(join(dist, file), 'utf8').includes('document.currentScript')) {
+    problems.push(
+      `document.currentScript found in dist/${file} — rule 4 forbids it (null in an ES module)`,
+    )
+  }
+}
+
+// The audit stays out of the app bundle (§14.8): a static import of the engine,
+// or the rule texts left in the app's slice of the catalog, would put every rule
+// back on every reader's download without failing anything else.
+if (/"audit\.rule\.[\w-]+\.why"/.test(bundle) || bundle.includes('field-without-value')) {
+  problems.push('dist/app.js carries the schema audit — it ships in dist/audit.js (§14.8)')
 }
 
 // Rule 3: the built CSS ships every standard daisyUI theme, or
@@ -86,9 +98,13 @@ try {
 // these constants and refuses a loosening that does not touch it too.
 const MAX_JS_BYTES = 1_200_000
 const MAX_CSS_BYTES = 300_000
+// Fetched by authors only, on the audit page — still bytes on their wire, and
+// the file every new rule grows.
+const MAX_AUDIT_JS_BYTES = 300_000
 for (const [file, cap] of [
   ['app.js', MAX_JS_BYTES],
   ['app.css', MAX_CSS_BYTES],
+  ['audit.js', MAX_AUDIT_JS_BYTES],
 ]) {
   const size = statSync(join(dist, file)).size
   if (size > cap) {
@@ -101,5 +117,7 @@ if (problems.length) {
   for (const p of problems) console.error(`  ${p}`)
   process.exitCode = 1
 } else {
-  console.log(`check-dist: ok (app.js + the CLI, no currentScript, ${themes.size} themes)`)
+  console.log(
+    `check-dist: ok (app.js, audit.js and the CLI, no currentScript, ${themes.size} themes)`,
+  )
 }

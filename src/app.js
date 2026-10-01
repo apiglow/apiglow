@@ -41,7 +41,7 @@ import { ScenarioStore } from './storage/scenarios.js'
 import { createScenario, createStep, decodeScenarioFile } from './scenarios/model.js'
 import { decodeScenarioLink } from './export/scenario-share.js'
 import { readPref, setSpecScope, writePref } from './storage/prefs.js'
-import { currentLanguage, setLanguage, t } from './i18n/index.js'
+import { currentLanguage, extendEnglish, setLanguage, t } from './i18n/index.js'
 import { decodeShareState } from './export/share.js'
 import { oauthErrorMessage } from './components/oauth-block.js'
 import { attachVariableAutocomplete } from './components/variable-autocomplete.js'
@@ -66,8 +66,6 @@ import {
   SchemaLoadError,
 } from './openapi/loader.js'
 import { isArazzoDocument, parseArazzo } from './import/arazzo.js'
-import { readAuditConfig } from './audit/config.js'
-import { auditRun } from './audit/engine.js'
 import {
   emptyRoute,
   homeHash,
@@ -337,7 +335,9 @@ function appLayout(
         },
         document: loaded.document,
         model,
-        config: auditRuleConfig(config.audit),
+        // Validated where the registry is, in the audit module: the rule ids
+        // are only known once it has loaded.
+        rawConfig: config.audit,
       }
     : null
   // Generated onboarding page: opt-in, and only if the schema declares a read
@@ -1463,7 +1463,10 @@ function appLayout(
   // is a frozen page — no frame, no click handled (rule 14, and the blocking
   // cap in tests/e2e/perf.spec.js). One rule per frame, the report at the end.
   const computeAudit = async () => {
-    const run = auditRun(auditInput)
+    const audit = await loadAudit()
+    const { config: rules, errors } = audit.readAuditConfig(auditInput.rawConfig)
+    for (const error of errors) console.warn('[api-doc]', error)
+    const run = audit.auditRun({ ...auditInput, config: rules })
     let step = run.next()
     while (!step.done) {
       await new Promise((resolve) => requestAnimationFrame(() => resolve()))
@@ -1474,7 +1477,17 @@ function appLayout(
   const showAudit = async () => {
     if (!auditReport) {
       auditPending ??= computeAudit()
-      auditReport = await auditPending
+      try {
+        auditReport = await auditPending
+      } catch (err) {
+        // Most likely audit.js missing beside app.js (a self-hosted copy of
+        // app.js alone): the page says so instead of staying blank, and the
+        // next visit tries again.
+        console.error('[api-doc] the schema audit could not be loaded:', err)
+        auditPending = null
+        if (auditVisible) showToast('error', t('audit.loadFailed'))
+        return
+      }
       // The reader may have navigated away while the slices ran: the report is
       // kept, the view is not forced back on them.
       if (!auditVisible) return
@@ -1977,8 +1990,25 @@ boot()
 // console and left out, the rest applies. The CLI reads the same block and
 // refuses to run on it instead — a pipeline must not pass on a config nobody
 // wrote.
-function auditRuleConfig(raw) {
-  const { config, errors } = readAuditConfig(raw)
-  for (const error of errors) console.warn('[api-doc]', error)
-  return config
+// The schema audit — engine, rules and the English texts of the rules — is a
+// file of its own next to app.js, fetched on the first visit to #/audit
+// (docs/architecture.md §14.8): every reader would otherwise download a
+// hundred rules for a page only authors open. Resolved like the language
+// files, and the same expression serves dev (src/audit.js beside src/app.js)
+// and the build (dist/audit.js beside dist/app.js).
+let auditModule = null
+function loadAudit() {
+  auditModule ??= import(
+    /* @vite-ignore */ new URL(/* @vite-ignore */ './audit.js', import.meta.url).href
+  ).then(
+    (module) => {
+      extendEnglish(module.strings)
+      return module
+    },
+    (err) => {
+      auditModule = null
+      throw err
+    },
+  )
+  return auditModule
 }

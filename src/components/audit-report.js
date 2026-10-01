@@ -1,5 +1,4 @@
-import { CATEGORIES, GRADES, LOWEST_GRADE } from '../audit/constants.js'
-import { gradeFor } from '../audit/engine.js'
+import { CATEGORIES, GRADES, gradeFor, LOWEST_GRADE } from '../audit/constants.js'
 import { profileDetail, toAuditMarkdown } from '../export/audit-markdown.js'
 import { t } from '../i18n/index.js'
 import { opHash } from '../router.js'

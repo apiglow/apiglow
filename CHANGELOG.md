@@ -63,6 +63,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- `app.js` is 63 kB lighter: the schema audit now loads only when someone
+  opens `#/audit`, from `audit.js` next to `app.js`. Nothing changes on a
+  CDN install; a self-hosted copy needs `dist/audit.js` beside `app.js`, or
+  the audit page says it could not load.
 - Placeholder text no longer passes for documentation in the audit: a
   description that reads "TODO", "string" or "lorem ipsum", or that only repeats
   its field's name ("User Id" on `userId`, the title code generators write for

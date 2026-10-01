@@ -6,11 +6,14 @@ import en from './en.json' with { type: 'json' }
 // English is bundled inline: the UI can never be broken by
 // a network failure on the language file (docs/architecture.md §5.10). `t()` falls back to
 // English key by key, then to the key itself.
-let active = en
+// The English fallback grows when a lazily loaded part of the app brings its
+// own strings (`extendEnglish`).
+let english = en
+let active = english
 let current = 'en'
 
 export function t(key, params = {}) {
-  const str = active[key] ?? en[key] ?? key
+  const str = active[key] ?? english[key] ?? key
   return str.replace(/\{(\w+)\}/g, (match, name) => params[name] ?? match)
 }
 
@@ -22,8 +25,18 @@ export function currentLanguage() {
 // it, the bake CLI reads it off the disk (docs/seo.md §4). English underneath
 // either way, so a key the translation lacks still renders.
 export function useDictionary(code, dict) {
-  active = dict ? { ...en, ...dict } : en
+  active = dict ? { ...english, ...dict } : english
   current = dict ? code : 'en'
+}
+
+// The English strings of a part of the app loaded on demand — the schema
+// audit's rule texts ship in audit.js, not in the main bundle
+// (docs/architecture.md §14.8). An active translation keeps the last word:
+// its catalog already carries these keys.
+export function extendEnglish(strings) {
+  const extended = { ...english, ...strings }
+  active = active === english ? extended : { ...strings, ...active }
+  english = extended
 }
 
 // Activates a language. 'en' is bundled; any other language is lazy-loaded
