@@ -278,6 +278,33 @@ describe('bake', () => {
     )
   })
 
+  it("reads overlays from the config's directory, and says when one fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'apiglow-bake-'))
+    const config = join(dir, 'apidoc.config.json')
+    const fixture = (name) =>
+      relative(dir, fileURLToPath(new URL(`tests/e2e/fixtures/${name}`, BASE)))
+    await writeFile(
+      config,
+      JSON.stringify({
+        openapi: {
+          url: fixture('e2e-api-overlay.json'),
+          overlays: [fixture('e2e-overlay.yaml'), 'missing-overlay.yaml'],
+        },
+      }),
+      'utf8',
+    )
+    const out = join(dir, 'public')
+
+    const { stdout } = await cli(['bake', '--config', config, '--site-url', SITE, '--out', out])
+
+    // The overlay renamed one operation and removed the other.
+    expect(await readFile(join(out, 'op', 'listThings.md'), 'utf8')).toContain('List widgets')
+    await expect(readFile(join(out, 'op', 'deleteThing.md'), 'utf8')).rejects.toThrow(/ENOENT/)
+    expect(stdout).toMatch(
+      /^warning: spec "default": overlay — file:.*missing-overlay\.yaml could not be loaded\.$/m,
+    )
+  })
+
   it('says what it needs rather than baking half a site', async () => {
     const missing = await cli(['bake', '--site-url', SITE, '--out', 'public'])
     expect(missing.code).toBe(2)

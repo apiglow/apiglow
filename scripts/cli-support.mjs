@@ -3,6 +3,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { t } from '../src/i18n/index.js'
 import { loadApiModel, loadInlineApiModel } from '../src/openapi/loader.js'
 import { resolveSpecConfig } from '../src/specs.js'
 
@@ -61,7 +62,12 @@ export async function loadSpecModel(config, spec, { multi, base, warnings }) {
   const effective = resolved.config
   const options = {
     hide: effective.openapi.hide,
-    overlays: effective.openapi.overlays,
+    // Read from disk like every other declaration, under the config's own
+    // directory: handed over as written, ref-parser would resolve a relative
+    // overlay against the working directory instead.
+    overlays: effective.openapi.overlays.map((entry) =>
+      typeof entry === 'string' ? refUrl(entry, base).href : entry,
+    ),
     // The reader's own patch is browser storage; an installation-wide seed of
     // it is a document one browser may have edited or dropped, so what a
     // command reads is the documentation as published (docs/user-overlay.md
@@ -75,6 +81,11 @@ export async function loadSpecModel(config, spec, { multi, base, warnings }) {
     const loaded = spec.spec
       ? await loadInlineApiModel(spec.spec, options)
       : await loadApiModel(refUrl(spec.url, base).href, options)
+    // An overlay that could not be read or applied leaves the schema as
+    // published, which is no reason to stop — but the author has to hear of it.
+    for (const warning of loaded.overlays?.warnings ?? []) {
+      warnings.push(`spec "${spec.id}": overlay — ${t(`overlay.code.${warning.code}`, warning)}`)
+    }
     return { loaded, config: effective }
   } catch (err) {
     const cause = err.detail?.cause?.message ?? err.message
