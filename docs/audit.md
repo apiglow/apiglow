@@ -1046,9 +1046,8 @@ applies to all of them).
   says the same of tokens in a query string ("browser history, web server
   logs"), OWASP API2:2023 lists credentials in the URL. In the try-it the
   key is part of the request URL, which the history stores and every export
-  of the request carries; redaction masks it by default, provided the key
-  reads the same once URL-encoded. One check per
-  `apiKey` scheme. That the MCP export cannot carry it is
+  of the request carries; redaction masks it there by default, but the
+  server's and every proxy's logs keep it. One check per `apiKey` scheme. That the MCP export cannot carry it is
   `bridge-degradation`'s.
 - `http-scheme-registered` (`warning`) — an `http` security scheme whose
   `scheme` is not in the IANA HTTP Authentication Schemes registry (as

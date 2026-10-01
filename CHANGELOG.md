@@ -144,6 +144,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A secret sent in the URL is masked even when URL encoding changes it: an
+  API key with `+`, `/` or `=` (any base64 key) used to stay readable in the
+  history and in every export of the request (cURL, HAR, Postman, snippets),
+  because it reads `%2B`, `%2F`, `%3D` there.
 - The MCP config, `llms.txt`, `llms-full.txt`, a copied page and the baked
   files no longer hand out a base URL holding `{{variables}}` (an environment
   created from a server like `https://{region}.api.example.com`): the

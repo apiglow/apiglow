@@ -13,9 +13,10 @@ import { unescapePointerToken } from '../../scenarios/pointer.js'
 // In this documentation the try-it appends the key to the request URL
 // (`buildAuthInjection`, then `buildRequest`), so it is in the URL the
 // history stores and every export of that request carries — cURL, HAR,
-// Postman, snippets. Redaction masks it there by default, but only when the
-// key reads the same once URL-encoded; and a CORS proxy, when one is set,
-// receives the whole target URL as a query parameter of its own.
+// Postman, snippets. Redaction masks it there by default, encoded or not; a
+// CORS proxy, when one is set, receives the whole target URL as a query
+// parameter of its own — and the server's own logs keep it whatever the docs
+// do.
 //
 // One check per `apiKey` Security Scheme. The MCP export cannot carry a query
 // key at all — that is `bridge-degradation`'s, per operation.

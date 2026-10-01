@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { redactEntry, redactText } from '../src/export/redact.js'
+import { redactEntry, redactText, templatizeEntry } from '../src/export/redact.js'
 import { extractPathValues } from '../src/openapi/request-builder.js'
 
 describe('redaction', () => {
@@ -31,6 +31,24 @@ describe('redaction', () => {
     expect(r.response.body).toBe('ok ••••')
     // The original is not mutated
     expect(entry.request.url).toContain('s3cret')
+  })
+
+  // A base64 key reads differently once the URL carries it: `+`, `/` and `=`
+  // are escaped in a query string, and a space becomes `+`.
+  it('hides a secret the URL carries encoded, and templates it back', () => {
+    const key = 'ab+c/d= e~'
+    const query = new URLSearchParams([['key', key]]).toString()
+    const path = encodeURIComponent(key)
+    const entry = {
+      sensitiveValues: [key],
+      usedVariables: [{ name: 'auth.apiKey', value: key }],
+      request: { url: `https://api.x/v1/${path}?${query}`, headers: {}, body: null },
+      response: null,
+    }
+    expect(redactEntry(entry).request.url).toBe('https://api.x/v1/••••?key=••••')
+    expect(templatizeEntry(entry).request.url).toBe(
+      'https://api.x/v1/{{auth.apiKey}}?key={{auth.apiKey}}',
+    )
   })
 
   it('leaves an entry without a response untouched (network failure)', () => {

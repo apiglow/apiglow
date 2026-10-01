@@ -9,9 +9,25 @@ export function redactText(value, sensitiveValues, mask = MASK) {
   let out = String(value ?? '')
   for (const secret of sensitiveValues ?? []) {
     if (!secret) continue
-    out = out.split(secret).join(mask)
+    for (const spelling of spellings(secret)) out = out.split(spelling).join(mask)
   }
   return out
+}
+
+// Every way a value can be written into the request: as typed, and as the URL
+// carries it — percent-encoded in a path, form-encoded in a query string
+// (URLSearchParams: space as `+`, `~` escaped). A key with a
+// `+`, a `/` or a `=` (any base64 one) reads differently once encoded, and a
+// search for the typed value alone would leave it in the URL. Longest first,
+// so that no spelling is cut by a shorter one it contains.
+function spellings(value) {
+  const text = String(value)
+  const forms = new Set([
+    text,
+    encodeURIComponent(text),
+    new URLSearchParams([['', text]]).toString().slice(1),
+  ])
+  return [...forms].sort((a, b) => b.length - a.length)
 }
 
 // Applies `fn` to the textual pieces of an entry (url, headers, bodies)
@@ -65,6 +81,13 @@ export function redactEntry(entry, mask = MASK) {
 export function templatizeEntry(entry) {
   const variables = (entry.usedVariables ?? []).filter((v) => v.value)
   const apply = (value) =>
-    variables.reduce((acc, v) => acc.split(v.value).join(`{{${v.name}}}`), String(value ?? ''))
+    variables.reduce(
+      (acc, v) =>
+        spellings(v.value).reduce(
+          (text, spelling) => text.split(spelling).join(`{{${v.name}}}`),
+          acc,
+        ),
+      String(value ?? ''),
+    )
   return transformEntry(entry, apply)
 }

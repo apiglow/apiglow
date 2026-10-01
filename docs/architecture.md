@@ -985,7 +985,9 @@ legibly when it can't.
   request (method, URL, headers, body), response (status, headers, body),
   duration, plus the list of sensitive values used — enabling **redaction on
   display and on export** (values replaced by `••••`, explicitly
-  disableable).
+  disableable). A value is matched as typed and as the URL carries it,
+  percent- or form-encoded: a base64 key in a query string reads
+  `ab%2Bc%2Fd%3D`, and would otherwise stay in the clear.
 - A body that isn't plain text also carries its **structured shape** next to
   the display string: `request.form` (multipart parts) or `request.bodyFile`
   (`{ name, size, type }`). Exports render from those rather than parsing the
