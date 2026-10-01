@@ -105,6 +105,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A request body or a sample built from an `allOf` now carries every
+  member's properties, not the first member's alone: the try-it's JSON
+  prefill, the response examples, the XML samples, and the fields of a
+  multipart or urlencoded form — which used to have no field at all.
 - A 3.2 custom method (`additionalOperations`) is sent, and copied into
   snippets and exports, exactly as the document spells it: `purge` is no
   longer sent as `PURGE`.

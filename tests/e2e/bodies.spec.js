@@ -91,6 +91,24 @@ test('the multipart variant sends one part per field', async ({ page, browserNam
   if (canSeeFileBytes(browserName)) expect(calls[0].body).toContain('hello e2e')
 })
 
+// An `allOf` of objects is one object: every member's properties are fields.
+test('a form body composed with allOf gets the fields of every member', async ({
+  page,
+  browserName,
+}) => {
+  const calls = await mockApi(page)
+  await gotoOp(page, PAGE, 'uploadPhoto')
+  await tryIt(page).getByLabel('petId', { exact: true }).fill('7')
+  await panelFile(page).setInputFiles(FILE)
+  await tryIt(page).getByLabel('caption', { exact: true }).fill('a cat')
+
+  await send(page)
+  await expectResponded(page)
+  expect(calls[0].body).toContain('name="caption"')
+  expect(calls[0].body).toContain('filename="note.txt"')
+  if (canSeeFileBytes(browserName)) expect(calls[0].body).toContain('hello e2e')
+})
+
 test('an urlencoded body is edited as fields and sent as a query string', async ({ page }) => {
   const calls = await mockApi(page)
   await gotoOp(page, PAGE, 'createPetForm')

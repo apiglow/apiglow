@@ -11,8 +11,10 @@ import { operationContents } from '../schema-walk.js'
 //
 // `multipart/mixed` and the other multipart flavours are left alone: their
 // parts are positional, and 3.2 describes them with an array (`prefixEncoding`,
-// `itemEncoding`). A composed schema (`allOf`…) is an object all the same — the
-// try-it not merging it is this app's gap, not the document's.
+// `itemEncoding`). A composed schema is not judged: an `allOf` of objects is one
+// form, every member's properties its fields (src/openapi/all-of.js), and a
+// choice of forms (`oneOf` / `anyOf`) is legitimate — the try-it not offering
+// one's fields is this app's gap, not the document's.
 const FORMS = new Set(['multipart/form-data', 'application/x-www-form-urlencoded'])
 
 export const multipartSchemaObject = {

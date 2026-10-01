@@ -498,6 +498,14 @@ The sampler is structural: a declared `example` on an object or an array
 is not re-serialized into XML — a media-type example is already the body
 the document wants sent, and `prefillBody` uses it verbatim (§5.1).
 
+**`allOf` values** (`src/openapi/all-of.js`): the model keeps an `allOf` as
+written — the schema view shows its members — but whatever builds a value
+reads an `allOf` of objects as one object carrying every member's
+properties: the JSON and XML samples, the try-it's prefill and its form
+fields (a later declaration of a name wins, required if any member requires
+it). An `allOf` with a non-object member keeps the composite reading. A
+`oneOf` / `anyOf` form body offers no fields yet.
+
 **Methods** (`src/openapi/methods.js`): a standard method goes out
 uppercase; a 3.2 `additionalOperations` method goes out exactly as its key
 spells it (`op.verb`), case included — methods are case-sensitive and 3.2

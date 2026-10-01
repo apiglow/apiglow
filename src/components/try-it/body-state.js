@@ -3,6 +3,7 @@
 // no panel state — the panel calls these once per operation or per media
 // type change and keeps the result in `#state`.
 
+import { mergeAllOf } from '../../openapi/all-of.js'
 import { bodyKind, isFieldsKind, isFileSchema } from '../../openapi/body-kind.js'
 import { coerceDeep } from '../../openapi/coerce.js'
 import { sampleValue } from '../../openapi/sample.js'
@@ -38,10 +39,10 @@ export function buildHeaderRows(env, op) {
 }
 
 // Editable fields of a multipart or urlencoded body: top-level properties of
-// the object schema — real bodies of both kinds are flat (file + metadata,
-// or a handful of scalars).
+// the object schema — `allOf` members merged — since real bodies of both kinds
+// are flat (file + metadata, or a handful of scalars).
 function formFieldsFrom(content, kind) {
-  const schema = content?.schema
+  const schema = mergeAllOf(content?.schema) ?? content?.schema
   if (schema?.kind !== 'object') return []
   return (schema.properties ?? [])
     .filter((p) => !p.schema?.readOnly)

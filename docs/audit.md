@@ -619,8 +619,10 @@ not.
   is not an object naming properties: the try-it builds one field per
   top-level property (`src/components/try-it/body-state.js`), so it shows no
   field and sends no body. `multipart/mixed` and the other multipart flavours
-  are positional and left alone; a composed (`allOf`…) schema too — the try-it
-  not merging it is this app's gap, not the document's.
+  are positional and left alone. A composed schema is not judged: an `allOf`
+  of objects is one form, every member's properties its fields
+  (`src/openapi/all-of.js`); a choice of forms (`oneOf` / `anyOf`) is
+  legitimate, and the try-it not offering its fields is this app's gap.
 - `binary-placement` (`warning`) — raw bytes where only text can go: a
   `format: binary` string, or a 3.1 `contentMediaType` of a binary family
   (image, audio, video, font, octet-stream, pdf, archives, `vnd.*`) without

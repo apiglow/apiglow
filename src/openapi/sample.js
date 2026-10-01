@@ -11,6 +11,7 @@
 // readOnly/writeOnly. Constraints (bounds, lengths, multipleOf) are
 // always honored: an out-of-domain value would be a counter-example.
 
+import { mergeAllOf } from './all-of.js'
 import { coerceDeep } from './coerce.js'
 import { defaultVariant } from './model.js'
 
@@ -98,6 +99,8 @@ function build(schema, depth, forResponse) {
       return Array.from({ length: count }, () => item)
     }
     case 'composite': {
+      const merged = mergeAllOf(schema)
+      if (merged) return build(merged, depth, forResponse)
       // With a discriminator, the sample must be the variant the API would
       // dispatch to — the same one the try-it selector starts on.
       const chosen = defaultVariant(schema)

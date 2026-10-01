@@ -36,6 +36,28 @@
         "responses": { "200": { "description": "Uploaded" } }
       }
     },
+    "/pets/{petId}/photo": {
+      "post": {
+        "operationId": "uploadPhoto",
+        "tags": ["Pets"],
+        "summary": "Upload a captioned photo",
+        "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" } } },
+                  { "type": "object", "properties": { "caption": { "type": "string" } } }
+                ]
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Uploaded" } }
+      }
+    },
     "/pets-form": {
       "post": {
         "operationId": "createPetForm",

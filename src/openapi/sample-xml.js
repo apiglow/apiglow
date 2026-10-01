@@ -15,6 +15,7 @@
 // re-serializing a JSON example against XML metadata would invent a document
 // nobody wrote.
 
+import { mergeAllOf } from './all-of.js'
 import { defaultVariant } from './model.js'
 import { sampleValue } from './sample.js'
 
@@ -64,12 +65,16 @@ function element(name, schema, ctx, indent = '') {
   if (!schema || schema.circular || ctx.depth > HARD_DEPTH) return ''
   const tag = qualifyName(name, schema)
 
-  // A composite stands for one of its variants: the discriminated one when
+  // A choice stands for one of its variants: the discriminated one when
   // there is a discriminator, the first otherwise — the same choice sample.js
   // makes, so the JSON and XML views of a body never disagree on which variant
   // they show. The composite's own XML metadata (name, namespace) still wins:
   // it is what named the element.
   if (schema.kind === 'composite') {
+    // An `allOf` of objects is one object: every member's properties
+    // (all-of.js), as in the JSON sample.
+    const all = mergeAllOf(schema)
+    if (all) return element(name, all, ctx, indent)
     const chosen = defaultVariant(schema)
     const variant = schema.composite.variants[chosen?.index ?? 0]
     if (!variant || variant.circular) return ''
