@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (42 rules across the five §4
+2. **Curated, doc-oriented ruleset** (50 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-42 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+50 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -302,6 +302,70 @@ graded like `field-without-value`: one check per defect, none otherwise.
   documents for a value of another kind, and the model and the audit both
   come through. `null` is `field-without-value`'s; a value only a later
   version allows (`in: querystring` in 3.1) is `version-construct`'s.
+
+**Schemas.** The rules below read the dereferenced schemas (`ctx.schemas`,
+each reported once, at its component when it has one), except
+`schema-keyword-typo`, which reads the source to report a key where it is
+written. A schema whose keywords contradict each other, or a keyword that
+cannot apply, is a schema the author believes constrains something it does
+not.
+
+- `enum-valid` (`error`) — an `enum` that is not a list, is empty, holds an
+  entry its own `type` rejects (`enum: ["1"]` on an integer; `null` the type
+  forbids), or lists one entry twice. JSON Schema 2020-12 §6.1.2 (MUST be an
+  array; SHOULD be non-empty and unique). An empty or ill-typed enum admits
+  values nobody can send; a duplicate becomes two constants of one name in a
+  generated client — a compile error in Java or C#. This app offers every
+  entry as written. Reported per entry (`detail` names it: `"2" ≠ type:
+  integer`, `1 ×2`, `[]`). A nullable schema whose enum lacks `null` is
+  `nullable-enum-null`'s.
+- `nullable-enum-null` (`error`) — null declared allowed — 3.0's
+  `nullable: true` next to a `type` (OAS 3.0.3 §4.7.24.1: it adds null to
+  that type, and other constraints may still disallow it), or `null` in a
+  3.1 type list — while the `enum` does not list `null`: null is never
+  valid. `nullable` counts only in a 3.0 document (from 3.1 it is
+  `version-legacy`'s). The GitHub REST schema carries 71 of them.
+- `array-items` (`warning`) — `type: array` (or a type list holding it)
+  without `items`, `prefixItems` or `contains`. OAS 3.0 §4.7.24.1: `items`
+  MUST be present for an array; valid but empty from 3.1. The schema view
+  shows `array<any>`, the sample is `[]`, the try-it has no element editor;
+  generators type a list of anything. `warning` for every version: the
+  degradation is the same.
+- `constraint-type-mismatch` (`warning`) — a keyword that applies to none of
+  the declared types: `maxLength` on an integer, `minimum` on a string,
+  `minItems` / `items` on a string, `properties` / `required` on an array.
+  JSON Schema 2020-12 validation §6 (each keyword constrains instances of
+  its type, any other instance is valid against it): enforced by nobody,
+  shown here as a constraint. Only with a declared JSON type; a boolean
+  `required` is `schema-keyword-typo`'s.
+- `range-contradiction` (`error`) — bounds no value satisfies: `minimum` above
+  `maximum`, or equal with either bound exclusive (3.0 booleans and 3.1
+  numbers alike), `minLength` / `minItems` / `minProperties` / `minContains`
+  above their maximum, `multipleOf` ≤ 0, a negative length or count (the
+  last two are JSON Schema MUSTs, §6.2.1 and §6.3–§6.5). Reported once per
+  contradiction, `bounds` naming the keywords and values.
+- `pattern-valid` (`error`) — a `pattern`, or a `patternProperties` key, that
+  is not a regular expression under either ECMA-262 reading (with and
+  without the `u` flag). JSON Schema 2020-12 §6.3.3 (SHOULD be a valid
+  ECMA-262 regex); a validator fails on it, often for the whole schema.
+  This app never compiles a pattern — it shows it as a chip — so nothing
+  here reveals it is broken.
+- `format-valid` (`warning`) — a `format` the declared type cannot carry
+  (`date-time` on an integer, `int32` on a string — OAS Format Registry and
+  JSON Schema 2020-12 §7.1: a format applies to one type and is ignored on
+  the others), or a curated misspelling of a registered format (`datetime`,
+  `date_time`, `dateTime`, `e-mail`, `uuid4`…). Never "unknown format": the
+  registry is open and custom formats are legitimate.
+- `schema-keyword-typo` (`warning`) — a schema key that no OpenAPI version
+  knows but that is a near miss of a keyword: the same letters in another
+  case (`readonly`), or one edit away for keys of five letters or more
+  (`descripton`, `maxLenght`); and a boolean `required` on a property
+  schema, the draft-03 habit (since draft-04, `required` is the parent's
+  list). JSON Schema ignores unknown keywords, so the constraint does
+  nothing. Read on the source schemas (`ctx.objects`), reported where
+  written; the keyword set is every version's (`src/audit/schema-keywords.js`),
+  so a keyword of another version is `version-construct`'s or
+  `version-legacy`'s, never a typo.
 
 ### 4.2 Documentation completeness
 

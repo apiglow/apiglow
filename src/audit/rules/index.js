@@ -47,6 +47,14 @@ import { unknownField } from './unknown-field.js'
 import { unusedComponent } from './unused-component.js'
 import { versionConstruct } from './version-construct.js'
 import { versionLegacy } from './version-legacy.js'
+import { enumValid } from './enum-valid.js'
+import { nullableEnumNull } from './nullable-enum-null.js'
+import { arrayItems } from './array-items.js'
+import { constraintTypeMismatch } from './constraint-type-mismatch.js'
+import { rangeContradiction } from './range-contradiction.js'
+import { patternValid } from './pattern-valid.js'
+import { formatValid } from './format-valid.js'
+import { schemaKeywordTypo } from './schema-keyword-typo.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -72,6 +80,15 @@ export const RULES = [
   unknownField,
   requiredFieldMissing,
   fieldValueKind,
+  // §4.1 schemas: values and keywords
+  enumValid,
+  nullableEnumNull,
+  arrayItems,
+  constraintTypeMismatch,
+  rangeContradiction,
+  patternValid,
+  formatValid,
+  schemaKeywordTypo,
   // §4.2 Documentation completeness
   operationDescribed,
   parameterDescribed,

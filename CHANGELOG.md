@@ -57,6 +57,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   `in`), a value of the wrong kind or outside the allowed set (`in: body`,
   `type: int`). Fields a later OpenAPI version introduced are now caught
   wherever they sit, not only in the handful the audit listed before.
+  Schemas are held to their own keywords: an `enum` its type rejects, bounds
+  no value satisfies, a `pattern` that is no regular expression, a `format`
+  the type cannot carry, a keyword that cannot apply (`maxLength` on an
+  integer), a misspelled one (`maxLenght`, `readonly`), a nullable `enum`
+  without `null`, an array without `items`.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
 - The audit's rules are configurable: switch one off, or change its severity,
