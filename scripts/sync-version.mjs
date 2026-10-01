@@ -1,5 +1,6 @@
 // One number, one source: package.json. Every place a reader can copy an
-// install line from — the README snippet, the demo page, the docs — is rewritten
+// install line from — the README snippet, the demo page, the docs, the CI
+// snippets running the CLI through `npx` — is rewritten
 // from it, and `--check` (run in CI) fails on the first pin that drifted.
 //
 // Two spellings are deliberately left alone:
@@ -23,6 +24,9 @@ const check = process.argv.includes('--check')
 const EXTENSIONS = ['.md', '.html', '.js', '.mjs', '.json', '.txt', '.yml', '.yaml']
 const EXCLUDED = ['CHANGELOG.md']
 const pin = new RegExp(`(/npm/${pkg.name}@)([^/"'\\s]+)(/)`, 'g')
+// The other line a reader copies: the CLI run through `npx`, pinned for the
+// same reason as the script tag (docs/audit.md §8.4).
+const npxPin = new RegExp(`(\\bnpx (?:--yes |-y )?${pkg.name}@)([^\\s"'\`]+)()`, 'g')
 
 const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
 if (tracked.status !== 0) {
@@ -40,9 +44,9 @@ for (const file of tracked.stdout.split('\n').filter(Boolean)) {
   if (prerelease && file.endsWith('.md')) continue
   const path = join(root, file)
   const before = readFileSync(path, 'utf8')
-  const after = before.replace(pin, (match, head, version, tail) =>
-    version === 'current' ? match : `${head}${pkg.version}${tail}`,
-  )
+  const sync = (match, head, version, tail) =>
+    version === 'current' ? match : `${head}${pkg.version}${tail}`
+  const after = before.replace(pin, sync).replace(npxPin, sync)
   if (after === before) continue
   if (check) drifted.push(file)
   else {

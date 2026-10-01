@@ -77,8 +77,9 @@ section — it rehearses the notes of the version it precedes, and quotes them.
 
 `package.json` is the only place a version is written by hand.
 [`sync-version.mjs`](../scripts/sync-version.mjs) rewrites every
-`/npm/apiglow@` pin in every tracked file from it — the README snippet, the
-demo install page, the docs — and `npm run check:version` fails CI when one
+`/npm/apiglow@` pin and every `npx apiglow@` pin in every tracked file from it
+— the README snippet, the demo install page, the docs, the CI snippets running
+the CLI — and `npm run check:version` fails CI when one
 has drifted. Two spellings are left alone on purpose: `@current`, the unmoving
 alias the e2e fixtures load from the CDN simulation, and `CHANGELOG.md`, where
 a URL under an old heading documents that old version.
