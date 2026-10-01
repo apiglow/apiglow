@@ -1,5 +1,6 @@
 // Side nav, Cmd+K search palette, hash deep-linking (docs/architecture.md §5.2,
 // deep links restore state) and embedded Markdown pages (§5.8).
+import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import {
   clickInDoc,
@@ -228,4 +229,34 @@ test('a shared request survives leaving the tab, field for field', async ({ page
     'abc-123',
   )
   await other.close()
+})
+
+// The router owns the hash: left to the browser, `#responses` would parse as an
+// unknown route and drop the reader on the home page.
+test('a #name link in a description stays on the page and moves to that id', async ({ page }) => {
+  const schema = JSON.parse(
+    readFileSync(new URL('./fixtures/e2e-api.json', import.meta.url), 'utf8'),
+  )
+  schema.paths['/pets'].post.description =
+    'See [the responses](#responses), or [nothing](#no-such-id).'
+  await page.route('**/tests/e2e/fixtures/e2e-api.json', (r) =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(schema) }),
+  )
+  await gotoApp(page, '#/op/createPet')
+  const heading = page.locator('main h1')
+  const title = await heading.textContent()
+  const hash = await page.evaluate(() => location.hash)
+
+  await clickInDoc(page, page.locator('main a', { hasText: 'nothing' }))
+  expect(await page.evaluate(() => location.hash)).toBe(hash)
+  await expect(heading).toHaveText(title)
+
+  // Keyboard activation is the same click.
+  await page.locator('main a', { hasText: 'the responses' }).focus()
+  await page.keyboard.press('Enter')
+  const target = page.locator('main #responses')
+  await expect(target).toBeFocused()
+  await expect(target).toBeInViewport()
+  expect(await page.evaluate(() => location.hash)).toBe(hash)
+  await expect(heading).toHaveText(title)
 })

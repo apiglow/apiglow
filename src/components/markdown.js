@@ -67,9 +67,44 @@ function scrollableFences(root) {
   return root
 }
 
+// A `#name` link written in a description means "there, on this page" — but
+// the router owns the hash, and would read `#errors` as an unknown route and
+// send the reader home. One listener for every rendered block, installed by
+// the first one: the link scrolls to that id and takes the focus there, or
+// does nothing when the page has no such id. A route (`#/…`, which is what
+// `apidoc:` references and heading anchors resolve to) goes to the router as
+// usual, and so does a modified click.
+const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]'
+let inPageLinksFollowed = false
+
+function followInPageLinks() {
+  if (inPageLinksFollowed) return
+  inPageLinksFollowed = true
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const link = event.target.closest?.('.md-content a[href^="#"]')
+    const href = link?.getAttribute('href')
+    if (!href || href.startsWith('#/')) return
+    event.preventDefault()
+    let id
+    try {
+      id = decodeURIComponent(href.slice(1))
+    } catch {
+      return
+    }
+    const target = id ? document.getElementById(id) : null
+    if (!target) return
+    if (!target.matches(FOCUSABLE)) target.tabIndex = -1
+    target.scrollIntoView({ block: 'start' })
+    target.focus({ preventScroll: true })
+  })
+}
+
 // Full Markdown block → <div class="md-content"> styled by app.css.
 export function markdownBlock(source) {
   if (!source) return null
+  followInPageLinks()
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(marked.parse(isolateDetailsTags(source), { async: false }))
@@ -82,6 +117,7 @@ export function markdownBlock(source) {
 // a prose feature, and an OpenAPI description has no business growing tabs.
 export function docsMarkdownBlock(source) {
   if (!source) return null
+  followInPageLinks()
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(docsMarkdownToHtml(isolateDetailsTags(source)))
@@ -93,6 +129,7 @@ export function docsMarkdownBlock(source) {
 // enrichments deliberately do not apply — the author wrote HTML, and
 // re-scanning it for fence runs or alert markers would be guesswork.
 export function htmlBlock(source) {
+  followInPageLinks()
   const div = document.createElement('div')
   div.className = 'md-content'
   div.innerHTML = sanitize(String(source ?? ''))
@@ -102,6 +139,7 @@ export function htmlBlock(source) {
 // Inline variant (no <p>) for short descriptions in a cell/row.
 export function markdownInline(source) {
   if (!source) return null
+  followInPageLinks()
   const span = document.createElement('span')
   span.className = 'md-content'
   span.innerHTML = sanitize(marked.parseInline(String(source), { async: false }))

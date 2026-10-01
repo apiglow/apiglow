@@ -144,6 +144,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A `[link](#errors)` in a description or a docs page now scrolls to the
+  element with that id, on the page you are reading. It used to send you back
+  to the home page.
 - HTML in a description or a docs page can no longer carry a `<style>` that
   restyles the whole documentation, nor a form, input, button, textarea or
   select a reader could be asked to type into: they are removed, their text

@@ -523,6 +523,14 @@ load, a revision we do not know. An overlay never breaks a load.
 - Response links are listed after the response headers, before the payload:
   name, description, the runtime expressions as chips, and a "go to
   operation" link when the target resolved.
+- A **`#name` link in rendered Markdown** (a description, a docs page) stays
+  on the current route: it scrolls to the element carrying that id and moves
+  the focus there (`tabindex="-1"` when the element takes no focus of its
+  own), and does nothing when the page has no such id. Left to the browser,
+  the router would read `#name` as an unknown route and send the reader
+  home. A route link (`#/…`, what `apidoc:` references and heading anchors
+  resolve to) is routed as usual. One delegated listener on the document,
+  installed by the first rendered block (`src/components/markdown.js`).
 - Request body + response schemas **per HTTP status with a switcher**,
   examples displayed when present, plus a deterministic generated example
   when the schema declares none (pure module `src/openapi/sample.js`).
