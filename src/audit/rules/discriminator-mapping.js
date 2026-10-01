@@ -1,3 +1,4 @@
+import { listOf } from '../../openapi/model.js'
 // A `discriminator.mapping` key whose target names nothing this document can
 // dispatch to. The key still travels on the wire, so the app keeps it and
 // displays it as written — it just has no schema to point at, which makes the
@@ -25,7 +26,7 @@ export const discriminatorMapping = {
     // so a mapping on a schema with no variant list addresses those.
     const children = new Map()
     for (const [name, schema] of schemas) {
-      for (const part of schema.allOf ?? []) {
+      for (const part of listOf(schema.allOf)) {
         if (!part || typeof part !== 'object') continue
         if (!children.has(part)) children.set(part, new Set())
         children.get(part).add(name)
@@ -35,7 +36,7 @@ export const discriminatorMapping = {
     for (const { schema, dataPath, op, location } of ctx.schemas) {
       const mapping = schema.discriminator?.mapping
       if (!mapping || typeof mapping !== 'object') continue
-      const variants = [...(schema.oneOf ?? []), ...(schema.anyOf ?? [])]
+      const variants = [...listOf(schema.oneOf), ...listOf(schema.anyOf)]
       const known = variants.length
         ? new Set(variants.map((variant) => names.get(variant)).filter(Boolean))
         : (children.get(schema) ?? new Set())

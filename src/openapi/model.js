@@ -15,6 +15,11 @@ import { compileHideRules, HIDE_EXTENSION } from './hide.js'
 // of the list: the display order of operations for the same path stays unchanged.
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query']
 
+// A list field holding something else — `tags: pets`, `parameters: {}` — reads
+// as absent rather than taking the whole document down: the audit's
+// `field-value-kind` names it, and every other page still renders.
+export const listOf = (value) => (Array.isArray(value) ? value : [])
+
 // Methods carried by a Path Item: the standard fields above, then the
 // free-form methods from `additionalOperations` (3.2) — keys in uppercase in the
 // schema, lowercased like everywhere else in the model.
@@ -42,11 +47,13 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
   // A hidden tag hides all operations that carry it: it's the
   // most economical way to remove an entire family of internal endpoints.
   const hiddenTags = new Set(
-    (raw.tags ?? []).filter((tag) => tag?.[HIDE_EXTENSION] === true).map((tag) => tag.name),
+    listOf(raw.tags)
+      .filter((tag) => tag?.[HIDE_EXTENSION] === true)
+      .map((tag) => tag.name),
   )
   const isHidden = (path, method, op, id) => {
     if (op[HIDE_EXTENSION] === true) return true
-    const tags = op.tags ?? []
+    const tags = listOf(op.tags)
     if (tags.some((name) => hiddenTags.has(name))) return true
     return hidden({ id, operationId: op.operationId, method, path, tags })
   }
@@ -92,7 +99,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     }
     // Parameters declared at the path level are inherited by each
     // operation, which can override them individually (key: name + in).
-    const pathParams = (pathItem.parameters ?? []).map((p) => normalizeParameter(p, ctx))
+    const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
     // Path-level `servers` are inherited by each operation that declares none:
     // the model carries the effective (most-specific) list, so no consumer
     // re-implements the operation > path precedence.
@@ -118,7 +125,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
       hiddenOperations += [...pathItemOperations(pathItem)].length
       continue
     }
-    const pathParams = (pathItem.parameters ?? []).map((p) => normalizeParameter(p, ctx))
+    const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
     for (const [method, op] of pathItemOperations(pathItem)) {
       if (isHidden(name, method, op, webhookKey(name, method, op))) {
         hiddenOperations += 1
@@ -150,7 +157,7 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     baseUri: baseUri ?? undefined,
     info: normalizeInfo(raw.info),
     externalDocs: normalizeExternalDocs(raw.externalDocs),
-    servers: (raw.servers ?? []).map(normalizeServer),
+    servers: listOf(raw.servers).map(normalizeServer),
     tags,
     groups: buildGroups(tags, operations),
     operations,
@@ -242,7 +249,7 @@ function orUndefined(obj) {
 function reverseAllOf(raw) {
   const index = new Map()
   for (const [name, schema] of Object.entries(raw.components?.schemas ?? {})) {
-    for (const part of schema?.allOf ?? []) {
+    for (const part of listOf(schema?.allOf)) {
       if (!part || typeof part !== 'object') continue
       if (!index.has(part)) index.set(part, [])
       index.get(part).push(name)
@@ -256,7 +263,7 @@ function reverseAllOf(raw) {
 function collectTags(raw, operations, hiddenTags) {
   const seen = new Set()
   const tags = []
-  for (const tag of raw.tags ?? []) {
+  for (const tag of listOf(raw.tags)) {
     if (seen.has(tag.name) || hiddenTags.has(tag.name)) continue
     seen.add(tag.name)
     // summary/parent/kind: 3.2. `name` stays the identifier operations point
@@ -413,7 +420,7 @@ export function webhookKey(name, method, op) {
 
 function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, pathServers = null) {
   const parameters = [...pathParams]
-  for (const rawParam of op.parameters ?? []) {
+  for (const rawParam of listOf(op.parameters)) {
     const param = normalizeParameter(rawParam, ctx)
     const idx = parameters.findIndex((p) => p.name === param.name && p.in === param.in)
     if (idx >= 0) parameters[idx] = param
@@ -428,7 +435,7 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
     description: op.description,
     deprecated: op.deprecated === true || undefined,
     externalDocs: normalizeExternalDocs(op.externalDocs),
-    tags: op.tags ?? [],
+    tags: listOf(op.tags),
     parameters,
     requestBody: op.requestBody ? normalizeRequestBody(op.requestBody, ctx) : null,
     responses: normalizeResponses(op.responses, ctx),
@@ -438,7 +445,7 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
     // null = inherits the global `security`; [] = auth explicitly disabled
     // on this operation. The distinction matters for credential injection.
     security: op.security ?? null,
-    servers: op.servers?.length ? op.servers.map(normalizeServer) : pathServers,
+    servers: listOf(op.servers).length ? op.servers.map(normalizeServer) : pathServers,
   })
 }
 
@@ -461,7 +468,7 @@ function normalizeCallbacks(raw, ctx) {
     const list = []
     for (const [expression, pathItem] of Object.entries(expressions)) {
       if (!pathItem || typeof pathItem !== 'object') continue
-      const pathParams = (pathItem.parameters ?? []).map((p) => normalizeParameter(p, ctx))
+      const pathParams = listOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
       const operations = [...pathItemOperations(pathItem)].map(([m, op]) =>
         normalizeOperation(expression, m, op, pathParams, ctx, 1),
       )
@@ -800,7 +807,7 @@ function normalizeSecurityScheme(name, raw) {
   return prune({
     name, // key in securitySchemes → the `auth.{name}` environment variable
     type: raw.type, // apiKey | http | oauth2 | openIdConnect | mutualTLS (3.1)
-    scheme: raw.scheme?.toLowerCase(), // for http: bearer | basic | …
+    scheme: typeof raw.scheme === 'string' ? raw.scheme.toLowerCase() : undefined, // for http: bearer | basic | …
     bearerFormat: raw.bearerFormat,
     in: raw.in, // for apiKey: header | query | cookie
     paramName: raw.name, // for apiKey: actual header/param name (≠ scheme key)

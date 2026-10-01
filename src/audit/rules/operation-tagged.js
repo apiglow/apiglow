@@ -1,3 +1,4 @@
+import { listOf } from '../../openapi/model.js'
 // Docs readiness: an untagged operation lands in the nav's fallback group,
 // alongside every other untagged one — the reader has no way to tell what
 // family it belongs to.
@@ -15,7 +16,7 @@ export const operationTagged = {
   severity: 'info',
   run(ctx, check) {
     const labels = new Set(
-      (ctx.document.tags ?? [])
+      listOf(ctx.document.tags)
         .filter((tag) => typeof tag?.kind === 'string' && tag.kind && tag.kind !== 'nav')
         .map((tag) => tag.name),
     )

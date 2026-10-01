@@ -9,7 +9,7 @@
 // flag (3.0 vs 3.1 spellings, version mismatches). Rule 6 is about rendering,
 // and the audit page renders findings, not the schema.
 
-import { operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
+import { listOf, operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
 import { auditProfile, severityResolver } from './config.js'
 import { CATEGORIES, SEVERITIES, SEVERITY_WEIGHT, gradeFor } from './constants.js'
 import { pointer } from './pointer.js'
@@ -115,14 +115,14 @@ function auditScope(ctx) {
 function countTags(ctx) {
   const labels = new Set()
   const tags = new Set()
-  for (const tag of ctx.document.tags ?? []) {
+  for (const tag of listOf(ctx.document.tags)) {
     if (typeof tag?.name !== 'string') continue
     if (typeof tag.kind === 'string' && tag.kind && tag.kind !== 'nav') labels.add(tag.name)
     else tags.add(tag.name)
   }
   for (const entry of ctx.operations) {
     if (entry.kind !== 'operation') continue
-    for (const tag of entry.op.tags ?? [])
+    for (const tag of listOf(entry.op.tags))
       if (typeof tag === 'string' && !labels.has(tag)) tags.add(tag)
   }
   return tags.size
@@ -325,10 +325,10 @@ function mergeParameters(pathItem, op, base, opPointer) {
     if (at >= 0) merged[at] = { param, dataPath }
     else merged.push({ param, dataPath })
   }
-  for (const [index, param] of (pathItem.parameters ?? []).entries()) {
+  for (const [index, param] of listOf(pathItem.parameters).entries()) {
     add(param, `${base}${pointer('parameters', index)}`)
   }
-  for (const [index, param] of (op.parameters ?? []).entries()) {
+  for (const [index, param] of listOf(op.parameters).entries()) {
     add(param, `${opPointer}${pointer('parameters', index)}`)
   }
   return merged
