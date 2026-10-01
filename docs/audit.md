@@ -219,13 +219,25 @@ that contradicts the declared version is a correctness finding.
 - `path-param-declared` (`error`) — path template placeholder with no
   declared `in: path` parameter. Skips webhooks and callbacks: their
   "path" is a name or a runtime expression, whose `{…}` are not path
-  templates.
+  templates. Skips a key `path-syntax` rejects too: its braces are not
+  reliably names, and a malformed template is reported once, there.
 - `path-param-in-template` (`error`) — declared `in: path` parameter
-  absent from the path template. Same webhook/callback exemption.
+  absent from the path template. Same webhook/callback and malformed-key
+  exemptions.
 - `path-param-required` (`error`) — path parameter not marked
   `required: true`.
-- `required-property-declared` (`error`) — `required` listing properties
-  absent from `properties`.
+- `required-property-declared` (`error`) — a name in `required`, or in a
+  `dependentRequired` list, that nothing declares. Read the way a validator
+  applies the schema to one value: a name counts as declared under the
+  `properties` of the schema, of an `allOf` member, of any `oneOf` /
+  `anyOf` branch or `if` / `then` / `else` (recursively), or of the schema
+  this one is composed into — a `oneOf` branch requiring what its parent
+  lists, an `allOf` member requiring what a sibling defines, the usual way
+  to write a variant — or when a `patternProperties` pattern matches it.
+  A schema whose whole family declares no property is a free-form object
+  and is skipped, unless it says `additionalProperties: false`: then no
+  name is declarable and every required one fails. One check per required
+  name.
 - `required-with-default` (`warning`) — a required parameter, or a
   property listed in `required`, that still declares a `default`. The
   default can never apply — the caller always supplies the value — and it
@@ -234,19 +246,47 @@ that contradicts the declared version is a correctness finding.
   one authoring mistake; one check per required element, so the score
   reads as the share of the mandatory surface that does not contradict
   itself.
-- `example-type-mismatch` (`error`) — `example`/`examples` value
-  incompatible with the declared type or enum.
-- `default-allowed` (`error`) — a `default` its own schema rejects
-  (outside the `enum`, or violating min/max): the form prefills a value
-  the API will refuse, and every client generator copies it.
+- `example-type-mismatch` (`error`) — an `example` / `examples` value
+  (schema, parameter, media type; Example `value` / `dataValue`) its own
+  schema rejects, validated in depth by `src/audit/value-validate.js`:
+  `type` (with 3.0's `nullable`), `enum`, `const`, string lengths in code
+  points, `pattern` (ECMA-262, `u`), the numeric bounds in both spellings,
+  `multipleOf`, array and object sizes, `uniqueItems`, `required`,
+  `properties`, `patternProperties`, `additionalProperties` (`false` only
+  with no composition beside it), `items`, `prefixItems`, `allOf` (every
+  member), `oneOf` / `anyOf` (failing only when every branch does — the
+  finding then names the branch the value got furthest into), and the
+  formats `date`, `date-time`, `time` (RFC 3339), `uuid`, `ipv4`, `ipv6`,
+  `email`, `uri`, `int32`, `int64`. Three-valued: what it does not read
+  (`not`, conditionals, `unevaluated*`, `dependent*`, an unresolved
+  `$ref`, an invalid pattern, another format) gives no verdict, never a
+  failure. `required` follows the example's direction: a request example
+  owes no `readOnly` member, a response example no `writeOnly` one, a
+  component's own example neither. The finding names the keyword and the
+  place, a JSONPath into the value (`$.tags[0].name`). A broken format
+  alone is graded `warning` — JSON Schema 2020-12 §7.2.1 makes format
+  assertion "MUST be disabled by default", so validators let it through
+  while readers and generated clients trip on it. A lone
+  `{ "$ref": … }` value is `example-has-ref`'s.
+- `default-allowed` (`error`) — a `default` its own schema rejects, judged
+  by the same validator (type, enum, lengths, pattern, bounds, sizes,
+  members, compositions, formats): the form prefills a value the API will
+  refuse, and every client generator copies it. Same keyword-and-place
+  finding, same `warning` for a format alone.
 - `unused-component` (`warning`) — component defined but never
   referenced, in every `components` section the spec defines, `pathItems`
   included. Reads the **source** document: once dereferenced, a `$ref` is
   indistinguishable from an inline copy (§5).
 - `security-scheme-declared` (`error`) — `security` requirement
   referencing an undeclared scheme.
-- `response-substance` (`warning`) — response object with neither
-  `content` nor `description` substance.
+- `response-substance` (`warning`) — a response with no
+  description (nor 3.2 `summary`) and no content that says anything: a
+  media type counts when it has a schema (or 3.2 `itemSchema`), an
+  example, or a type that is the whole story — a file or plain text
+  (`image/png`, `text/plain`). `{ "application/json": {} }` names a format
+  and describes nothing, and a media range (`*/*`) not even a format. The
+  response renders as a bare status line. A structured media type missing
+  its schema is also `response-content-schema`'s, described or not.
 - `discriminator-mapping` (`info`) — `discriminator.mapping` key whose
   target is neither one of the composite's variants nor a schema
   inheriting from it through `allOf`. `info` because an external target is
@@ -566,7 +606,14 @@ not.
   JSON Schema 2020-12 validation §6 (each keyword constrains instances of
   its type, any other instance is valid against it): enforced by nobody,
   shown here as a constraint. Only with a declared JSON type; a boolean
-  `required` is `schema-keyword-typo`'s.
+  `required` is `schema-keyword-typo`'s. Also 3.0's `nullable: true` with
+  no `type` at all — OAS 3.0.4, Schema Object: "This keyword only takes
+  effect if type is explicitly defined within the same Schema Object" —
+  where the rest of the schema rejects null (a `oneOf` of a string and an
+  integer, an `allOf` of an object): validators still refuse null while
+  this documentation shows the field as nullable. A schema that already
+  admits anything loses nothing and is not reported; from 3.1, `nullable`
+  is `version-legacy`'s. The GitHub REST schema carries 92 of them.
 - `range-contradiction` (`error`) — bounds no value satisfies: `minimum` above
   `maximum`, or equal with either bound exclusive (3.0 booleans and 3.1
   numbers alike), `minLength` / `minItems` / `minProperties` / `minContains`
@@ -684,14 +731,21 @@ that merely mentions its name ("User id of the account owner") is substance.
 - `response-example` (`info`) — response schema declared without any
   example (the app generates one, but a hand-written example is always
   better). One check per status rather than per media type: the same
-  payload as JSON and as XML is one example to write. A file response — a
-  PDF, an export, anything the app classifies as binary (`body-kind.js`) —
-  has nothing to check: the doc shows no sample of a file, and no example
-  stands for its bytes.
+  payload as JSON and as XML is one example to write. A placeholder
+  example (`example-placeholder`: `"string"`, Swagger's `{ "id": 0,
+  "name": "string" }`) does not count — it shows no more than the
+  generated sample. A file response — a PDF, an export, anything the app
+  classifies as binary (`body-kind.js`) — has nothing to check: the doc
+  shows no sample of a file, and no example stands for its bytes.
 - `info-described` (`warning`) — `info.description` missing.
-- `info-metadata` (`info`) — `info.contact` or `info.license` missing or
-  empty. Two fields, filled once for the life of the document, and the
-  only ones that answer "can I build on this, and who do I talk to".
+- `info-metadata` (`info`) — `info.contact` or `info.license` missing, or
+  present without what makes it usable: a contact needs an `email` or a
+  `url` (a name alone reaches no one), a licence an `identifier`, a `url`,
+  or a `name` that is itself an SPDX licence expression (`MIT`,
+  `Apache-2.0 OR MIT`). Two fields, filled once for the life of the
+  document, and the only ones that answer "can I build on this, and who do
+  I talk to". Whether the email, URL or identifier is well formed is
+  `uri-form`'s and `license-identifier-spdx`'s.
 
 ### 4.3 Deprecation hygiene
 
@@ -706,7 +760,12 @@ that merely mentions its name ("User id of the account owner") is substance.
   needle, and a document that is half legacy says so.
 - `deprecation-replacement` (`warning`) — deprecated element whose
   description does not mention a replacement or sunset (heuristic:
-  description absent or free of any "use/instead/sunset/replaced" hint).
+  description absent or free of any "use/instead/sunset/replaced" hint; a
+  `sunset` or `x-sunset` field answers too). A deprecated operation also
+  answers on the wire: one of its responses, any status, declares a
+  `Sunset` or `Deprecation` header, or a `Link` header whose description or
+  examples name the `successor-version`, `latest-version` (RFC 5829),
+  `deprecation` (RFC 9745) or `sunset` (RFC 8594) relation.
 
 ### 4.4 Consistency
 
@@ -754,12 +813,14 @@ Each message states the concrete degradation *in this app*:
 - `oauth-flow-urls` (`warning`) — OAuth2 flow missing
   `authorizationUrl`/`tokenUrl` → the try-it "Get a token" block cannot
   run.
-- `operation-examples` (`info`) — no example anywhere on the operation →
-  try-it prefills fall back to generated samples. Any example counts,
-  parameters included: a parameter example prefills the try-it just as
-  well. Only payloads that can carry an example count: an operation whose
-  only payloads are files (a download, an upload) has nothing to check,
-  like one that exchanges no payload at all.
+- `operation-examples` (`info`) — no example anywhere on the
+  operation → try-it prefills fall back to generated samples. Any example
+  counts, parameters included: a parameter example prefills the try-it just
+  as well. A placeholder does not (`example-placeholder`): it prefills
+  exactly the meaningless sample the rule asks to replace. Only payloads
+  that can carry an example count: an operation whose only payloads are
+  files (a download, an upload) has nothing to check, like one that
+  exchanges no payload at all.
 - `schema-expand-walls` (`info`) — schemas nested deeper than the
   lazy-expansion default → readers will hit "expand" walls. Info only —
   the app handles it, but authors should know. Recursion is not flagged: a
@@ -782,12 +843,22 @@ as "does this spelling match the declared version" — the same `nullable`
 PASSES in a 3.0 document instead of being punished for it.
 
 - `version-legacy` (`warning`) — a spelling a later version replaced,
-  used in a document of that later version: `nullable: true` (→
-  `type: [..., "null"]`) and the boolean form of
-  `exclusiveMinimum`/`exclusiveMaximum` (→ numeric) from 3.1 on, the XML
-  `attribute`/`wrapped`
-  booleans from 3.2 on — the threshold travels per construct. All of them
-  are silent failures: the newer reader ignores the older spelling.
+  used in a document of that later version, with the exact rewrite built
+  from the schema itself as `replacement`: `nullable: true` (→
+  `type: ["string", "null"]` from the schema's own type, or a
+  `{ type: "null" }` branch beside a typeless composition) and the boolean
+  form of `exclusiveMinimum` / `exclusiveMaximum` (→ `exclusiveMinimum: 5`
+  from its `minimum`; a `false` → `minimum: 5`) from 3.1 on; Swagger 2's
+  `x-nullable: true` in any 3.x document (→ `nullable: true` in 3.0, the
+  type list from 3.1). Those are silent failures: the newer reader ignores
+  the older spelling. Two more are deprecated but still read, hence graded
+  `info`: a Schema Object's `example` from 3.1 on (→ `examples: [<value>]`;
+  3.1.1: "Deprecated: The example field has been deprecated in favor of the
+  JSON Schema examples keyword"), and the XML `attribute` / `wrapped`
+  booleans from 3.2 on (→ `nodeType`) — the threshold travels per
+  construct. A spelling that only restates the default (`nullable: false`,
+  a `false` XML boolean, a boolean bound with no `minimum` / `maximum`
+  beside it) said nothing in its own version either and is not checked.
 - `version-construct` (`warning`) — anything used ahead of the declared
   version. Every field and enumerated value of an OpenAPI object comes
   from the structure table (§4.1): 3.1's `webhooks`, `jsonSchemaDialect`,
@@ -869,22 +940,9 @@ An operation's inputs are its parameters and its non-file request bodies
   carried — the export leaves it out; an empty alternative (`{}`) is
   anonymous access and passes. An undeclared scheme gives no verdict:
   `security-scheme-declared`'s.
-- `untyped-input` (`warning`) — an input schema that says nothing about
-  its value: no `type`, no `enum`/`const`, no structure, no composition —
-  `{}`, `true`, or annotations only (`description`, `example`, `format`) —
-  at the root of a parameter or of a JSON body, or at a property, array
-  item or tuple item below; a JSON body declared with no schema is flagged
-  at its media type. Bridges copy the schema into the tool as it is, so the
-  agent guesses the type. In this app the schema view shows `any`, the
-  try-it offers a bare text box and sends what is typed as a string
-  (`coerceValue` has no type to convert to), and the generated sample is
-  `null`. Left to other rules: a composition member (it describes the value
-  with its siblings), an `additionalProperties` value (`free-form-input`),
-  the root of a form body (`multipart-schema-object`), a parameter with
-  neither `schema` nor `content` (`parameter-schema-or-content`); a text
-  body's media type already says text, and `format: binary` is a file. An
-  unresolved `$ref` is `ref-resolves`'. A schema shared through
-  `components.schemas` is graded once, at the component.
+- `untyped-input` — bullet unchanged: its predicate and value
+  positions moved to `src/audit/untyped.js`, shared with `type-missing`,
+  behaviour identical (same checks and findings on every real document).
 - `free-form-input` (`info`) — an input object with no shape: `type:
   object` (or an object by its keywords) with no `properties`, no
   `patternProperties`, no `propertyNames`, no composition, and

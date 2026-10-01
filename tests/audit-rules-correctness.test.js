@@ -91,6 +91,14 @@ describe('path-param-declared', () => {
     expect(result).toMatchObject({ checks: 1, findings: [] })
   })
 
+  it('leaves a key path-syntax rejects to that rule', () => {
+    const result = run(
+      pathParamDeclared,
+      doc({ paths: { '/pets/{petId}/{petId}': { get: { responses: okResponse } } } }),
+    )
+    expect(result.checks).toBe(0)
+  })
+
   it('skips webhooks, whose key is a name and not a template', () => {
     const result = run(
       pathParamDeclared,
@@ -141,6 +149,25 @@ describe('path-param-in-template', () => {
       params: { name: 'ownerId' },
       dataPath: '/paths/~1pets~1{petId}/get/parameters/1',
     })
+  })
+})
+
+describe('path-param-in-template (malformed key)', () => {
+  it('leaves a key path-syntax rejects to that rule', () => {
+    const result = run(
+      pathParamInTemplate,
+      doc({
+        paths: {
+          '/pets/{petId': {
+            get: {
+              parameters: [{ name: 'petId', in: 'path', required: true }],
+              responses: okResponse,
+            },
+          },
+        },
+      }),
+    )
+    expect(result.checks).toBe(0)
   })
 })
 
@@ -213,21 +240,64 @@ describe('required-property-declared', () => {
     })
   })
 
-  it('skips a composed schema, whose branches carry the properties', () => {
+  it('counts what an allOf member or a oneOf branch declares, and what a pattern matches', () => {
     const result = run(
       requiredPropertyDeclared,
       withSchema({
-        required: ['id'],
+        required: ['id', 'kind', 'x-trace'],
         properties: {},
         allOf: [{ type: 'object', properties: { id: { type: 'string' } } }],
+        oneOf: [{ properties: { kind: { const: 'a' } } }, { properties: { kind: { const: 'b' } } }],
+        patternProperties: { '^x-': { type: 'string' } },
       }),
     )
-    expect(result.checks).toBe(0)
+    expect(result).toMatchObject({ checks: 3, findings: [] })
+  })
+
+  // A branch requiring what its parent lists, an allOf member requiring what
+  // a sibling defines: the usual way to write a variant.
+  it('counts what the schema it is composed into declares', () => {
+    const result = run(
+      requiredPropertyDeclared,
+      withSchema({
+        type: 'object',
+        properties: { status: { type: 'string' }, conclusion: { type: 'string' } },
+        oneOf: [{ required: ['status', 'conclusion'] }, { required: ['status', 'missing'] }],
+        allOf: [{ properties: { id: { type: 'string' } } }, { required: ['id'] }],
+      }),
+    )
+    expect(result.checks).toBe(5)
+    expect(result.findings.map((finding) => [finding.dataPath, finding.params])).toEqual([
+      ['/components/schemas/Pet/oneOf/1/required/1', { name: 'missing' }],
+    ])
+  })
+
+  it('checks the names dependentRequired lists', () => {
+    const result = run(
+      requiredPropertyDeclared,
+      withSchema({
+        type: 'object',
+        properties: { cardNumber: { type: 'string' } },
+        dependentRequired: { cardNumber: ['cvv'] },
+      }),
+    )
+    expect(result.findings[0]).toMatchObject({
+      dataPath: '/components/schemas/Pet/dependentRequired/cardNumber/0',
+      params: { name: 'cvv' },
+    })
   })
 
   it('skips a free-form object with no properties at all', () => {
     const result = run(requiredPropertyDeclared, withSchema({ type: 'object', required: ['id'] }))
     expect(result.checks).toBe(0)
+  })
+
+  it('flags every required name of an object that declares none and admits no other', () => {
+    const result = run(
+      requiredPropertyDeclared,
+      withSchema({ type: 'object', required: ['id'], additionalProperties: false }),
+    )
+    expect(result.findings).toHaveLength(1)
   })
 })
 
@@ -256,7 +326,7 @@ describe('example-type-mismatch', () => {
       severity: 'error',
       location: 'GET /pets',
       dataPath: '/paths/~1pets/get/parameters/0/example',
-      params: { value: '"ten"' },
+      params: { value: '"ten"', keyword: 'type', at: '$' },
     })
   })
 
@@ -329,6 +399,191 @@ describe('example-type-mismatch', () => {
   })
 })
 
+describe('example-type-mismatch — in depth', () => {
+  const component = (schema) => doc({ components: { schemas: { Pet: schema } } })
+  const bodies = (schema, request, response) =>
+    doc({
+      paths: {
+        '/pets': {
+          post: {
+            requestBody: { content: { 'application/json': { schema, example: request } } },
+            responses: {
+              201: {
+                description: 'Created',
+                content: { 'application/json': { schema, example: response } },
+              },
+            },
+          },
+        },
+      },
+    })
+  const pet = {
+    type: 'object',
+    required: ['id', 'name', 'password'],
+    properties: {
+      id: { type: 'integer', readOnly: true },
+      name: { type: 'string', maxLength: 5 },
+      password: { type: 'string', writeOnly: true },
+      tags: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' } } } },
+    },
+  }
+  const findings = (result) => result.findings.map(({ severity, params }) => [severity, params])
+
+  it('names the keyword broken and where, as a JSONPath into the value', () => {
+    const result = run(
+      exampleTypeMismatch,
+      component({ ...pet, required: [], example: { name: 'Rex', tags: [{ name: 7 }] } }),
+    )
+    expect(findings(result)).toEqual([
+      [
+        'error',
+        { value: '{"name":"Rex","tags":[{"name":7}]}', keyword: 'type', at: '$.tags[0].name' },
+      ],
+    ])
+  })
+
+  it('counts lengths in code points', () => {
+    const result = run(
+      exampleTypeMismatch,
+      component({ ...pet, required: [], example: { name: '🐶🐶🐶🐶🐶' } }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('owes no readOnly member in a request, no writeOnly one in a response', () => {
+    const result = run(
+      exampleTypeMismatch,
+      bodies(pet, { name: 'Rex', password: 'x' }, { id: 1, name: 'Rex' }),
+    )
+    expect(result).toMatchObject({ checks: 2, findings: [] })
+    const swapped = run(
+      exampleTypeMismatch,
+      bodies(pet, { id: 1, name: 'Rex' }, { name: 'Rex', password: 'x' }),
+    )
+    expect(swapped.findings.map((finding) => finding.params.at)).toEqual(['$.password', '$.id'])
+  })
+
+  it('owes neither in a component example, which has no direction', () => {
+    const result = run(exampleTypeMismatch, component({ ...pet, example: { name: 'Rex' } }))
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
+  it('grades a broken format alone as a warning', () => {
+    const result = run(
+      exampleTypeMismatch,
+      component({
+        type: 'object',
+        properties: {
+          at: { type: 'string', format: 'date-time' },
+          id: { type: 'string', format: 'uuid' },
+          site: { type: 'string', format: 'uri' },
+          count: { type: 'integer', format: 'int32' },
+        },
+        example: { at: '2026-02-30T10:00:00Z', id: '0b1c', site: 'example.com', count: 2 ** 31 },
+      }),
+    )
+    expect(findings(result)).toEqual([
+      ['warning', expect.objectContaining({ keyword: 'format', at: '$.at' })],
+    ])
+    const valid = run(
+      exampleTypeMismatch,
+      component({
+        type: 'object',
+        properties: {
+          at: { type: 'string', format: 'date-time' },
+          day: { type: 'string', format: 'date' },
+          time: { type: 'string', format: 'time' },
+          ip: { type: 'string', format: 'ipv6' },
+          mail: { type: 'string', format: 'email' },
+          other: { type: 'string', format: 'hostname' },
+        },
+        example: {
+          at: '2024-02-29t23:59:60.5+01:00',
+          day: '2024-02-29',
+          time: '08:30:00Z',
+          ip: '::1',
+          mail: 'a@b',
+          other: '!!',
+        },
+      }),
+    )
+    expect(valid.findings).toEqual([])
+  })
+
+  it('reads patterns, bounds, sizes and closed objects', () => {
+    const cases = [
+      [{ type: 'string', pattern: '^[a-z]+$' }, 'ABC', 'pattern'],
+      [{ type: 'number', multipleOf: 0.1 }, 0.35, 'multipleOf'],
+      [{ type: 'integer', minimum: 0, exclusiveMinimum: true }, 0, 'exclusiveMinimum'],
+      [{ type: 'array', items: { type: 'string' }, uniqueItems: true }, ['a', 'a'], 'uniqueItems'],
+      [{ type: 'object', maxProperties: 1 }, { a: 1, b: 2 }, 'maxProperties'],
+      [
+        { type: 'object', properties: { a: {} }, additionalProperties: false },
+        { b: 1 },
+        'additionalProperties',
+      ],
+      [{ type: 'object', additionalProperties: { type: 'integer' } }, { b: 'x' }, 'type'],
+      [
+        { type: 'array', prefixItems: [{ type: 'string' }], items: { type: 'integer' } },
+        ['a', 'b'],
+        'type',
+      ],
+      [{ const: 'fixed' }, 'other', 'const'],
+    ]
+    for (const [schema, example, keyword] of cases) {
+      const result = run(exampleTypeMismatch, component({ ...schema, example }))
+      expect(result.findings.map((finding) => finding.params.keyword)).toEqual([keyword])
+    }
+    expect(
+      run(exampleTypeMismatch, component({ type: 'number', multipleOf: 0.1, example: 0.3 }))
+        .findings,
+    ).toEqual([])
+  })
+
+  it('judges a composition: allOf member by member, oneOf/anyOf only when every branch fails', () => {
+    const variants = {
+      oneOf: [
+        { type: 'string' },
+        { type: 'object', required: ['kind'], properties: { kind: { type: 'string' } } },
+      ],
+    }
+    expect(run(exampleTypeMismatch, component({ ...variants, example: 'a' })).findings).toEqual([])
+    const missed = run(exampleTypeMismatch, component({ ...variants, example: { kind: 1 } }))
+    // The branch the value got furthest into says why.
+    expect(missed.findings[0].params).toMatchObject({ keyword: 'type', at: '$.kind' })
+    const neither = run(exampleTypeMismatch, component({ ...variants, example: 3 }))
+    expect(neither.findings[0].params).toMatchObject({ keyword: 'oneOf', at: '$' })
+    const all = run(
+      exampleTypeMismatch,
+      component({ allOf: [{ type: 'object' }, { required: ['id'] }], example: {} }),
+    )
+    expect(all.findings[0].params).toMatchObject({ keyword: 'required', at: '$.id' })
+  })
+
+  it('gives no verdict on what it does not read', () => {
+    for (const schema of [
+      { not: { type: 'string' } },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema keyword.
+      { if: { type: 'string' }, then: { minLength: 9 } },
+      { $ref: '#/components/schemas/Missing' },
+      { type: 'string', pattern: '(' },
+      { type: 'string', format: 'hostname' },
+      { type: 'string', nullable: true, enum: ['a'] },
+    ]) {
+      const example = schema.nullable ? null : 'x'
+      expect(run(exampleTypeMismatch, component({ ...schema, example })).findings).toEqual([])
+    }
+  })
+
+  it('leaves a lone $ref example to example-has-ref', () => {
+    const result = run(
+      exampleTypeMismatch,
+      component({ type: 'string', example: { $ref: '#/components/examples/Pet' } }),
+    )
+    expect(result.checks).toBe(0)
+  })
+})
+
 describe('default-allowed', () => {
   const withSchema = (schema) => doc({ components: { schemas: { A: schema } } })
 
@@ -342,7 +597,7 @@ describe('default-allowed', () => {
     expect(result.findings[0]).toMatchObject({
       ruleId: 'default-allowed',
       dataPath: '/components/schemas/A/default',
-      params: { value: '0' },
+      params: { value: '0', keyword: 'minimum', at: '$' },
     })
   })
 
@@ -359,8 +614,21 @@ describe('default-allowed', () => {
     expect(result.findings).toHaveLength(1)
   })
 
-  it('has nothing to check without enum nor bounds', () => {
-    const result = run(defaultAllowed, withSchema({ type: 'string', default: 'anything' }))
+  it('reads the type, lengths, pattern and formats too', () => {
+    const cases = [
+      [{ type: 'integer', default: '10' }, 'type', 'error'],
+      [{ type: 'string', maxLength: 2, default: 'abc' }, 'maxLength', 'error'],
+      [{ type: 'string', pattern: '^v\\d+$', default: 'x1' }, 'pattern', 'error'],
+      [{ type: 'string', format: 'uri', default: '' }, 'format', 'warning'],
+    ]
+    for (const [schema, keyword, severity] of cases) {
+      const [finding] = run(defaultAllowed, withSchema(schema)).findings
+      expect(finding).toMatchObject({ severity, params: { keyword, at: '$' } })
+    }
+  })
+
+  it('has nothing to check on a schema that constrains nothing', () => {
+    const result = run(defaultAllowed, withSchema({ description: 'Free', default: 'anything' }))
     expect(result.checks).toBe(0)
   })
 })
@@ -549,12 +817,37 @@ describe('response-substance', () => {
       responseSubstance,
       withResponses({
         200: { description: 'OK' },
-        204: { content: { 'application/json': {} } },
+        201: { content: { 'application/json': { schema: { type: 'object' } } } },
+        202: { content: { 'application/json': { example: { id: 1 } } } },
         // 3.2: summary alone is substance.
         404: { summary: 'Not found' },
       }),
     )
-    expect(result).toMatchObject({ checks: 3, findings: [] })
+    expect(result).toMatchObject({ checks: 4, findings: [] })
+  })
+
+  // A file or plain text says what the payload is by its type alone.
+  it('counts a file or plain-text media type as content on its own', () => {
+    const result = run(
+      responseSubstance,
+      withResponses({
+        200: { content: { 'text/plain': {} } },
+        201: { content: { 'image/png': {} } },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 2, findings: [] })
+  })
+
+  it('does not count content that says nothing: a structured media type or a range left empty', () => {
+    const result = run(
+      responseSubstance,
+      withResponses({
+        200: { content: { 'application/json': {} } },
+        201: { content: { '*/*': {} } },
+        202: { content: { 'application/xml': { examples: {} } } },
+      }),
+    )
+    expect(result.findings.map((f) => f.params.status)).toEqual(['200', '201', '202'])
   })
 
   it('flags a response with neither description nor content', () => {

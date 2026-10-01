@@ -25,7 +25,7 @@ export function isSubstantive(value, { name } = {}) {
 
 // Lower case, accents and punctuation dropped, whitespace collapsed: "À
 // compléter." and "a completer" are the same placeholder.
-function normalize(value) {
+export function normalize(value) {
   return String(value)
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

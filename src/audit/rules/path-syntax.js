@@ -1,4 +1,5 @@
 import { pathKeys, pathTarget } from '../path-segments.js'
+import { wellFormed } from '../path-template.js'
 
 // A Paths key that is not a path template. The specification wants each key
 // to begin with `/` (OAS 3.x, Paths Object, MUST), its `{…}` expressions to be
@@ -25,23 +26,4 @@ export const pathSyntax = {
       check(false, { ...pathTarget(ctx, path), params: { path } })
     }
   },
-}
-
-function wellFormed(path) {
-  if (!path.startsWith('/') || /[?#]/.test(path)) return false
-  const names = new Set()
-  let open = -1
-  for (let i = 0; i < path.length; i += 1) {
-    if (path[i] === '{') {
-      if (open >= 0) return false
-      open = i
-    } else if (path[i] === '}') {
-      if (open < 0 || i === open + 1) return false
-      const name = path.slice(open + 1, i)
-      if (names.has(name)) return false
-      names.add(name)
-      open = -1
-    }
-  }
-  return open < 0
 }

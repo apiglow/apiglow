@@ -302,7 +302,9 @@ test('the report is copied as Markdown, findings and rationales included', async
   expect(markdown).toContain('- Docs readiness: 79 % — 2 warning(s) · 7 note(s)')
   expect(markdown).toContain('## Docs readiness — 79 % · 2 warning(s) · 7 note(s)')
   // A finding travels with where it applies and why it matters.
-  expect(markdown).toContain('**Note** — This operation carries no example, anywhere.')
+  expect(markdown).toContain(
+    '**Note** — This operation carries no example anywhere, or only placeholders.',
+  )
   expect(markdown).toContain('*Why it matters*:')
   // The button confirms, and the outcome reaches the announcement channel.
   await expect(report(page).locator('[data-audit-copy]')).toHaveText('Copied!')

@@ -1,47 +1,16 @@
-// Value ⇄ schema compatibility, at the surface only: declared type, enum,
-// numeric bounds. Deliberately NOT a JSON Schema validator — the dependency
-// rule (architecture.md §14.2) refuses a
-// new runtime dependency, and a half-validator claiming completeness would emit
-// false `error` findings, the one thing an audit cannot afford.
+// Value ⇄ schema building blocks: the declared type at the surface (for
+// `enum-valid`, which only asks whether an entry has the schema's type), a
+// one-line rendering of a value, and the pieces `value-validate.js` — the
+// three-valued validator the example and default rules use — builds on.
 //
-// Every function returns `null` for "nothing to check here": the caller must
+// `checkValueType` returns `null` for "nothing to check here": the caller must
 // then not count a check at all, otherwise a schema declaring nothing would
 // inflate the score with free passes.
-
-// Composed schemas are out of scope: a value only has to satisfy one branch of
-// a oneOf/anyOf, and an allOf spreads its constraints across branches.
-export function hasComposition(schema) {
-  return ['allOf', 'oneOf', 'anyOf'].some((keyword) => Array.isArray(schema[keyword]))
-}
 
 export function checkValueType(value, schema) {
   const types = declaredTypes(schema)
   if (!types.length) return null
   return types.some((type) => valueIsType(value, type))
-}
-
-export function checkValueEnum(value, schema) {
-  // 3.1 `const` ≡ single-value enum, same as normalization does.
-  const values = Array.isArray(schema.enum)
-    ? schema.enum
-    : schema.const !== undefined
-      ? [schema.const]
-      : null
-  if (!values?.length) return null
-  return values.some((candidate) => deepEqual(candidate, value))
-}
-
-export function checkValueRange(value, schema) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum } = numericBounds(schema)
-  if ([minimum, maximum, exclusiveMinimum, exclusiveMaximum].every((b) => b === undefined)) {
-    return null
-  }
-  if (minimum !== undefined && value < minimum) return false
-  if (maximum !== undefined && value > maximum) return false
-  if (exclusiveMinimum !== undefined && value <= exclusiveMinimum) return false
-  if (exclusiveMaximum !== undefined && value >= exclusiveMaximum) return false
-  return true
 }
 
 // Short, safe rendering of a value for a finding's i18n parameters: an example
@@ -89,7 +58,7 @@ function valueIsType(value, type) {
 
 // 3.0 spells the exclusive bounds as booleans qualifying minimum/maximum, 3.1
 // as numbers. Unified to the numeric form, like normalization does.
-function numericBounds(schema) {
+export function numericBounds(schema) {
   let { minimum, maximum } = schema
   let { exclusiveMinimum, exclusiveMaximum } = schema
   if (typeof exclusiveMinimum === 'boolean') {
@@ -109,7 +78,7 @@ function numericBounds(schema) {
   }
 }
 
-function deepEqual(a, b) {
+export function deepEqual(a, b) {
   if (a === b) return true
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
   if (Array.isArray(a) !== Array.isArray(b)) return false

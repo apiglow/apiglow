@@ -33,12 +33,8 @@ describe('version-legacy', () => {
     )
     expect(result.checks).toBe(2)
     expect(result.findings.map((finding) => finding.params)).toEqual([
-      { construct: 'nullable', replacement: 'type: [..., "null"]', declared: '3.1.0' },
-      {
-        construct: 'exclusiveMinimum',
-        replacement: 'exclusiveMinimum: <number>',
-        declared: '3.1.0',
-      },
+      { construct: 'nullable', replacement: 'type: ["integer", "null"]', declared: '3.1.0' },
+      { construct: 'exclusiveMinimum', replacement: 'exclusiveMinimum: 0', declared: '3.1.0' },
     ])
     expect(result.findings[0]).toMatchObject({
       ruleId: 'version-legacy',
@@ -46,6 +42,52 @@ describe('version-legacy', () => {
       category: 'correctness',
       location: 'components.schemas.Pet',
       dataPath: '/components/schemas/Pet/nullable',
+    })
+  })
+
+  it('writes the exact rewrite from the schema itself', () => {
+    const rewrite = (schema) =>
+      run(versionLegacy, withSchema('3.1.0', schema)).findings.map((f) => f.params.replacement)
+    expect(rewrite({ type: ['string', 'integer'], nullable: true })).toEqual([
+      'type: ["string", "integer", "null"]',
+    ])
+    expect(rewrite({ nullable: true, oneOf: [{ type: 'string' }, { type: 'integer' }] })).toEqual([
+      'oneOf: [..., { type: "null" }]',
+    ])
+    expect(rewrite({ type: 'number', maximum: 9, exclusiveMaximum: false })).toEqual(['maximum: 9'])
+  })
+
+  // What only restates the default said nothing in 3.0 either.
+  it('does not check a spelling that only restates the default', () => {
+    const result = run(
+      versionLegacy,
+      withSchema('3.1.0', { type: 'integer', nullable: false, exclusiveMinimum: true }),
+    )
+    expect(result.checks).toBe(0)
+  })
+
+  it('flags x-nullable in every 3.x document, with that version’s spelling', () => {
+    const replacement = (openapi) =>
+      run(versionLegacy, withSchema(openapi, { type: 'string', 'x-nullable': true })).findings.map(
+        (finding) => [finding.dataPath, finding.params.replacement],
+      )
+    expect(replacement('3.0.3')).toEqual([['/components/schemas/Pet/x-nullable', 'nullable: true']])
+    expect(replacement('3.1.0')).toEqual([
+      ['/components/schemas/Pet/x-nullable', 'type: ["string", "null"]'],
+    ])
+  })
+
+  it('notes a schema example from 3.1 on, as info: deprecated, still read', () => {
+    const schema = { type: 'integer', example: 7 }
+    expect(run(versionLegacy, withSchema('3.0.3', schema))).toMatchObject({
+      checks: 1,
+      findings: [],
+    })
+    const [finding] = run(versionLegacy, withSchema('3.1.0', schema)).findings
+    expect(finding).toMatchObject({
+      severity: 'info',
+      dataPath: '/components/schemas/Pet/example',
+      params: { construct: 'example', replacement: 'examples: [7]' },
     })
   })
 
@@ -71,7 +113,10 @@ describe('version-legacy', () => {
       { construct: 'xml.attribute', replacement: "xml.nodeType: 'attribute'", declared: '3.2.0' },
       { construct: 'xml.wrapped', replacement: "xml.nodeType: 'element'", declared: '3.2.0' },
     ])
-    expect(result.findings[0].dataPath).toBe('/components/schemas/Pet/properties/id/xml/attribute')
+    expect(result.findings[0]).toMatchObject({
+      severity: 'info',
+      dataPath: '/components/schemas/Pet/properties/id/xml/attribute',
+    })
   })
 })
 

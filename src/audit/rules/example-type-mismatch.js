@@ -1,13 +1,24 @@
 import { pointer } from '../pointer.js'
 import { operationContents } from '../schema-walk.js'
-import { checkValueEnum, checkValueType, describeValue, hasComposition } from '../value-check.js'
+import { describeValue } from '../value-check.js'
+import { sideOf, validateValue } from '../value-validate.js'
 
 // An example that contradicts its own schema is the most expensive kind of
 // documentation bug: readers copy it, and the try-it prefills with it.
 //
 // Examples live in three places, and all three are checked against the schema
 // they illustrate: the schema itself (`example` in 3.0, `examples` array in
-// 3.1), a parameter, a media type (`example` / `examples` map).
+// 3.1), a parameter, a media type (`example` / `examples` map). The value is
+// validated in depth (`value-validate.js`: types, enums, lengths, patterns,
+// bounds, sizes, required members, closed objects, compositions, the common
+// formats), and the finding names the first keyword it breaks and where, as a
+// JSONPath into the example. A broken `format` alone is a `warning` (JSON
+// Schema makes format an annotation by default); anything else an `error`.
+//
+// `required` follows the example's direction: a request example owes no
+// `readOnly` member, a response example no `writeOnly` one, and a component's
+// own example — used both ways — owes neither. One check per example the
+// validator has something to say about.
 export const exampleTypeMismatch = {
   id: 'example-type-mismatch',
   category: 'correctness',
@@ -37,15 +48,17 @@ export const exampleTypeMismatch = {
 }
 
 function checkValue(check, value, schema, target) {
-  if (hasComposition(schema)) return
-  const type = checkValueType(value, schema)
-  const allowed = checkValueEnum(value, schema)
-  // Neither a type nor an enum to compare against: nothing to check, and
-  // counting a check here would hand out a free pass.
-  if (type === null && allowed === null) return
-  check(type !== false && allowed !== false, {
+  // A lone `{ "$ref": … }` is `example-has-ref`'s: the author meant a
+  // reference, not this value.
+  if (isLoneRef(value)) return
+  const { checked, failure } = validateValue(value, schema, { side: sideOf(target) })
+  // Nothing the validator could judge: counting a check here would hand out
+  // a free pass.
+  if (!checked) return
+  check(!failure, {
     ...target,
-    params: { value: describeValue(value) },
+    severity: failure?.severity,
+    params: { value: describeValue(value), keyword: failure?.keyword, at: failure?.at },
   })
 }
 
@@ -74,4 +87,13 @@ function* containerExamples(container, dataPath) {
     if (value === undefined) continue
     yield [value, `${dataPath}${pointer('examples', name, 'value')}`]
   }
+}
+
+function isLoneRef(value) {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof value.$ref === 'string' &&
+    Object.keys(value).length === 1
+  )
 }

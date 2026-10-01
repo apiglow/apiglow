@@ -1,4 +1,5 @@
 import { deprecableElements, isDeprecated } from '../deprecated.js'
+import { headerExamples } from '../deprecation-headers.js'
 import { hasText } from '../text.js'
 
 // A deprecation that says nothing is a dead end: the reader learns the thing is
@@ -16,6 +17,16 @@ const HINT_RE =
 // half of the same information: a date is an answer.
 const SUNSET_FIELDS = ['sunset', 'x-sunset']
 
+// An operation can also answer on the wire, in the headers its responses
+// declare (any status): `Sunset` (RFC 8594) carries the removal date,
+// `Deprecation` (RFC 9745) the deprecation's, and a `Link` header naming one
+// of the relations that point somewhere — `successor-version`,
+// `latest-version` (RFC 5829), `deprecation` (RFC 9745), `sunset` (RFC 8594) —
+// in its description or its examples. A client reads those from every
+// response, which is where the answer is most useful.
+const DATE_HEADERS = new Set(['sunset', 'deprecation'])
+const LINK_RELATION_RE = /\b(successor-version|latest-version|deprecation|sunset)\b/i
+
 export const deprecationReplacement = {
   id: 'deprecation-replacement',
   category: 'deprecation',
@@ -25,7 +36,29 @@ export const deprecationReplacement = {
       if (!isDeprecated(node)) continue
       const prose = [node.description, node.summary].filter(hasText).join(' ')
       const dated = SUNSET_FIELDS.some((field) => node[field] !== undefined)
-      check(dated || HINT_RE.test(prose), target)
+      const announced = node === target.op?.op && answersOnTheWire(node)
+      check(dated || announced || HINT_RE.test(prose), target)
     }
   },
+}
+
+function answersOnTheWire(operation) {
+  const responses = isObject(operation.responses) ? operation.responses : {}
+  for (const response of Object.values(responses)) {
+    if (!isObject(response) || !isObject(response.headers)) continue
+    for (const [name, header] of Object.entries(response.headers)) {
+      const key = name.toLowerCase()
+      if (DATE_HEADERS.has(key)) return true
+      if (key !== 'link' || !isObject(header)) continue
+      const texts = [header.description, ...headerExamples(header)]
+      if (texts.some((text) => typeof text === 'string' && LINK_RELATION_RE.test(text))) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

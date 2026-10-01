@@ -133,6 +133,20 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- The audit holds examples and defaults to their whole schema: nested
+  properties, required members, lengths, patterns, bounds, sizes, formats
+  and compositions. A finding names the keyword and where in the value it
+  breaks (`$.tags[0].name`); a broken format alone is a warning. Required
+  properties declared through `allOf`, `oneOf`, `anyOf` or
+  `patternProperties` count as declared, and `dependentRequired` is checked
+  too. A 3.0 `nullable` with no `type`, Swagger's `x-nullable` and a 3.1
+  schema `example` are flagged, each with its exact rewrite. A contact
+  counts with an email or a URL, a licence with an identifier, a URL or an
+  SPDX name. A response whose media type says nothing
+  (`"application/json": {}`) no longer counts as content, a placeholder
+  example (`"string"`, `{ "id": 0, "name": "string" }`) no longer counts as
+  an example, and a deprecated operation answering with `Sunset` or
+  `Deprecation` headers counts as dated.
 - `app.js` is 63 kB lighter: the schema audit now loads only when someone
   opens `#/audit`, from `audit.js` next to `app.js`. Nothing changes on a
   CDN install; a self-hosted copy needs `dist/audit.js` beside `app.js`, or

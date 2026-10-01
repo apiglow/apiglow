@@ -218,9 +218,11 @@ still sends (an e2e test because Vitest runs without a DOM here —
 ### 3.4 Audit synchronization
 
 `src/audit/rules/version-construct.js` flags constructs used ahead of the
-declared version; `version-legacy.js` flags 3.0 spellings in 3.1+
-documents (with a per-construct `since`: the XML booleans survived 3.1
-untouched, so "3.0 spelling in a 3.1+ document" is not one threshold).
+declared version; `version-legacy.js` flags spellings a later version
+replaced, in a document of that later version (with a per-construct
+`since`: the XML booleans survived 3.1 untouched, and the schema `example`
+is deprecated from 3.1), and Swagger 2's `x-nullable` in any 3.x
+document.
 Their construct lists track what the model covers: a construct the app
 renders must never be flagged as unknown by the audit. `not` is
 deliberately absent from `version-construct` — 3.0 already carries it next

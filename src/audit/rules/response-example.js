@@ -1,3 +1,4 @@
+import { isRealExample, isRealExampleObject } from '../placeholder-example.js'
 import { carriesFile, operationContents } from '../schema-walk.js'
 
 // Per-response counterpart of the readiness rule `operation-examples`: that one
@@ -6,7 +7,9 @@ import { carriesFile, operationContents } from '../schema-walk.js'
 // what the reader copies into their own client.
 //
 // The app renders a generated sample when there is none, so this is `info`: the
-// page is never empty, it is just filled with "string" and 0.
+// page is never empty, it is just filled with "string" and 0 — which is also
+// why a placeholder example (`isPlaceholderExample`, Swagger's generated
+// `{ "id": 0, "name": "string" }`) does not count as one.
 export const responseExample = {
   id: 'response-example',
   category: 'completeness',
@@ -35,11 +38,14 @@ export const responseExample = {
 }
 
 function hasExample(content, schema) {
-  if (content.example !== undefined) return true
+  if (isRealExample(content.example, schema)) return true
   if (content.examples && typeof content.examples === 'object') {
-    if (Object.keys(content.examples).length) return true
+    if (Object.values(content.examples).some((example) => isRealExampleObject(example, schema)))
+      return true
   }
   return (
-    schema.example !== undefined || (Array.isArray(schema.examples) && schema.examples.length > 0)
+    isRealExample(schema.example, schema) ||
+    (Array.isArray(schema.examples) &&
+      schema.examples.some((value) => isRealExample(value, schema)))
   )
 }

@@ -1,3 +1,4 @@
+import { isRealExample, isRealExampleObject } from '../placeholder-example.js'
 import { carriesFile, operationContents } from '../schema-walk.js'
 
 // Docs readiness: with no example anywhere, the try-it prefills a sample
@@ -14,6 +15,10 @@ import { carriesFile, operationContents } from '../schema-walk.js'
 // `schema.examples[0]` whatever the field is, so an operation whose only
 // example sits on a query parameter is already sendable as-is — saying it has
 // none would be false.
+//
+// A placeholder is no example (`isPlaceholderExample`): Swagger's generated
+// `{ "id": 0, "name": "string" }` prefills exactly the meaningless sample this
+// rule asks to replace. `example-placeholder` lists each one.
 export const operationExamples = {
   id: 'operation-examples',
   category: 'readiness',
@@ -34,17 +39,19 @@ export const operationExamples = {
 // Media Type Object and Parameter Object alike: both carry `example`,
 // `examples` and a schema, and the prefill reads them the same way.
 function hasExample(node) {
-  if (node.example !== undefined) return true
+  const schema = node.schema ?? node.itemSchema
+  if (isRealExample(node.example, schema)) return true
   if (node.examples && typeof node.examples === 'object') {
-    if (Object.keys(node.examples).length) return true
+    if (Object.values(node.examples).some((example) => isRealExampleObject(example, schema)))
+      return true
   }
   // A schema-level example counts: the app uses it for the prefill just the
   // same, whether it sits on the media type or on the schema.
   return [node.schema, node.itemSchema].some(
-    (schema) =>
-      schema &&
-      typeof schema === 'object' &&
-      (schema.example !== undefined ||
-        (Array.isArray(schema.examples) && schema.examples.length > 0)),
+    (own) =>
+      own &&
+      typeof own === 'object' &&
+      (isRealExample(own.example, own) ||
+        (Array.isArray(own.examples) && own.examples.some((value) => isRealExample(value, own)))),
   )
 }

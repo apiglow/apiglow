@@ -241,6 +241,37 @@ describe('response-example', () => {
     expect(run(responseExample, withResponse({ description: 'No content' })).checks).toBe(0)
   })
 
+  it('does not count a placeholder example as one', () => {
+    const result = run(
+      responseExample,
+      withResponse({
+        description: 'OK',
+        content: {
+          'application/json': {
+            schema: { type: 'object' },
+            examples: { generated: { value: { id: 0, name: 'string', tags: ['string'] } } },
+          },
+        },
+      }),
+    )
+    expect(result.findings).toHaveLength(1)
+  })
+
+  it('counts a real example next to a placeholder', () => {
+    const result = run(
+      responseExample,
+      withResponse({
+        description: 'OK',
+        content: {
+          'application/json': {
+            schema: { type: 'object', examples: ['string', { id: 7, name: 'Rex' }] },
+          },
+        },
+      }),
+    )
+    expect(result).toMatchObject({ checks: 1, findings: [] })
+  })
+
   // A PDF, an export: the doc shows no sample of a file, and no example stands
   // for its bytes.
   it('has nothing to check on a file response', () => {
@@ -284,5 +315,20 @@ describe('info-metadata', () => {
       dataPath: '/info/contact',
       params: { field: 'contact' },
     })
+  })
+
+  it('counts a contact only with a way to reach it, a licence only with terms to read', () => {
+    const fields = (contact, license) =>
+      run(infoMetadata, doc({ info: { title: 'A', version: '1', contact, license } })).findings.map(
+        (finding) => finding.params.field,
+      )
+    expect(fields({ name: 'API team' }, { name: 'Proprietary' })).toEqual(['contact', 'license'])
+    expect(fields({ email: 'api@example.com' }, { name: 'Apache-2.0 OR MIT' })).toEqual([])
+    expect(
+      fields({ url: 'https://example.com' }, { name: 'Custom', url: 'https://example.com/terms' }),
+    ).toEqual([])
+    expect(
+      fields({ name: 'x', email: 'x@y' }, { name: 'Custom', identifier: 'LicenseRef-Custom' }),
+    ).toEqual([])
   })
 })

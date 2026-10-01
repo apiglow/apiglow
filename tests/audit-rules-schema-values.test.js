@@ -126,6 +126,32 @@ describe('constraint-type-mismatch', () => {
   })
 })
 
+describe('constraint-type-mismatch — nullable without a type', () => {
+  it('flags a 3.0 nullable with no type where the rest of the schema rejects null', () => {
+    const result = run(
+      constraintTypeMismatch,
+      {
+        Ref: { nullable: true, allOf: [{ type: 'object' }] },
+        Either: { nullable: true, oneOf: [{ type: 'string' }, { type: 'integer' }] },
+        Anything: { nullable: true, description: 'Free' },
+        Typed: { type: 'string', nullable: true },
+      },
+      '3.0.3',
+    )
+    expect(details(result)).toEqual([
+      ['/components/schemas/Ref/nullable', { keyword: 'nullable' }],
+      ['/components/schemas/Either/nullable', { keyword: 'nullable' }],
+    ])
+  })
+
+  it('leaves it to version-legacy from 3.1 on', () => {
+    const result = run(constraintTypeMismatch, {
+      Ref: { nullable: true, allOf: [{ type: 'object' }] },
+    })
+    expect(result.findings).toEqual([])
+  })
+})
+
 describe('range-contradiction', () => {
   it('passes bounds some value satisfies, an equal pair included', () => {
     const result = run(rangeContradiction, {

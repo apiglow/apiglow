@@ -105,6 +105,83 @@ describe('deprecation-replacement', () => {
     })
   })
 
+  it('accepts a Sunset or Deprecation header on any response of a deprecated operation', () => {
+    for (const name of ['Sunset', 'deprecation']) {
+      const result = run(
+        deprecationReplacement,
+        doc({
+          paths: {
+            '/pets': {
+              get: {
+                deprecated: true,
+                responses: {
+                  200: { description: 'OK' },
+                  404: {
+                    description: 'Missing',
+                    headers: { [name]: { schema: { type: 'string' } } },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )
+      expect(result).toMatchObject({ checks: 1, findings: [] })
+    }
+  })
+
+  it('accepts a Link header naming a successor or deprecation relation', () => {
+    const link = (header) =>
+      doc({
+        paths: {
+          '/pets': {
+            get: {
+              deprecated: true,
+              responses: { 200: { description: 'OK', headers: { Link: header } } },
+            },
+          },
+        },
+      })
+    for (const header of [
+      { description: 'Points to the successor-version of this endpoint.' },
+      {
+        schema: { type: 'string' },
+        example: '<https://api.example.com/v2/pets>; rel="latest-version"',
+      },
+      { examples: { notice: { value: '<https://example.com/notice>; rel="deprecation"' } } },
+    ]) {
+      expect(run(deprecationReplacement, link(header)).findings).toEqual([])
+    }
+    // Pagination links answer nothing about the deprecation.
+    const paginated = run(
+      deprecationReplacement,
+      link({
+        description: 'Pagination',
+        example: '<https://api.example.com/pets?page=2>; rel="next"',
+      }),
+    )
+    expect(paginated.findings).toHaveLength(1)
+  })
+
+  it('reads response headers only for operations', () => {
+    const result = run(
+      deprecationReplacement,
+      doc({
+        paths: {
+          '/pets': {
+            get: {
+              parameters: [{ name: 'legacy', in: 'query', deprecated: true }],
+              responses: { 200: { description: 'OK', headers: { Sunset: {} } } },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((finding) => finding.dataPath)).toEqual([
+      '/paths/~1pets/get/parameters/0',
+    ])
+  })
+
   it('checks the same elements the inventory walks', () => {
     const result = run(deprecationReplacement, deprecatingDoc())
     expect(result.checks).toBe(4)

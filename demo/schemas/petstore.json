@@ -1021,7 +1021,9 @@
                     "type": "string",
                     "format": "uri",
                     "description": "HTTPS URL called back on each event.",
-                    "example": "https://hooks.example.com/petstore"
+                    "examples": [
+                      "https://hooks.example.com/petstore"
+                    ]
                   },
                   "events": {
                     "type": "array",
@@ -2109,9 +2111,11 @@
                       "description": "Confirmation that the token was accepted."
                     }
                   },
-                  "example": {
-                    "message": "Authenticated as the demo token."
-                  }
+                  "examples": [
+                    {
+                      "message": "Authenticated as the demo token."
+                    }
+                  ]
                 }
               }
             }
@@ -2196,10 +2200,12 @@
                     "description": "Must be at least 1."
                   }
                 },
-                "example": {
-                  "email": "jane@example.com",
-                  "quantity": 2
-                }
+                "examples": [
+                  {
+                    "email": "jane@example.com",
+                    "quantity": 2
+                  }
+                ]
               }
             }
           },
@@ -2218,9 +2224,11 @@
                       "description": "Always `valid` when the payload passes."
                     }
                   },
-                  "example": {
-                    "status": "valid"
-                  }
+                  "examples": [
+                    {
+                      "status": "valid"
+                    }
+                  ]
                 }
               }
             }
@@ -2259,9 +2267,11 @@
                       "description": "The reward for waiting."
                     }
                   },
-                  "example": {
-                    "message": "Worth the wait."
-                  }
+                  "examples": [
+                    {
+                      "message": "Worth the wait."
+                    }
+                  ]
                 }
               }
             }
@@ -2477,17 +2487,23 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "example": 10
+            "examples": [
+              10
+            ]
           },
           "petId": {
             "type": "integer",
             "format": "int64",
-            "example": 198772
+            "examples": [
+              198772
+            ]
           },
           "quantity": {
             "type": "integer",
             "format": "int32",
-            "example": 7
+            "examples": [
+              7
+            ]
           },
           "shipDate": {
             "type": "string",
@@ -2496,7 +2512,9 @@
           "status": {
             "type": "string",
             "description": "Order Status",
-            "example": "approved",
+            "examples": [
+              "approved"
+            ],
             "enum": [
               "placed",
               "approved",
@@ -2517,11 +2535,15 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "example": 1
+            "examples": [
+              1
+            ]
           },
           "name": {
             "type": "string",
-            "example": "Dogs"
+            "examples": [
+              "Dogs"
+            ]
           }
         },
         "xml": {
@@ -2534,37 +2556,53 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "example": 10
+            "examples": [
+              10
+            ]
           },
           "username": {
             "type": "string",
-            "example": "theUser"
+            "examples": [
+              "theUser"
+            ]
           },
           "firstName": {
             "type": "string",
-            "example": "John"
+            "examples": [
+              "John"
+            ]
           },
           "lastName": {
             "type": "string",
-            "example": "James"
+            "examples": [
+              "James"
+            ]
           },
           "email": {
             "type": "string",
-            "example": "john@example.com"
+            "examples": [
+              "john@example.com"
+            ]
           },
           "password": {
             "type": "string",
-            "example": "12345"
+            "examples": [
+              "12345"
+            ]
           },
           "phone": {
             "type": "string",
-            "example": "12345"
+            "examples": [
+              "12345"
+            ]
           },
           "userStatus": {
             "type": "integer",
             "description": "User Status",
             "format": "int32",
-            "example": 1
+            "examples": [
+              1
+            ]
           }
         },
         "xml": {
@@ -2596,11 +2634,15 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "example": 10
+            "examples": [
+              10
+            ]
           },
           "name": {
             "type": "string",
-            "example": "doggie"
+            "examples": [
+              "doggie"
+            ]
           },
           "category": {
             "$ref": "#/components/schemas/Category"
@@ -2680,11 +2722,15 @@
           "petId": {
             "type": "integer",
             "format": "int64",
-            "example": 10
+            "examples": [
+              10
+            ]
           },
           "name": {
             "type": "string",
-            "example": "doggie"
+            "examples": [
+              "doggie"
+            ]
           },
           "status": {
             "type": "string",
@@ -2799,11 +2845,13 @@
             "description": "Human-readable explanation. Wording may change between releases; the code will not."
           }
         },
-        "example": {
-          "code": 404,
-          "type": "error",
-          "message": "Pet not found"
-        }
+        "examples": [
+          {
+            "code": 404,
+            "type": "error",
+            "message": "Pet not found"
+          }
+        ]
       },
       "ValidationError": {
         "type": "object",
@@ -2853,18 +2901,20 @@
             }
           }
         },
-        "example": {
-          "code": 422,
-          "type": "validation",
-          "message": "The request body is invalid.",
-          "errors": [
-            {
-              "field": "email",
-              "pointer": "/email",
-              "message": "must be a valid email address"
-            }
-          ]
-        }
+        "examples": [
+          {
+            "code": 422,
+            "type": "validation",
+            "message": "The request body is invalid.",
+            "errors": [
+              {
+                "field": "email",
+                "pointer": "/email",
+                "message": "must be a valid email address"
+              }
+            ]
+          }
+        ]
       }
     },
     "securitySchemes": {

@@ -279,6 +279,32 @@ describe('operation-examples', () => {
     expect(result).toMatchObject({ checks: 1, findings: [{ ruleId: 'operation-examples' }] })
   })
 
+  // Swagger's generated example prefills exactly the meaningless sample the
+  // rule asks to replace.
+  it('does not count a placeholder example as one', () => {
+    for (const media of [
+      { schema: { type: 'object' }, example: { id: 0, name: 'string' } },
+      { schema: { type: 'object', examples: ['string'] } },
+      { schema: { type: 'object' }, examples: { generated: { value: { name: 'TODO' } } } },
+    ]) {
+      const result = run(operationExamples, withContent({ 'application/json': media }))
+      expect(result.findings).toHaveLength(1)
+    }
+  })
+
+  it('counts a value the schema enumerates, even a type name', () => {
+    const result = run(
+      operationExamples,
+      withContent({
+        'application/json': {
+          schema: { type: 'object', properties: { kind: { enum: ['string', 'number'] } } },
+          example: { kind: 'string' },
+        },
+      }),
+    )
+    expect(result.findings).toEqual([])
+  })
+
   it('has nothing to check on an operation that exchanges no payload', () => {
     const result = run(
       operationExamples,

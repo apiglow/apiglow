@@ -295,7 +295,7 @@ test('the audit of a heavy schema renders as rules, not as thousands of rows', a
   // findings in the DOM are only the rules that fired exactly once, whose row
   // is the finding itself.
   expect(rows, detail).toBeGreaterThan(0)
-  expect(rows, detail).toBeLessThan(40)
+  expect(rows, detail).toBeLessThan(80)
   expect(findings, detail).toBeLessThanOrEqual(rows)
 
   // Expanding the largest group pays for one page of occurrences, not for the
