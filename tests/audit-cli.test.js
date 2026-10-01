@@ -43,7 +43,7 @@ describe('apiglow audit', () => {
     expect(code).toBe(1)
     expect(stderr).toMatch(/^FAIL {2}--fail-on warning: \d+ finding\(s\)/)
     expect(stderr).toContain(
-      '  warning parameter-described — tests/e2e/fixtures/e2e-api.json:22:11 · GET /pets · /paths/~1pets/get/parameters/0',
+      '  warning parameter-described — tests/e2e/fixtures/e2e-api.json:29:11 · GET /pets · /paths/~1pets/get/parameters/0',
     )
     expect(stderr).toMatch(/\nAudit failed$/)
   })
@@ -227,7 +227,7 @@ describe('apiglow audit', () => {
     const [result] = sarif.runs[0].results.filter((r) => r.ruleId === 'parameter-described')
     expect(result.locations[0].physicalLocation).toEqual({
       artifactLocation: { uri: 'tests/e2e/fixtures/e2e-api.json' },
-      region: { startLine: 22, startColumn: 11 },
+      region: { startLine: 29, startColumn: 11 },
     })
     expect(sarif.runs[0].tool.driver).toMatchObject({
       name: 'apiglow',
@@ -236,12 +236,12 @@ describe('apiglow audit', () => {
 
     const annotations = (await audit(PETSTORE, '--format', 'github')).stdout
     expect(annotations).toContain(
-      '::warning file=tests/e2e/fixtures/e2e-api.json,line=22,col=11,title=Parameter without description [parameter-described]::',
+      '::warning file=tests/e2e/fixtures/e2e-api.json,line=29,col=11,title=Parameter without description [parameter-described]::',
     )
     const quality = JSON.parse((await audit(PETSTORE, '--format', 'codequality')).stdout)
     expect(quality.find((issue) => issue.check_name === 'parameter-described')).toMatchObject({
       severity: 'major',
-      location: { path: 'tests/e2e/fixtures/e2e-api.json', lines: { begin: 22 } },
+      location: { path: 'tests/e2e/fixtures/e2e-api.json', lines: { begin: 29 } },
     })
   })
 
@@ -540,7 +540,7 @@ describe('apiglow audit', () => {
     const findings = JSON.parse(stdout).specs[0].report.categories.flatMap((c) => c.findings)
     expect(findings.every((f) => f.position?.file === 'tests/e2e/fixtures/e2e-api.json')).toBe(true)
     const parameter = findings.find((f) => f.dataPath === '/paths/~1pets/get/parameters/0')
-    expect(parameter.position).toMatchObject({ line: 22, column: 11 })
+    expect(parameter.position).toMatchObject({ line: 29, column: 11 })
   })
 
   // docs/audit.md §8.1: a job that must stay off the network, and one that

@@ -506,6 +506,16 @@ fields (a later declaration of a name wins, required if any member requires
 it). An `allOf` with a non-object member keeps the composite reading. A
 `oneOf` / `anyOf` form body offers no fields yet.
 
+**Server variables** (`src/openapi/servers.js`): a `servers` URL is a
+template. With no environment selected, and for an operation pinned to its
+own server, each declared `{name}` takes its variable's `default`, before the
+URL is resolved against the document base (a templated host or path segment
+would otherwise stay literal or be percent-encoded). An environment seeded
+from a server keeps the variables as `{{name}}` with the defaults pre-filled.
+A `{name}` with no declared variable stays as written; the audit's
+`server-variables` names it. The `enum` is documented, not offered as a
+picker.
+
 **Methods** (`src/openapi/methods.js`): a standard method goes out
 uppercase; a 3.2 `additionalOperations` method goes out exactly as its key
 spells it (`op.verb`), case included — methods are case-sensitive and 3.2

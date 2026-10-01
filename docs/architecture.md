@@ -583,7 +583,14 @@ load, a revision we do not know. An overlay never breaks a load.
   keeps runtime state (selection, OAuth-token-like variable values). No CRUD
   entry point is rendered at all.
 - **Seeding from `servers`**: on first load of a schema, offer (button, not
-  automatic) to create one environment per `servers` entry.
+  automatic) to create one environment per `servers` entry. A server URL is a
+  template (`https://{region}.api.example.com`): the seeded environment's base
+  URL keeps each declared variable as an environment variable
+  (`https://{{region}}.api.example.com`), pre-filled with its default, so
+  editing `region` moves every request. Wherever the app needs a server as a
+  URL with no environment — the fallback base URL, an operation's pinned
+  server, the bake — each variable takes its default
+  (`src/openapi/servers.js`).
 - **Setup link** ([env-setup-link.md](env-setup-link.md)): an
   environment travels to a teammate as one URL, its payload a base64url
   pseudo-query of the hash (`#/?setup=…`) like the other share links. The

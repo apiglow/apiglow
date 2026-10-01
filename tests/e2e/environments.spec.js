@@ -139,11 +139,40 @@ test('an environment can be seeded from the schema servers (explicit button, not
   await openEnvManager(page)
   const seed = page.locator('env-manager fieldset', { hasText: 'Create from schema servers' })
   await expect(seed).toContainText('https://api.e2e.test/v1')
-  await seed.getByRole('button', { name: 'Create', exact: true }).click()
+  await seed.getByRole('button', { name: 'Create', exact: true }).first().click()
   await expect(activeEnvName(page)).toHaveText('https://api.e2e.test/v1')
   await expect(
     page.locator('env-manager input[placeholder="https://api.example.com/v1"]'),
   ).toHaveValue('https://api.e2e.test/v1')
+})
+
+// A server URL is a template: seeded, its variables become the environment's,
+// so changing `region` changes where requests go.
+test('a server seeded with variables keeps them as environment variables', async ({ page }) => {
+  const calls = await mockApi(page)
+  await gotoApp(page)
+  await openEnvManager(page)
+  const seed = page.locator('env-manager fieldset', { hasText: 'Create from schema servers' })
+  await seed
+    .locator('div', { hasText: 'Regional' })
+    .getByRole('button', { name: 'Create', exact: true })
+    .click()
+  await expect(
+    page.locator('env-manager input[placeholder="https://api.example.com/v1"]'),
+  ).toHaveValue('https://{{region}}.e2e.test/v1')
+  await expect(page.locator('env-manager input[placeholder="name"]').first()).toHaveValue('region')
+  await expect(page.locator('env-manager label.input input').first()).toHaveValue('api')
+  await page.locator('env-manager').getByRole('button', { name: '+ auth.bearerAuth' }).click()
+  const tokenInput = page.locator('env-manager label.input input').last()
+  await tokenInput.fill('regional-token')
+  await tokenInput.blur()
+  await closeEnvManager(page)
+
+  await clickNavOp(page, 'listPets')
+  await openTryItIfMobile(page)
+  await send(page)
+  await expect.poll(() => calls.length).toBe(1)
+  expect(calls[0].url).toBe('https://api.e2e.test/v1/pets')
 })
 
 test('duplicate and delete environments, delete asks for confirmation', async ({ page }) => {

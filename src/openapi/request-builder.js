@@ -1,3 +1,4 @@
+import { serverUrl } from './servers.js'
 import { interpolate } from '../env/interpolate.js'
 import { bodyKind } from './body-kind.js'
 import {
@@ -27,8 +28,9 @@ const JSON_MEDIA_RE = /json/i
 // the whole precedence chain: pinned operation server, else the caller's base
 // (environment override or root server). Display surfaces use it too, so the
 // URL a reader sees is the URL the send will hit.
+// A pinned server's variables take their defaults (servers.js).
 export function effectiveBaseUrl(op, baseUrl) {
-  return op?.servers?.[0]?.url ?? baseUrl ?? ''
+  return op?.servers?.[0] ? serverUrl(op.servers[0]) : (baseUrl ?? '')
 }
 
 export function buildRequest({

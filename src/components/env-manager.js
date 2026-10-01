@@ -400,9 +400,9 @@ class EnvManager extends HTMLElement {
       })
       return el(
         'div',
-        'flex items-center gap-2 py-1',
+        'flex flex-wrap items-center gap-2 py-1',
         btn,
-        el('code', 'font-mono text-xs', text(server.url)),
+        el('code', 'font-mono text-xs break-all min-w-0', text(server.url)),
         server.description ? el('span', 'text-xs text-subtle', text(server.description)) : null,
       )
     })

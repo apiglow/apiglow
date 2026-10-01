@@ -66,6 +66,7 @@ import {
   SchemaLoadError,
 } from './openapi/loader.js'
 import { isArazzoDocument, parseArazzo } from './import/arazzo.js'
+import { serverTemplate, serverUrl } from './openapi/servers.js'
 import {
   emptyRoute,
   homeHash,
@@ -390,9 +391,11 @@ function appLayout(
   if (!envStore.locked) {
     envManager = document.createElement('env-manager')
     envManager.store = envStore
+    // Seeded environments keep the server's variables as their own
+    // (`{region}` → `{{region}}`), pre-filled with the defaults.
     envManager.servers = model.servers.map((server) => ({
       ...server,
-      url: new URL(server.url, schemaUrl).href,
+      url: serverTemplate(server, schemaUrl),
     }))
     envManager.suggestedVariables = model.securitySchemes.flatMap((s) => [
       ...suggestedVariables(s),
@@ -425,7 +428,7 @@ function appLayout(
   // against the schema's own base (3.2 `$self` when it declares one, else the
   // URL it was fetched from) — relative servers like "/api/v3" require it.
   const fallbackBaseUrl = model.servers[0]
-    ? new URL(model.servers[0].url, model.baseUri ?? schemaUrl).href
+    ? serverUrl(model.servers[0], model.baseUri ?? schemaUrl)
     : ''
 
   const tryIt = document.createElement('api-try-it-panel')

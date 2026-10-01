@@ -105,6 +105,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- Server URL variables are filled in: `https://{region}.api.example.com`
+  now sends to the variable's default instead of the literal `{region}`, and
+  an environment created from that server keeps `{{region}}` as one of its
+  variables, so changing it moves every request.
 - A request body or a sample built from an `allOf` now carries every
   member's properties, not the first member's alone: the try-it's JSON
   prefill, the response examples, the XML samples, and the fields of a

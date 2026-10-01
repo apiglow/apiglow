@@ -56,6 +56,7 @@ import { publishedScenarios } from '../src/scenarios/loader.js'
 import { headFor } from '../src/shell/head.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
 import { CliError, HAS_SCHEME, catalog, loadSpecModel, readText, refUrl } from './cli-support.mjs'
+import { serverUrl } from '../src/openapi/servers.js'
 
 // Publishing side: the address the same declaration answers at once the site is
 // served, which is where every generated link has to point.
@@ -145,12 +146,12 @@ async function bakedScenarios(entries, { ops, base, specId, specUrl, siteUrl, wa
 function firstBaseUrl(model, environments, { specUrl, siteUrl }) {
   const declared = environments.find((env) => env?.baseUrl)?.baseUrl
   if (declared) return declared
-  const server = model.servers?.[0]?.url
-  if (!server) return ''
+  const server = model.servers?.[0]
+  if (!server?.url) return ''
   // Same base as the app's: what the document says it is, else where it is
   // served from — a relative `/api/v3` is meaningless without one, and an
   // inline schema is served from the host page like everything else it carries.
-  return new URL(server, model.baseUri || specUrl || siteBase(siteUrl)).href
+  return serverUrl(server, model.baseUri || specUrl || siteBase(siteUrl))
 }
 
 // One spec, everything the emitters need: the model, the pages with their

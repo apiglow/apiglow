@@ -5,7 +5,14 @@
     "version": "1.0.0",
     "description": "Small controlled schema for the e2e tests: bearer + apiKey auth, enums, required body, multi-status examples, webhook + callback."
   },
-  "servers": [{ "url": "https://api.e2e.test/v1" }],
+  "servers": [
+    { "url": "https://api.e2e.test/v1" },
+    {
+      "url": "https://{region}.e2e.test/v1",
+      "description": "Regional",
+      "variables": { "region": { "default": "api", "enum": ["api", "eu"] } }
+    }
+  ],
   "security": [{ "bearerAuth": [] }],
   "tags": [
     { "name": "Pets", "description": "Everything about pets" },
