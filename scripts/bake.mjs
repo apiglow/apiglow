@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // `apiglow bake` (docs/seo.md §4): the author-side companion that writes the
 // documentation to disk as static files — a `.md` mirror and an `.html`
 // snapshot per route, `sitemap.xml`, `llms.txt` and `llms-full.txt`. It is what
@@ -24,7 +23,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve as resolvePath } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { hostConfig } from '../src/config.js'
 import {
@@ -52,33 +51,11 @@ import {
 import { toSitemap } from '../src/export/sitemap.js'
 import { SNAPSHOT_LABEL_KEYS, toSnapshotHtml } from '../src/export/snapshot-html.js'
 import { t, useDictionary } from '../src/i18n/index.js'
-import { loadApiModel, loadInlineApiModel } from '../src/openapi/loader.js'
 import { opHash, overviewHash, pageHash, scenarioHash, setRouteSpecId } from '../src/router.js'
 import { publishedScenarios } from '../src/scenarios/loader.js'
 import { headFor } from '../src/shell/head.js'
-import { normalizeSpecsConfig, resolveSpecConfig } from '../src/specs.js'
-
-// What the author has to fix before the bake can run at all, as opposed to what
-// it can work around and report as a warning.
-class BakeError extends Error {}
-
-const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i
-
-// Reading side. Under a `file:` base a root-absolute path is taken as relative
-// too: `/openapi.json` in a host config means "the site root", and on disk that
-// is the directory the config sits in.
-function refUrl(ref, base) {
-  const value = String(ref ?? '')
-  if (HAS_SCHEME.test(value)) return new URL(value)
-  return new URL(base.protocol === 'file:' ? value.replace(/^\/+/, '') : value, base)
-}
-
-async function readText(url) {
-  if (url.protocol === 'file:') return readFile(fileURLToPath(url), 'utf8')
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url.href}`)
-  return response.text()
-}
+import { normalizeSpecsConfig } from '../src/specs.js'
+import { CliError, HAS_SCHEME, catalog, loadSpecModel, readText, refUrl } from './cli-support.mjs'
 
 // Publishing side: the address the same declaration answers at once the site is
 // served, which is where every generated link has to point.
@@ -176,40 +153,11 @@ function firstBaseUrl(model, environments, { specUrl, siteUrl }) {
   return new URL(server, model.baseUri || specUrl || siteBase(siteUrl)).href
 }
 
-// A schema this CLI could not read is the end of the run, not a warning: every
-// file below derives from it. The loader's typed code plus what it was reading,
-// because "malformed" alone names neither the file nor what was wrong with it.
-async function loadModel(spec, { base, options }) {
-  if (!spec.url && !spec.spec) {
-    throw new BakeError(`spec "${spec.id}": neither a url nor an inline document to bake`)
-  }
-  try {
-    return spec.spec
-      ? await loadInlineApiModel(spec.spec, options)
-      : await loadApiModel(refUrl(spec.url, base).href, options)
-  } catch (err) {
-    const cause = err.detail?.cause?.message ?? err.message
-    throw new BakeError(`spec "${spec.id}" could not be loaded: ${err.code ?? 'error'} — ${cause}`)
-  }
-}
-
 // One spec, everything the emitters need: the model, the pages with their
 // bodies, the published workflows, and the two URLs the generated files talk
 // about (the schema's, and the API's).
 async function loadSpec(spec, { config, rootDocsPages, multi, base, siteUrl, language, warnings }) {
-  const resolved = resolveSpecConfig(config, spec, { multi })
-  for (const warning of resolved.warnings) warnings.push(warning)
-  const effective = resolved.config
-  const options = {
-    hide: effective.openapi.hide,
-    overlays: effective.openapi.overlays,
-    // The reader's own patch is browser storage; an installation-wide seed of
-    // it is a document one browser may have edited or dropped, so what the bake
-    // publishes is the documentation as published (docs/user-overlay.md
-    // decision 11).
-    userOverlay: null,
-  }
-  const loaded = await loadModel(spec, { base, options })
+  const { loaded, config: effective } = await loadSpecModel(config, spec, { multi, base, warnings })
 
   const docsPages =
     typeof config.docsPages === 'string' || typeof spec.docsPages === 'string'
@@ -388,12 +336,12 @@ export async function bake({
   siteUrl,
   language = 'en',
 } = {}) {
-  if (!siteUrl) throw new BakeError('--site-url is required: every emitted URL derives from it')
+  if (!siteUrl) throw new CliError('--site-url is required: every emitted URL derives from it')
   const config = hostConfig(raw)
   // Baking a documentation that asks not to be indexed is a contradiction, and
   // a silent one: the tree would be written, served, and crawled.
   if (config.seo.index === false) {
-    throw new BakeError('the config says seo: { index: false } — there is nothing to publish')
+    throw new CliError('the config says seo: { index: false } — there is nothing to publish')
   }
   useDictionary(language, await catalog(language))
   const labels = Object.fromEntries(
@@ -407,7 +355,7 @@ export async function bake({
   } catch (err) {
     // An invalid id or a duplicate one: the app refuses to boot on it, and the
     // bake would otherwise write a tree at addresses that install cannot serve.
-    throw new BakeError(err.message)
+    throw new CliError(err.message)
   }
   for (const warning of specsConfig.warnings) warnings.push(warning)
 
@@ -444,28 +392,6 @@ export async function bake({
   return { files, warnings }
 }
 
-// Where the catalogs sit relative to the file being run, and both answers are
-// right: next to the sources for `scripts/bake.mjs` in the repo, next to the
-// bundle for `dist/bake.js` in the published package, where the app build has
-// already copied them into `dist/i18n/`.
-const CATALOG_BASES = ['../i18n/', './i18n/']
-
-// The catalog `--language` selects, read off the disk: the snapshots' chrome is
-// a product surface and a French install publishes French pages (rule 9).
-async function catalog(language) {
-  if (!language || language === 'en') return null
-  let last
-  for (const base of CATALOG_BASES) {
-    const url = new URL(`${base}${language}.json`, import.meta.url)
-    try {
-      return JSON.parse(await readFile(fileURLToPath(url), 'utf8'))
-    } catch (err) {
-      last = err
-    }
-  }
-  throw new BakeError(`unknown --language "${language}" (${last.message})`)
-}
-
 // The tree is a handful of directories holding two files per route: creating
 // each one once, then writing in parallel, is what keeps a large spec from
 // paying one round trip per file.
@@ -483,11 +409,7 @@ const USAGE = `Usage: apiglow bake --config <file> --site-url <url> --out <dir> 
   --out        directory the static tree is written to
   --language   catalog used for the snapshots' chrome (default: en)`
 
-export async function main(argv) {
-  // The package installs this file as the `apiglow` binary, where baking is one
-  // command among the ones a later version may add; from the repo it is run as
-  // the script it is. Both spellings reach the same run.
-  const args = argv[0] === 'bake' ? argv.slice(1) : argv
+export async function main(args) {
   let values
   try {
     ;({ values } = parseArgs({
@@ -501,18 +423,18 @@ export async function main(argv) {
       },
     }))
   } catch (err) {
-    throw new BakeError(`${err.message}\n\n${USAGE}`)
+    throw new CliError(`${err.message}\n\n${USAGE}`)
   }
-  if (values.help) return USAGE
+  if (values.help) return { stdout: USAGE }
   for (const name of ['config', 'site-url', 'out']) {
-    if (!values[name]) throw new BakeError(`--${name} is required\n\n${USAGE}`)
+    if (!values[name]) throw new CliError(`--${name} is required\n\n${USAGE}`)
   }
   const configPath = resolvePath(values.config)
   let config
   try {
     config = JSON.parse(await readFile(configPath, 'utf8'))
   } catch (err) {
-    throw new BakeError(`--config ${values.config} could not be read: ${err.message}`)
+    throw new CliError(`--config ${values.config} could not be read: ${err.message}`)
   }
   const { files, warnings } = await bake({
     config,
@@ -523,18 +445,10 @@ export async function main(argv) {
     language: values.language,
   })
   await writeTree(values.out, files)
-  return [
-    ...warnings.map((warning) => `warning: ${warning}`),
-    `Baked ${files.size} files into ${values.out}`,
-  ].join('\n')
-}
-
-// Run only when invoked as a program: the integration test imports `bake()`.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    console.log(await main(process.argv.slice(2)))
-  } catch (err) {
-    console.error(err instanceof BakeError ? `apiglow bake: ${err.message}` : err)
-    process.exitCode = 1
+  return {
+    stdout: [
+      ...warnings.map((warning) => `warning: ${warning}`),
+      `Baked ${files.size} files into ${values.out}`,
+    ].join('\n'),
   }
 }

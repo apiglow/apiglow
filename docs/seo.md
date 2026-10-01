@@ -97,15 +97,15 @@ model and the docs pages, never the host config (rule 10).
 
 ## 4. The bake
 
-`apiglow bake` — a Node CLI shipped in the npm package (`bin` →
-`dist/bake.js`, built from `scripts/bake.mjs` by its own Vite config, so it
-never weighs on the app bundle or its size budget). It reads the host config
+`apiglow bake` — a command of the Node CLI shipped in the npm package (`bin`
+→ `dist/cli.js`, built from `scripts/cli.mjs` by its own Vite config, so it
+never weighs on the app bundle or its size budget; the command itself lives in
+`scripts/bake.mjs`). It reads the host config
 through `src/config.js` — the same module the app reads it with — loads the
 schema through `src/openapi/loader.js` (ref-parser is Node-compatible), and
 writes out the pure, snapshot-tested generators of `src/export/` (rule 12).
-The packaged binary takes the command name (`apiglow bake …`) and the repo
-form drops it (`node scripts/bake.mjs …`); both reach the same run, and
-`--help` prints the usage.
+From the repo the same run is `node scripts/cli.mjs bake …`, and `--help`
+prints the usage.
 
 ### Invocation
 

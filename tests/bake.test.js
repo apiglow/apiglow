@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { bake, main } from '../scripts/bake.mjs'
+import { bake } from '../scripts/bake.mjs'
+import { run as cli } from '../scripts/cli.mjs'
 
 // The bake (docs/seo.md §4) run end to end on the e2e petstore fixture: the
 // config goes in, the static tree comes out. Two things are worth testing here
@@ -260,20 +261,38 @@ describe('bake', () => {
     await writeFile(config, JSON.stringify({ openapi: { url: schema } }), 'utf8')
     const out = join(dir, 'public')
 
-    const report = await main(['--config', config, '--site-url', SITE, '--out', out])
+    const { stdout, code } = await cli([
+      'bake',
+      '--config',
+      config,
+      '--site-url',
+      SITE,
+      '--out',
+      out,
+    ])
 
-    expect(report).toMatch(/^Baked \d+ files into /m)
+    expect(code).toBeUndefined()
+    expect(stdout).toMatch(/^Baked \d+ files into /m)
     expect(await readFile(join(out, 'op', 'listPets.html'), 'utf8')).toContain(
       '<title>List all pets — E2E Test API</title>',
     )
   })
 
   it('says what it needs rather than baking half a site', async () => {
-    await expect(main(['--site-url', SITE, '--out', 'public'])).rejects.toThrow(
-      /--config is required/,
-    )
-    await expect(
-      main(['--config', 'nowhere.json', '--site-url', SITE, '--out', 'x']),
-    ).rejects.toThrow(/could not be read/)
+    const missing = await cli(['bake', '--site-url', SITE, '--out', 'public'])
+    expect(missing.code).toBe(2)
+    expect(missing.stderr).toMatch(/^apiglow bake: --config is required/)
+
+    const unreadable = await cli([
+      'bake',
+      '--config',
+      'nowhere.json',
+      '--site-url',
+      SITE,
+      '--out',
+      'x',
+    ])
+    expect(unreadable.code).toBe(2)
+    expect(unreadable.stderr).toMatch(/could not be read/)
   })
 })

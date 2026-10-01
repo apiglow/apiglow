@@ -1,9 +1,9 @@
 // Files under src/ unreachable from the two things the repo builds: the app
-// (dist/app.js) and the bake CLI (dist/bake.js), which walks into export
-// generators the app itself never loads.
+// (dist/app.js) and the CLI (dist/cli.js), which walks into export generators
+// the app itself never loads.
 import { headline, read, section, walk } from './lib.mjs'
 
-const ENTRIES = ['src/app.js', 'scripts/bake.mjs']
+const ENTRIES = ['src/app.js', 'scripts/cli.mjs']
 
 function resolveImport(fromRel, spec) {
   if (!spec.startsWith('.')) return null
@@ -29,7 +29,8 @@ while (queue.length) {
     /(?:^|[^\w.])import\s*(?:[^'"]*?from\s*)?[('\s]*['"]([^'"]+)['"]/gm,
   )) {
     const target = resolveImport(file, m[1])
-    if (!target?.endsWith('.js') || seen.has(target)) continue
+    // `.mjs` too: the CLI entry reaches src/ through its command modules.
+    if (!/\.m?js$/.test(target ?? '') || seen.has(target)) continue
     seen.add(target)
     queue.push(target)
   }

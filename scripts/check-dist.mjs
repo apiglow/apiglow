@@ -14,10 +14,10 @@ const problems = []
 // splitting crept into the lib build — every CDN install breaks on the next
 // publish. (An accidental `undici` re-inline lands in the same single file;
 // the size budget below is what catches it.)
-// `bake.js` is the author-side CLI (docs/seo.md §4), built for Node by
-// vite.bake.config.js and exposed as the `apiglow` bin: no browser ever fetches
-// it, which is also why no budget below counts it.
-const EXPECTED_JS = ['app.js', 'bake.js']
+// `cli.js` is the author-side CLI (`apiglow bake`, docs/seo.md §4), built for
+// Node by vite.cli.config.js and exposed as the `apiglow` bin: no browser ever
+// fetches it, which is also why no budget below counts it.
+const EXPECTED_JS = ['app.js', 'cli.js']
 const jsFiles = readdirSync(dist)
   .filter((f) => f.endsWith('.js'))
   .sort()
@@ -28,14 +28,14 @@ if (jsFiles.join(' ') !== EXPECTED_JS.join(' ')) {
 }
 
 // A `bin` file npm links as `apiglow`: without its shebang the command is only
-// executable through `node dist/bake.js`, which is exactly how every test runs
+// executable through `node dist/cli.js`, which is exactly how every test runs
 // it — the one break the suites cannot see.
 // Guarded on the check above rather than assumed: an absent CLI is already
 // reported there, and reading it anyway would bury that line under a stack.
-if (jsFiles.includes('bake.js')) {
-  const cli = readFileSync(join(dist, 'bake.js'), 'utf8')
+if (jsFiles.includes('cli.js')) {
+  const cli = readFileSync(join(dist, 'cli.js'), 'utf8')
   if (!cli.startsWith('#!/usr/bin/env node\n')) {
-    problems.push('dist/bake.js does not open with a node shebang — the `apiglow` bin needs one')
+    problems.push('dist/cli.js does not open with a node shebang — the `apiglow` bin needs one')
   }
 }
 

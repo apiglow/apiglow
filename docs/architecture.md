@@ -60,7 +60,7 @@ What it does:
   sources), library-mode build for distribution. Output: `dist/app.js`
   (minified ESM) + `dist/app.css` + `dist/i18n/*.json` + `dist/fonts/`,
   plus — from a second pass that shares nothing with the first — the
-  author-side `dist/bake.js` CLI (§3, [seo.md](seo.md) §4).
+  author-side `dist/cli.js` CLI (§3, [seo.md](seo.md) §4).
 - **Runtime dependencies** — short by design, open only for spec/format
   work. An addition must do **spec or format work** *and* correspond to a
   job we actually want done in full, then be justified in this list with its
@@ -125,8 +125,8 @@ Hard requirements behind this install mode:
   jsDelivr, consumed by `demo/cdn-install.html` (`npm run preview:cdn`); the
   e2e suite runs against that simulation.
 - An install that wants to be **found** adds nothing to that page: the
-  `apiglow bake` CLI shipped in the same package (`bin` → `dist/bake.js`,
-  built from `scripts/bake.mjs`) writes the documentation to disk as static
+  `apiglow bake` CLI shipped in the same package (`bin` → `dist/cli.js`,
+  built from `scripts/cli.mjs`) writes the documentation to disk as static
   files the author deposits next to the host page. Author-side, never part
   of the reader's install — see [seo.md](seo.md) and §14.18.
 - The demo needs no backend either: the petstore schema declares a
@@ -1831,7 +1831,7 @@ imports the shell and never sees the host config directly.
 ├── docs-pages/             # demo .md pages
 ├── docs/                   # this documentation
 ├── tests/                  # Vitest (pure core) + tests/e2e (Playwright)
-└── scripts/                # bake CLI, preview-cdn, health checks
+└── scripts/                # the apiglow CLI, preview-cdn, health checks
 ```
 
 ## 10. Testing

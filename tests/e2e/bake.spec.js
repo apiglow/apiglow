@@ -2,10 +2,10 @@
 // into the package, run against the served fixture, and what it wrote read the
 // way a crawler reads it — with JavaScript switched off. tests/bake.test.js
 // checks the shape of the tree from the sources; only here is the built
-// `dist/bake.js` executed, only here is a snapshot served over HTTP, and only
+// `dist/cli.js` executed, only here is a snapshot served over HTTP, and only
 // here does a browser parse one.
 import { execFile } from 'node:child_process'
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +14,7 @@ import { expect, test } from '@playwright/test'
 
 const run = promisify(execFile)
 const repo = fileURLToPath(new URL('../../', import.meta.url))
-const CLI = join(repo, 'dist/bake.js')
+const CLI = join(repo, 'dist/cli.js')
 const pkg = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'))
 
 // One tree per worker. Under `fullyParallel` the same file can be executed by
@@ -116,13 +116,25 @@ test('hands the reader back to the app it was baked from', async ({ page }) => {
 test('ships in the package as the apiglow bin', async ({ request }) => {
   const cdn = `/npm/${pkg.name}@${pkg.version}/`
   const manifest = await (await request.get(`${cdn}package.json`)).json()
-  expect(manifest.bin).toEqual({ apiglow: 'dist/bake.js' })
+  expect(manifest.bin).toEqual({ apiglow: 'dist/cli.js' })
 
   // The `files` half of the same contract: a bin the tarball does not carry is
   // a broken install, and nothing else in the suite fetches this file.
   const cli = await request.get(`${cdn}${manifest.bin.apiglow}`)
   expect(cli.status()).toBe(200)
   expect(await cli.text()).toMatch(/^#!\/usr\/bin\/env node\n/)
+})
+
+test('runs when invoked through the symlink npm installs', async () => {
+  // `node_modules/.bin/apiglow` — what `npx apiglow` executes — is a link to
+  // the bundle, not the bundle: a CLI that only runs when called by its own
+  // path does nothing at all, with exit status 0, in every install.
+  const dir = await mkdtemp(join(tmpdir(), 'apiglow-bin-'))
+  const link = join(dir, 'apiglow')
+  await symlink(CLI, link)
+  const { stdout } = await run('node', [link, 'bake', '--help'])
+  expect(stdout).toMatch(/^Usage: apiglow bake /)
+  await rm(dir, { recursive: true, force: true })
 })
 
 test('publishes French pages from the catalogs shipped next to it', async () => {

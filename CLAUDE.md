@@ -15,7 +15,7 @@ work. Design rationale: `docs/architecture.md` §14. Contributor guide: `CONTRIB
 - `npm run dev` — Vite dev server (unbundled ESM sources)
 - `npm run build` — two passes that share nothing: the browser bundle
   (`dist/app.js`, `dist/app.css`, `dist/i18n/*.json`, `dist/fonts/`) and the
-  author-side bake CLI (`dist/bake.js`, shipped as the `apiglow` bin —
+  author-side CLI (`dist/cli.js`, shipped as the `apiglow` bin —
   `docs/seo.md` §4)
 - `npm test` — Vitest (pure core only); must be green before any commit
   touching the core
