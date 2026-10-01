@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { auditSchema } from '../src/audit/engine.js'
-import { REPORT_FORMAT, REPORT_VERSION, toAuditJson } from '../src/export/audit-json.js'
+import { toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
 import { loadInlineApiModel } from '../src/openapi/loader.js'
@@ -230,7 +230,9 @@ describe('audit JSON report', () => {
 
   it('declares its format and version, and carries the rule texts once', () => {
     const report = json(REPORT)
-    expect(report).toMatchObject({ format: REPORT_FORMAT, version: REPORT_VERSION, passed: true })
+    // Literals, not the module's constants: the contract is the string a
+    // consumer matches, and a constant renamed in passing must fail here.
+    expect(report).toMatchObject({ format: 'apiglow-audit-report', version: 1, passed: true })
     expect(report).toMatchSnapshot()
   })
 

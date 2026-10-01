@@ -15,8 +15,8 @@ import { t } from '../i18n/index.js'
 // finding's `params` — so that a consumer explaining a finding needs nothing
 // but this file.
 
-export const REPORT_FORMAT = 'apiglow-audit-report'
-export const REPORT_VERSION = 1
+const REPORT_FORMAT = 'apiglow-audit-report'
+const REPORT_VERSION = 1
 
 // `results`: [{ id, source, passed, gates, report, fresh }] — one per spec, as
 // the CLI computes them. `baseline`: whether a baseline was applied, which is
