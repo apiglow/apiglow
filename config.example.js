@@ -380,7 +380,8 @@ window.API_DOC_CONFIG = {
     // Nothing is computed until someone opens #/audit, and nothing is sent
     // anywhere — the analysis runs on the schema the page already downloaded.
     // false = the settings block, the #/audit route and every computation
-    // disappear; the raw schema is not even kept in memory.
+    // disappear; the raw schema is not even kept in memory. The command line
+    // (`apiglow audit`, run by the author in CI) ignores this switch.
     audit: true,
 
     // "First call" (#/first-call): a generated onboarding page at the top of

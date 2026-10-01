@@ -373,6 +373,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Hiding operations (`x-apiglow-hide`, `openapi.hide`) | `hide.test.js` | — |
 | Schema audit engine, rules, scoring (`docs/audit.md`) | `audit-engine.test.js`, `audit-rules-*.test.js`, `audit-petstore.test.js` | `audit.spec.js` |
 | Schema audit report as Markdown | `audit-export.test.js` | `audit.spec.js` |
+| `apiglow audit` command line: console report, baseline, checks, exit status, input forms, multi-spec, the packaged bin (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
 | Schema audit strings (one `message` / `why` / `label` per rule, en + fr) | `audit-strings.test.js` | — |
 | Schema audit page: identity, jumps, help, folding by rule | — | `audit.spec.js`, `perf.spec.js` |
 | Host feature switches (`features.audit`, `features.scenarios`, `features.ci`, `features.onboarding`): every entry point closed | — | `audit-disabled.spec.js`, `scenarios-disabled.spec.js`, `first-touch.spec.js` |
@@ -388,7 +389,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | `llms-full.txt` export | `llms-full.test.js`, `export-completeness.test.js` | `bootstrap.spec.js` |
 | `llms.txt` index export | `llms.test.js` | `bootstrap.spec.js` |
 | Baked-install generators: `sitemap.xml`, the output layout and its file names, the HTML snapshot (escaped raw HTML, refused link schemes) (`docs/seo.md`) | `sitemap.test.js`, `snapshot-html.test.js`, `llms.test.js`, `llms-full.test.js` | — |
-| `apiglow` CLI: command routing and exit status; `bake`: config resolution, output tree, multi-spec nesting, the packaged bin (run through its npm symlink), snapshots served without JavaScript | `cli.test.js`, `bake.test.js` | `bake.spec.js` |
+| `apiglow` CLI: command routing and exit status; `bake`: config resolution (overlays included), output tree, multi-spec nesting, the packaged bin (run through its npm symlink), snapshots served without JavaScript | `cli.test.js`, `bake.test.js` | `bake.spec.js` |
 | MCP server config export (bridge table, auth placeholders) | `mcp.test.js` | `bootstrap.spec.js` |
 | Agent hand-off: raw Markdown view, `claude mcp add` command, Cursor/VS Code install links, `llms.txt` in the nav | `mcp.test.js` | `history-export.spec.js`, `bootstrap.spec.js` |
 | "Copy page" on a prose page: the page as authored, `{{var}}` as a template, MCP context following the environment | `docs-page-markdown.test.js` | `docs-pages.spec.js` |

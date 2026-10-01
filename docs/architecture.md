@@ -128,7 +128,8 @@ Hard requirements behind this install mode:
   `apiglow bake` CLI shipped in the same package (`bin` → `dist/cli.js`,
   built from `scripts/cli.mjs`) writes the documentation to disk as static
   files the author deposits next to the host page. Author-side, never part
-  of the reader's install — see [seo.md](seo.md) and §14.18.
+  of the reader's install — see [seo.md](seo.md) and §14.18. The same binary
+  runs the schema audit in CI (`apiglow audit`, §5.12).
 - The demo needs no backend either: the petstore schema declares a
   same-origin server (`/demo-api/v3`) answered in the browser by
   `demo/mock-sw.js`, a service worker holding its state in memory. The
@@ -1287,6 +1288,10 @@ What matters at this level:
 - **On by default, removable**: `features.audit: false` removes the settings
   block, the route and any computation — overridable per spec like the other
   feature switches.
+- **Also a command line**: `apiglow audit` runs the same engine in Node for a
+  CI job — exit status, JSON or Markdown output, a baseline of accepted
+  findings ([`audit.md`](audit.md) §8). It ships in the same binary as the
+  bake and, like it, never touches the app bundle.
 - **Computed on first visit only**, then kept in memory for the page's
   lifetime. Nothing runs at boot: the perf budget is a contract (rule 14) and
   the audit walks the whole raw document.

@@ -7,17 +7,17 @@ tests; this catalog describes each of them.
 
 ## 1. What this is
 
-An in-browser analyzer for the OpenAPI schema the app already loads. It
-produces a report of findings — severity, message, rationale, location,
-deep link to the operation — grouped into categories, each scored, with an
-aggregate letter grade.
+An analyzer for the OpenAPI schema the app loads, in the browser on the
+`#/audit` page, and from the command line (`apiglow audit`, §8) where a CI
+job can gate on it. It produces a report of findings — severity, message,
+rationale, location, deep link to the operation — grouped into categories,
+each scored, with an aggregate letter grade.
 
 It is **not** a general-purpose linter competing with Spectral, vacuum or
-Redocly lint on ruleset breadth. Those are CI-side, producer-side, install
-tools. Our differentiators:
+Redocly lint on ruleset breadth or configurability. Our differentiators:
 
 - **zero install**: runs on the schema the docs already fetched, in the
-  browser;
+  browser — and in CI, one `npx` line with no ruleset to write;
 - **clickable findings**: every finding on a rendered operation deep-links
   to it via the existing hash routing;
 - **docs-readiness rules**: a category no generic linter can have, because
@@ -42,7 +42,9 @@ drifting.
    categories), each rule a pure, individually tested function. No rule
    configurability beyond the feature switch — no custom rules, no
    per-rule severity overrides, no ignore lists. Simplest option first;
-   extend only on demand.
+   extend only on demand. The command line's baseline (§8.3) is not an
+   ignore list: it changes which findings fail a CI job, never which ones
+   are reported.
 3. **Per-category score + aggregate letter.** Category percentages make
    the letter defensible; the letter alone would be arbitrary, counts
    alone are not shareable.
@@ -60,6 +62,13 @@ drifting.
    work (design rationale: `architecture.md`) — but because a linter's
    value *is* its rule set, and ours is written for what this app renders.
    A general-purpose OpenAPI linter would answer a different question.
+7. **A command line for CI, on the same engine** (§8). The page and
+   `apiglow audit` run the same rules and produce the same report; the
+   command only adds what a pipeline needs around it — an exit status,
+   machine-readable output, a baseline. It is part of the MIT package like
+   everything else. `features.audit` does not apply to it: that switch
+   removes the page from published documentation, and an author running
+   the command asked for the report.
 
 ## 3. Report shape
 
@@ -493,3 +502,146 @@ PASSES in a 3.0 document instead of being punished for it.
   must render as rule rows, with at most one page of occurrences per
   expansion, and no slice of the run may blow the blocking cap — a budget,
   not a knob (rule 14).
+- **Command line**: the console report is snapshot-tested next to the
+  Markdown one (`audit-export.test.js`); the baseline and the checks have
+  their own tests (`audit-baseline.test.js`); the command is run end to end
+  from the sources — input forms, streams, exit status, multi-spec, the
+  overlays a config declares (`audit-cli.test.js`) — and once more as the
+  packaged bin, where its dependencies and catalogs resolve from the
+  installed package (`tests/e2e/audit-cli.spec.js`).
+
+## 8. Command line
+
+`apiglow audit` — a command of the `apiglow` binary shipped in the npm
+package (`bin` → `dist/cli.js`; the command lives in `scripts/audit.mjs`).
+It loads the schema the way the app does (`src/openapi/loader.js`), runs
+`auditSchema`, and writes the report through the generators of
+`src/export/`.
+
+### 8.1 Invocation
+
+```
+npx apiglow audit openapi.yaml
+npx apiglow audit --config apidoc.config.json
+```
+
+- **Input**: exactly one of a schema — a path, resolved against the working
+  directory, or a URL; JSON or YAML — or `--config`, the JSON object the host
+  page inlines in `#api-doc-config`. The config form audits what the
+  documentation shows: its overlays are applied, its hidden operations are
+  marked hidden, and every spec of a multi-spec install is audited. What it
+  names is read under the config file's own directory, exactly as the bake
+  reads it ([`seo.md`](seo.md) §4).
+- **`--format`**: `text` (default) — the console report, folded by rule like
+  the page, the rationale printed once per rule; `markdown` — the export of
+  §5, the shape a pull-request comment or a GitHub job summary takes;
+  `json` — the engine's report as it is (§3), wrapped with the checks:
+
+  ```
+  { "passed": false,
+    "specs": [{ "id": "default", "source": "openapi.yaml", "passed": false,
+                "gates": [{ "gate": "fail-on", "threshold": "error", "actual": 2, "passed": false }],
+                "newFindings": 2,
+                "report": { … } }] }
+  ```
+
+  `newFindings` is present only with `--baseline`, and so is `known: true`
+  on the findings the baseline lists.
+- **`--output <file>`** writes the report to a file instead of stdout.
+- **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
+  report's messages and rationales — they exist only as i18n strings (§3).
+  The command's own lines on stderr stay English, like the bake's.
+- **Streams**: the report on stdout, everything about the run — warnings,
+  each check, the verdict — on stderr. `--format json > report.json` and
+  `--format markdown >> "$GITHUB_STEP_SUMMARY"` therefore hold exactly the
+  report.
+- **Multi-spec**: one report per spec, in declaration order, each under
+  its spec id (`[id]` in text, `<!-- spec: id -->` in Markdown, `id` in
+  JSON). The run fails when any spec fails.
+
+### 8.2 Checks and exit status
+
+| Option | Fails when | Default |
+| --- | --- | --- |
+| `--fail-on error\|warning\|info\|none` | a finding of that severity or a worse one | `error` |
+| `--min-grade A\|B\|C\|D\|F` | the aggregate grade is below it | off |
+| `--min-score 0-100` | the aggregate score is below it | off |
+
+Each check is reported on its own line (`PASS` / `FAIL`), and any failing
+check fails the run. A report with no scored category has nothing to
+grade, and the two grade checks pass on it rather than fail on a missing
+value. When `--fail-on` fails, stderr lists the findings that made it fail
+(the first 20, then a count — the report always carries all of them).
+
+Exit status: `0` every check passed, `1` a check failed, `2` the audit
+could not run — an unknown option, a value out of range, a schema that
+cannot be read. Every option is validated before anything is loaded: a
+typo in a threshold must neither cost a download nor read as "no
+threshold".
+
+### 8.3 Baseline
+
+Adopting the check on an existing API should not mean fixing its whole
+history first. A baseline records the findings a team has seen and
+accepted; committed next to the schema, it makes `--fail-on` count only
+the findings it does not list.
+
+```
+npx apiglow audit openapi.yaml --write-baseline audit-baseline.json
+npx apiglow audit openapi.yaml --baseline audit-baseline.json
+```
+
+- **Identity** of a finding: its rule and its JSON pointer, the two things
+  that survive an unrelated edit of the document. Messages and locations
+  do not (a renamed parameter rewrites both), nor does a severity a later
+  version of a rule may change.
+- **Counted, not a set**: several findings can share an identity, and a
+  pointer listed twice covers two occurrences — a third is new.
+- **Grade and score ignore it**: they describe the document, and a
+  baseline accepts findings, not a lower grade.
+- **Not an ignore list** (§2.2): every finding is still in the report; in
+  JSON the known ones carry `known: true`.
+- `--write-baseline` records every current finding and passes — it is not a
+  check — and does not combine with `--baseline`. The file is sorted
+  throughout, so writing it again on an unchanged schema rewrites it byte
+  for byte, and a review diff shows only what moved:
+
+  ```
+  { "format": "apiglow-audit-baseline", "version": 1,
+    "specs": { "default": { "parameter-described": ["/paths/~1pets/get/parameters/0"] } } }
+  ```
+
+- A file that is not a baseline this version writes is an error (exit
+  status 2), never read as empty — which would fail every finding — nor as
+  covering everything — which would pass a regression.
+
+### 8.4 In a CI job
+
+Pin the version, as for the CDN install: a new release can add a rule, and
+a rule added under a pipeline is a build that fails for a reason nobody
+changed.
+
+GitHub Actions — the check, and the Markdown report on the run's summary
+page:
+
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    node-version: 24
+- name: Schema audit
+  run: |
+    npx --yes apiglow@0.2.0 audit openapi.yaml \
+      --baseline audit-baseline.json --format markdown >> "$GITHUB_STEP_SUMMARY"
+```
+
+GitLab CI — the JSON report kept as an artifact:
+
+```yaml
+schema-audit:
+  image: node:24
+  script:
+    - npx --yes apiglow@0.2.0 audit openapi.yaml --min-grade B --format json --output audit.json
+  artifacts:
+    when: always
+    paths: [audit.json]
+```

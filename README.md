@@ -42,7 +42,7 @@
   secrets redacted by default ([imports & exports](#imports--exports))
 - **Fix schemas you don't own** — [OpenAPI Overlay 1.1](docs/openapi-coverage.md)
   applied at load, from the config, without forking the schema
-- **Grade your schema** — a [38-rule audit](#schema-audit) with a letter grade, in the browser
+- **Grade your schema** — a [38-rule audit](#schema-audit) with a letter grade, in the browser and in CI
 - **Prose woven in** — Markdown guides in the same nav, search and AI
   exports as the reference ([docs pages](#docs-pages))
 - **Say something to your readers** — a banner your ops team publishes by
@@ -150,6 +150,10 @@ report for the ticket. In the browser — nothing is sent anywhere.
 </picture>
 
 *The demo schema's report card — grade, category scores, folded findings.*
+
+The same audit gates your CI: `npx apiglow audit openapi.yaml` fails the build
+on what it finds, with a baseline for the findings you already accepted
+([command line](docs/audit.md#8-command-line)).
 
 Full spec and rule catalog: [`docs/audit.md`](docs/audit.md).
 
