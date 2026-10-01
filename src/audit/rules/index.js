@@ -14,6 +14,7 @@ import { duplicateInlineSchema } from './duplicate-inline-schema.js'
 import { duplicateOperationId } from './duplicate-operation-id.js'
 import { errorResponsesDocumented } from './error-responses-documented.js'
 import { exampleTypeMismatch } from './example-type-mismatch.js'
+import { fieldValueKind } from './field-value-kind.js'
 import { fieldWithoutValue } from './field-without-value.js'
 import { infoDescribed } from './info-described.js'
 import { infoMetadata } from './info-metadata.js'
@@ -32,6 +33,7 @@ import { pathStyle } from './path-style.js'
 import { propertyDescribed } from './property-described.js'
 import { propertyNaming } from './property-naming.js'
 import { requestBodyDescribed } from './request-body-described.js'
+import { requiredFieldMissing } from './required-field-missing.js'
 import { requiredPropertyDeclared } from './required-property-declared.js'
 import { requiredWithDefault } from './required-with-default.js'
 import { responseExample } from './response-example.js'
@@ -41,6 +43,7 @@ import { schemaExpandWalls } from './schema-expand-walls.js'
 import { securitySchemeDeclared } from './security-scheme-declared.js'
 import { securitySchemeDescribed } from './security-scheme-described.js'
 import { serversDeclared } from './servers-declared.js'
+import { unknownField } from './unknown-field.js'
 import { unusedComponent } from './unused-component.js'
 import { versionConstruct } from './version-construct.js'
 import { versionLegacy } from './version-legacy.js'
@@ -65,6 +68,10 @@ export const RULES = [
   versionConstruct,
   schemaDialect,
   conversionApproximation,
+  // §4.1 structure: the objects' own fields (openapi-objects.js)
+  unknownField,
+  requiredFieldMissing,
+  fieldValueKind,
   // §4.2 Documentation completeness
   operationDescribed,
   parameterDescribed,

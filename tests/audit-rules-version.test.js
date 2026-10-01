@@ -122,20 +122,21 @@ describe('version-construct', () => {
 
   it('flags each construct the declared version does not have', () => {
     const result = run(versionConstruct, modern('3.0.3'))
+    // Object fields in document order, then schema keywords.
     expect(result.findings.map((finding) => finding.params.construct)).toEqual([
-      'webhooks',
       '$self',
+      'webhooks',
+      'pathItem.query',
+      'pathItem.additionalOperations',
+      'mediaType.prefixEncoding',
+      'mediaType.itemEncoding',
+      'in: querystring',
+      'mediaType.itemSchema',
+      'xml.nodeType',
       'type: [...]',
       'const',
-      'xml.nodeType',
-      'prefixEncoding',
-      'itemEncoding',
-      'query',
-      'in: querystring',
-      'itemSchema',
-      'additionalOperations',
     ])
-    expect(result.findings[0]).toMatchObject({
+    expect(result.findings[1]).toMatchObject({
       ruleId: 'version-construct',
       severity: 'warning',
       location: 'webhooks',
@@ -148,13 +149,13 @@ describe('version-construct', () => {
     const result = run(versionConstruct, modern('3.1.0'))
     expect(result.findings.map((finding) => finding.params.construct)).toEqual([
       '$self',
-      'xml.nodeType',
-      'prefixEncoding',
-      'itemEncoding',
-      'query',
+      'pathItem.query',
+      'pathItem.additionalOperations',
+      'mediaType.prefixEncoding',
+      'mediaType.itemEncoding',
       'in: querystring',
-      'itemSchema',
-      'additionalOperations',
+      'mediaType.itemSchema',
+      'xml.nodeType',
     ])
     expect(result.findings.every((finding) => finding.params.since === '3.2')).toBe(true)
   })

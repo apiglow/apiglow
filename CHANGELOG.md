@@ -51,6 +51,12 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   description "The signed mandate" plus an empty field — and the description
   then shows cut short in the documentation and its exports, which looks like
   their bug.
+- The audit checks the document's structure against the OpenAPI
+  specification, version by version: a field an object does not have
+  (`descripton`), a required field missing (`info.version`, a parameter's
+  `in`), a value of the wrong kind or outside the allowed set (`in: body`,
+  `type: int`). Fields a later OpenAPI version introduced are now caught
+  wherever they sit, not only in the handful the audit listed before.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
 - The audit's rules are configurable: switch one off, or change its severity,

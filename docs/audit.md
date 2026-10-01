@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (39 rules across the five §4
+2. **Curated, doc-oriented ruleset** (42 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-39 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+42 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -264,6 +264,44 @@ that contradicts the declared version is a correctness finding.
   fields it got right.
 - `schema-dialect` (`info`) — a `jsonSchemaDialect` this app does not
   read as 2020-12: the document is read anyway, with 2020-12 meaning.
+
+**Structure.** The rules below hold the document to what the specification
+says each object is (OAS 3.0.4 / 3.1.1 / 3.2.0 §4.8, "Schema"): its fixed
+fields, which are required, what kind of value each takes. They read one
+table (`src/audit/openapi-objects.js`) — every object's fields, version by
+version — and one typed walk of the **source** document built from it
+(`ctx.objects`): every OpenAPI object in document order, a `$ref` standing
+where an object may stand typed as a Reference to it. Each object is seen
+once, at its declaration; a `$ref` into another file is followed through
+what the loader read there and reported under the `$ref`'s own pointer,
+which the CLI's positions follow into that file. All three are spec MUSTs,
+graded like `field-without-value`: one check per defect, none otherwise.
+
+- `unknown-field` (`error`) — a field the object does not have in the
+  declared version: `descripton`, `requried`, a 3.0 `allowEmptyValue` left
+  on a 3.2 Header. An object holds its fixed fields and `x-` extensions
+  only; no tool reads anything else, this app included. A field a later
+  version introduced is `version-construct`'s; a Schema Object's keywords
+  are open in 3.1 (`schema-keyword-typo` has the misspelled ones); a
+  Reference Object's extra keys are `ref-siblings`'.
+- `required-field-missing` (`error`) — a required field absent: `info.version`,
+  a Parameter's `in`, a Server Variable's `default`, a 3.0 Operation's
+  `responses`, the field a security scheme's type requires (`name` and
+  `in` for `apiKey`, `scheme` for `http`, `flows` for `oauth2`,
+  `openIdConnectUrl`), and in 3.1+ at least one of `paths`, `components`,
+  `webhooks`. An OAuth flow's URLs are `oauth-flow-urls`'s, a Response
+  missing both content and description `response-substance`'s.
+- `field-value-kind` (`error`) — a value of the wrong kind (a string where
+  a list belongs: `tags: pets`) or outside the set the specification allows:
+  a Parameter's `in` (`body` is Swagger 2.0's) and `style`, a security
+  scheme's `type` and an apiKey's `in`, a Header's `style`, a Schema's
+  `type` (a list only from 3.1), an XML `nodeType`, a Security
+  Requirement's scope list. The app reads such a field as absent — a
+  parameter with no location, a scheme with no type — and never fails on
+  it: `tests/malformed-documents.test.js` swaps every field of two real
+  documents for a value of another kind, and the model and the audit both
+  come through. `null` is `field-without-value`'s; a value only a later
+  version allows (`in: querystring` in 3.1) is `version-construct`'s.
 
 ### 4.2 Documentation completeness
 
@@ -396,16 +434,22 @@ PASSES in a 3.0 document instead of being punished for it.
   booleans from 3.2 on — the threshold travels per construct. All of them
   are silent failures: the newer reader ignores the older spelling.
 - `version-construct` (`warning`) — anything used ahead of the declared
-  version. 3.1+ constructs in a 3.0 document (`webhooks`, type arrays,
-  `const`, `jsonSchemaDialect`, `info.summary`, the licence's SPDX
-  `identifier`,
-  and the JSON Schema 2020-12 keywords a 3.0 Schema Object does not have —
-  `if`/`then`/`else`, `$defs`, `patternProperties`, `propertyNames`,
-  `dependent*`, `unevaluated*`, `contains` and its bounds, `content*`;
-  not `not`, which 3.0 already carries), and 3.2-only constructs
-  (`additionalOperations`, the `query` method, `in: querystring`,
-  `itemSchema`, `discriminator.defaultMapping`, `$self`, XML `nodeType`,
-  `prefixEncoding` / `itemEncoding`) in older documents.
+  version. Every field and enumerated value of an OpenAPI object comes
+  from the structure table (§4.1): 3.1's `webhooks`, `jsonSchemaDialect`,
+  `info.summary`, the licence's SPDX `identifier`, `components.pathItems`,
+  `type: mutualTLS`; 3.2's `$self`, `pathItem.query`,
+  `additionalOperations`, `in: querystring`, `style: cookie`,
+  `mediaType.itemSchema`, `prefixEncoding` / `itemEncoding`,
+  `discriminator.defaultMapping`, XML `nodeType`, a Server's `name`, a
+  Response's `summary`, a Tag's `summary` / `parent` / `kind`, an
+  Example's `dataValue` / `serializedValue`, `components.mediaTypes`, the
+  device-authorization flow… — wherever they sit, components included. A
+  Reference Object's 3.1 `summary` / `description` are `ref-siblings`'.
+  On schemas: type arrays, `const`, and the JSON Schema 2020-12 keywords a
+  3.0 Schema Object does not have — `if`/`then`/`else`, `$defs`,
+  `patternProperties`, `propertyNames`, `dependent*`, `unevaluated*`,
+  `contains` and its bounds, `content*`; not `not`, which 3.0 already
+  carries.
 - `conversion-approximation` (`info`) — a construct the Swagger 2.0
   conversion could only approximate. The converter
   (`src/openapi/swagger2.js`) marks what 3.0 cannot spell with

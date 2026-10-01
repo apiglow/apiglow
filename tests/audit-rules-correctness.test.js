@@ -759,7 +759,7 @@ describe('field-without-value', () => {
       }),
     )
     expect(result.findings.map(({ location, dataPath }) => ({ location, dataPath }))).toEqual([
-      { location: 'info', dataPath: '/info/description' },
+      { location: 'info.description', dataPath: '/info/description' },
       {
         location: 'components.schemas.Mandate',
         dataPath: '/components/schemas/Mandate/as uploaded by the client',

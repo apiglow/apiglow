@@ -12,6 +12,7 @@
 import { listOf, operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
 import { auditProfile, severityResolver } from './config.js'
 import { CATEGORIES, SEVERITIES, SEVERITY_WEIGHT, gradeFor } from './constants.js'
+import { walkObjects } from './openapi-objects.js'
 import { pointer } from './pointer.js'
 import { RULES } from './rules/index.js'
 import { collectSchemas } from './schema-walk.js'
@@ -41,6 +42,11 @@ export function auditSchema(input, rules = RULES) {
 export function* auditRun(input, rules = RULES) {
   const ctx = createAuditContext(input)
   const severityFor = severityResolver(input.config)
+  yield
+  // The typed walk of the source is a slice's worth of work on a heavy
+  // document: it gets a step of its own rather than landing in the first rule
+  // that reads it.
+  void ctx.objects
   yield
   const categories = []
   const counts = { error: 0, warning: 0, info: 0, total: 0 }
@@ -158,13 +164,21 @@ export function createAuditContext({ source, document, model }) {
   // link (docs/audit.md §3).
   const routable = new Set([...model.operations, ...model.webhooks].map((op) => op.id))
   const operations = collectOperations(document, routable)
+  const version = parseVersion(document.openapi)
+  let objects = null
   return {
     source,
     document,
     model,
-    version: parseVersion(document.openapi),
+    version,
     operations,
     schemas: collectSchemas(document, operations),
+    // Every OpenAPI object of the source, typed (openapi-objects.js): what the
+    // structural rules iterate. Computed on first read, once.
+    get objects() {
+      objects ??= walkObjects(source, document, version.minor)
+      return objects
+    },
   }
 }
 

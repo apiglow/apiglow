@@ -1,3 +1,4 @@
+import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
 
 // A field declared with no value at all. Nowhere this rule looks does OpenAPI
@@ -22,10 +23,8 @@ export const fieldWithoutValue = {
   run(ctx, check) {
     for (const segments of emptyFields(ctx.source)) {
       const dataPath = pointer(...segments)
-      const op = operationAt(ctx.operations, dataPath)
       check(false, {
-        op,
-        location: op ? undefined : locationOf(segments),
+        ...placeOf(ctx.operations, dataPath),
         dataPath,
         params: { field: segments.at(-1) },
       })
@@ -79,25 +78,4 @@ function emptyFields(source) {
   }
   walk(source, [], null)
   return found
-}
-
-// The innermost operation declaring the field, so the finding links to the page
-// that shows it truncated. A callback's pointer runs through its parent's, and
-// the longest prefix is the callback's own.
-function operationAt(operations, dataPath) {
-  let best = null
-  for (const entry of operations) {
-    if (dataPath !== entry.pointer && !dataPath.startsWith(`${entry.pointer}/`)) continue
-    if (!best || entry.pointer.length > best.pointer.length) best = entry
-  }
-  return best
-}
-
-// Outside an operation, the same names the other rules give: the component, or
-// the top-level section, holding the field.
-function locationOf(segments) {
-  const [root, section, name] = segments
-  if (root === 'components' && name !== undefined) return `components.${section}.${name}`
-  if ((root === 'paths' || root === 'webhooks') && section !== undefined) return String(section)
-  return String(root)
 }
