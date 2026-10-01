@@ -1,6 +1,7 @@
 // cURL generator (docs/architecture.md §5.7) — pure function, reused by the try-it's live
 // preview (docs/architecture.md §5.5). Multiline with `\` continuation, POSIX quoting.
 
+import { wireMethod } from '../openapi/methods.js'
 import { redactEntry, templatizeEntry } from './redact.js'
 
 export function shellQuote(value) {
@@ -9,7 +10,7 @@ export function shellQuote(value) {
 }
 
 export function toCurl({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const lines = [`curl -X ${String(method).toUpperCase()} ${shellQuote(url)}`]
+  const lines = [`curl -X ${wireMethod(method)} ${shellQuote(url)}`]
   for (const [name, value] of Object.entries(headers)) {
     lines.push(`-H ${shellQuote(`${name}: ${value}`)}`)
   }

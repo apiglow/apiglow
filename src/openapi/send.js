@@ -1,5 +1,6 @@
 import { fileBodyLabel } from './body-kind.js'
 import { diagnoseFailure, extractTransfer } from './insights.js'
+import { wireMethod } from './methods.js'
 import { applyProxy } from './request-builder.js'
 
 // Actual send pipeline (docs/architecture.md §5.5): proxy, fetch, round-trip measurement,
@@ -47,7 +48,7 @@ export async function send(
   const doFetch = fetchImpl ?? globalThis.fetch
   const proxied = !!(proxyEnabled && proxyUrl)
   const url = proxied ? applyProxy(proxyUrl, built.url) : built.url
-  const method = built.method.toUpperCase()
+  const method = wireMethod(built.method)
 
   // Multipart body: rebuilt as FormData (the Files come from the caller);
   // fetch sets the Content-Type itself with the boundary. History gets

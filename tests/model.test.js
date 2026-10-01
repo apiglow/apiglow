@@ -1,3 +1,4 @@
+import { wireMethod } from '../src/openapi/methods.js'
 import { readFileSync } from 'node:fs'
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { describe, expect, it } from 'vitest'
@@ -186,6 +187,18 @@ describe('3.2 normalization', () => {
       ['purge', 'purgePets'],
       ['get', 'streamPets'],
       ['get', 'findPets'],
+    ])
+  })
+
+  // 3.2: the key is the method to send, case included.
+  it('keeps a free-form method as written, for the wire', async () => {
+    const model = await load('petstore-3.2.json')
+    expect(opById(model, 'purgePets')).toMatchObject({ method: 'purge', verb: 'PURGE' })
+    expect(opById(model, 'listPets').verb).toBeUndefined()
+    expect([wireMethod('get'), wireMethod('PURGE'), wireMethod('purge')]).toEqual([
+      'GET',
+      'PURGE',
+      'purge',
     ])
   })
 

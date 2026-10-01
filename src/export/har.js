@@ -1,3 +1,4 @@
+import { wireMethod } from '../openapi/methods.js'
 import { fileBodyLabel } from '../openapi/body-kind.js'
 import { redactEntry } from './redact.js'
 
@@ -35,7 +36,7 @@ export function toHar(entry, { redact = true } = {}) {
           startedDateTime: new Date(entry.timestamp).toISOString(),
           time: entry.durationMs,
           request: {
-            method: entry.method.toUpperCase(),
+            method: wireMethod(entry.method),
             url: source.request.url,
             httpVersion,
             headers: toNameValue(source.request.headers),

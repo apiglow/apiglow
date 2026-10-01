@@ -276,7 +276,7 @@ export function buildRequest({
   }
 
   return {
-    method: op.method,
+    method: op.verb ?? op.method,
     url,
     headers,
     body: resolvedBody,

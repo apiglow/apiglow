@@ -498,6 +498,13 @@ The sampler is structural: a declared `example` on an object or an array
 is not re-serialized into XML — a media-type example is already the body
 the document wants sent, and `prefillBody` uses it verbatim (§5.1).
 
+**Methods** (`src/openapi/methods.js`): a standard method goes out
+uppercase; a 3.2 `additionalOperations` method goes out exactly as its key
+spells it (`op.verb`), case included — methods are case-sensitive and 3.2
+makes the key the method sent. The send, the copied snippets, the HAR and
+the Postman exports all go through `wireMethod`. Ids and routes keep the
+lowercase form.
+
 **Loader** (`src/openapi/loader.js`):
 
 - Inline YAML: `loadInlineApiModel` tries `JSON.parse`; on failure it

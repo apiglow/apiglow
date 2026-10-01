@@ -3,6 +3,7 @@
 // headers, body, form }. Tested by snapshot, redaction by default via the
 // same primitives as cURL.
 
+import { wireMethod } from '../openapi/methods.js'
 import { fileBodyLabel } from '../openapi/body-kind.js'
 import { shellQuote } from './curl.js'
 import { redactEntry, templatizeEntry } from './redact.js'
@@ -52,7 +53,7 @@ function compactJson(body) {
 
 function toFetch({ method, url, headers = {}, body = null, form = null, file = null }) {
   const lines = []
-  const opts = [`  method: '${String(method).toUpperCase()}',`]
+  const opts = [`  method: '${wireMethod(method)}',`]
   const headerEntries = Object.entries(headers)
   if (headerEntries.length) {
     opts.push('  headers: {')
@@ -129,7 +130,7 @@ function toPythonRequests({ method, url, headers = {}, body = null, form = null,
 
 function toPhpCurl({ method, url, headers = {}, body = null, form = null, file = null }) {
   const lines = ['<?php', `$ch = curl_init(${phpQuote(url)});`]
-  lines.push(`curl_setopt($ch, CURLOPT_CUSTOMREQUEST, '${String(method).toUpperCase()}');`)
+  lines.push(`curl_setopt($ch, CURLOPT_CUSTOMREQUEST, '${wireMethod(method)}');`)
   lines.push('curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);')
   const headerEntries = Object.entries(headers)
   if (headerEntries.length) {
@@ -155,7 +156,7 @@ function toPhpCurl({ method, url, headers = {}, body = null, form = null, file =
 }
 
 export function toGo({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const m = String(method).toUpperCase()
+  const m = wireMethod(method)
   const imports = new Set(['fmt', 'io', 'net/http'])
   const pre = []
   let bodyArg = 'nil'
@@ -209,9 +210,9 @@ export function toGo({ method, url, headers = {}, body = null, form = null, file
 }
 
 function toHttpie({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const lines = [`http ${String(method).toUpperCase()} ${shellQuote(url)}`]
+  const lines = [`http ${wireMethod(method)} ${shellQuote(url)}`]
   if (form?.length) {
-    lines[0] = `http --form ${String(method).toUpperCase()} ${shellQuote(url)}`
+    lines[0] = `http --form ${wireMethod(method)} ${shellQuote(url)}`
     for (const f of form) {
       lines.push(
         f.fileName !== undefined
@@ -295,7 +296,7 @@ const RUBY_REQUEST_CLASS = {
 }
 
 export function toRuby({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const m = String(method).toUpperCase()
+  const m = wireMethod(method)
   const requires = ["require 'net/http'", "require 'uri'"]
   const lines = [`uri = URI(${rbQuote(url)})`]
   const klass = RUBY_REQUEST_CLASS[m]
@@ -340,7 +341,7 @@ export function toRuby({ method, url, headers = {}, body = null, form = null, fi
 }
 
 function toJava({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const m = String(method).toUpperCase()
+  const m = wireMethod(method)
   const imports = new Set([
     'java.net.URI',
     'java.net.http.HttpClient',
@@ -409,7 +410,7 @@ function toJava({ method, url, headers = {}, body = null, form = null, file = nu
 }
 
 export function toCsharp({ method, url, headers = {}, body = null, form = null, file = null }) {
-  const m = String(method).toUpperCase()
+  const m = wireMethod(method)
   const usings = new Set(['System', 'System.Net.Http'])
   // HttpClient refuses content headers on the request: Content-Type has to
   // reach the HttpContent instead, or SendAsync throws at runtime.

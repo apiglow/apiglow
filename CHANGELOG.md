@@ -105,6 +105,9 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A 3.2 custom method (`additionalOperations`) is sent, and copied into
+  snippets and exports, exactly as the document spells it: `purge` is no
+  longer sent as `PURGE`.
 - A list field holding something else — `tags: pets`, `parameters: {}`, a
   security scheme whose `scheme` is a number — or an empty YAML list item no
   longer takes the whole documentation down, nor the audit: the field reads

@@ -9,11 +9,11 @@
 
 import { unescapePointerToken } from '../scenarios/pointer.js'
 import { compileHideRules, HIDE_EXTENSION } from './hide.js'
+import { HTTP_METHODS } from './methods.js'
 
 // `query` is a Path Item field only since 3.2; leaving it in the
 // list costs nothing in 3.0/3.1, where the key doesn't exist. Added at the end
 // of the list: the display order of operations for the same path stays unchanged.
-const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query']
 
 // A list field holding something else — `tags: pets`, `parameters: {}` — reads
 // as absent rather than taking the whole document down: the audit's
@@ -27,8 +27,10 @@ const objectsOf = (value) =>
   listOf(value).filter((param) => param !== null && typeof param === 'object')
 
 // Methods carried by a Path Item: the standard fields above, then the
-// free-form methods from `additionalOperations` (3.2) — keys in uppercase in the
-// schema, lowercased like everywhere else in the model.
+// free-form methods from `additionalOperations` (3.2) — lowercased like
+// everywhere else in the model, which is what ids and routes are built from,
+// with the key as written third: 3.2 makes it the method to send, case
+// included (`purge` is not `PURGE`).
 export function* pathItemOperations(pathItem) {
   for (const method of HTTP_METHODS) {
     if (pathItem[method] && typeof pathItem[method] === 'object') yield [method, pathItem[method]]
@@ -40,7 +42,7 @@ export function* pathItemOperations(pathItem) {
     // Redeclaring a standard method here is forbidden by the spec: the
     // Path Item's declaration takes precedence, this one is ignored.
     if (!op || typeof op !== 'object' || HTTP_METHODS.includes(method)) continue
-    yield [method, op]
+    yield [method, op, String(name)]
   }
 }
 
@@ -112,12 +114,14 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
     const pathServers = objectsOf(pathItem.servers).length
       ? objectsOf(pathItem.servers).map(normalizeServer)
       : null
-    for (const [method, op] of pathItemOperations(pathItem)) {
+    for (const [method, op, verb] of pathItemOperations(pathItem)) {
       if (isHidden(path, method, op, operationKey(path, method, op))) {
         hiddenOperations += 1
         continue
       }
-      operations.push(normalizeOperation(path, method, op, pathParams, ctx, 0, pathServers))
+      operations.push(
+        withVerb(normalizeOperation(path, method, op, pathParams, ctx, 0, pathServers), verb),
+      )
     }
   }
 
@@ -134,12 +138,12 @@ export function normalizeDocument(raw, { hide, baseUri } = {}) {
       continue
     }
     const pathParams = objectsOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
-    for (const [method, op] of pathItemOperations(pathItem)) {
+    for (const [method, op, verb] of pathItemOperations(pathItem)) {
       if (isHidden(name, method, op, webhookKey(name, method, op))) {
         hiddenOperations += 1
         continue
       }
-      webhooks.push(normalizeWebhook(name, method, op, pathParams, ctx))
+      webhooks.push(withVerb(normalizeWebhook(name, method, op, pathParams, ctx), verb))
     }
   }
 
@@ -459,6 +463,13 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
   })
 }
 
+// `verb`: the method as an `additionalOperations` key spells it, the one sent.
+// A standard method has none — its uppercase form is the one on the wire.
+function withVerb(operation, verb) {
+  if (verb) operation.verb = verb
+  return operation
+}
+
 function normalizeWebhook(name, method, op, pathParams, ctx) {
   const webhook = normalizeOperation(name, method, op, pathParams, ctx)
   webhook.id = webhookKey(name, method, op)
@@ -479,8 +490,8 @@ function normalizeCallbacks(raw, ctx) {
     for (const [expression, pathItem] of Object.entries(expressions)) {
       if (!pathItem || typeof pathItem !== 'object') continue
       const pathParams = objectsOf(pathItem.parameters).map((p) => normalizeParameter(p, ctx))
-      const operations = [...pathItemOperations(pathItem)].map(([m, op]) =>
-        normalizeOperation(expression, m, op, pathParams, ctx, 1),
+      const operations = [...pathItemOperations(pathItem)].map(([m, op, verb]) =>
+        withVerb(normalizeOperation(expression, m, op, pathParams, ctx, 1), verb),
       )
       if (operations.length) list.push({ expression, operations })
     }

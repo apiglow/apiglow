@@ -1,3 +1,4 @@
+import { wireMethod } from '../openapi/methods.js'
 import { redactEntry } from './redact.js'
 
 // Postman Collection v2.1 export (docs/architecture.md §5.7) — pure function, tested by
@@ -62,7 +63,7 @@ export function toPostmanCollection(entry, { redact = true } = {}) {
       {
         name: entry.opId ?? name,
         request: {
-          method: entry.method.toUpperCase(),
+          method: wireMethod(entry.method),
           header: headers.map(([key, value]) => ({ key, value })),
           url: parseUrlParts(source.request.url),
           ...(body ? { body } : {}),
