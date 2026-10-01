@@ -228,6 +228,14 @@ that contradicts the declared version is a correctness finding.
 
 What the document leaves unsaid — mostly `warning`.
 
+Every "described" rule here, and `security-scheme-described` (§4.5), reads
+prose through one test (`isSubstantive`, `src/audit/text.js`): a placeholder
+(`TODO`, `TBD`, `string`, `description`, `lorem ipsum`, `à compléter`…) or
+the field's name read back (`userId: "User Id"` — the `title` code generators
+emit for every property) counts as **no description**. Counting it as present
+would grade a fake-complete document above an honest, half-written one. Prose
+that merely mentions its name ("User id of the account owner") is substance.
+
 - `operation-described` (`warning`) — operation without `summary` and
   without `description`.
 - `parameter-described` (`warning`) — parameter without `description`.

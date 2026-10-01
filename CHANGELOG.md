@@ -38,6 +38,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   then shows cut short in the documentation and its exports, which looks like
   their bug.
 
+### Changed
+
+- Placeholder text no longer passes for documentation in the audit: a
+  description that reads "TODO", "string" or "lorem ipsum", or that only repeats
+  its field's name ("User Id" on `userId`, the title code generators write for
+  every property), now counts as missing.
+
 ### Fixed
 
 - The audit no longer asks for examples on files: a download or an upload (a

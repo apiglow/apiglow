@@ -980,7 +980,7 @@
   "audit.help.severity.info": "Worth knowing, and worth a deliberate decision — not something you necessarily have to change.",
   "audit.help.categories": "The categories",
   "audit.help.category.correctness": "What is wrong: duplicate identifiers, parameters that go nowhere, examples their own schema rejects, constructs that contradict the declared OpenAPI version.",
-  "audit.help.category.completeness": "What is missing: operations, parameters, properties and request bodies with no description, responses with no example, an info block with nothing in it.",
+  "audit.help.category.completeness": "What is missing: operations, parameters, properties and request bodies with no description, responses with no example, an info block with nothing in it. Placeholder text — “TODO”, “string”, the name read back — counts as no description.",
   "audit.help.category.deprecation": "The inventory of everything marked deprecated, and whether each one says what to use instead or when it goes away.",
   "audit.help.category.consistency": "Whether the document keeps to its own conventions: naming of parameters, of properties and of path segments, and shapes written out inline instead of shared.",
   "audit.help.category.readiness": "What this documentation cannot do with this schema: unstable deep links, ungrouped operations, no environment to seed, no OAuth flow to run, prefilled requests generated for lack of examples.",

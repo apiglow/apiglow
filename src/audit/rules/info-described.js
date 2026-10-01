@@ -1,4 +1,4 @@
-import { hasText } from '../text.js'
+import { isSubstantive } from '../text.js'
 
 // `info.description` is the home page of this documentation: without it, the
 // reader lands on a title and a list of endpoints, with nothing telling them
@@ -9,7 +9,8 @@ export const infoDescribed = {
   severity: 'warning',
   run(ctx, check) {
     const info = ctx.document.info ?? {}
-    check(hasText(info.description) || hasText(info.summary), {
+    const name = info.title
+    check(isSubstantive(info.description, { name }) || isSubstantive(info.summary, { name }), {
       location: 'info',
       dataPath: '/info/description',
     })

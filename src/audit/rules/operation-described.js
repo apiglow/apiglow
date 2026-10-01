@@ -1,4 +1,4 @@
-import { hasText } from '../text.js'
+import { isSubstantive } from '../text.js'
 
 // An operation with neither summary nor description renders as a bare method and
 // path: the reader is left inferring what it does from its URL, and the nav
@@ -9,7 +9,7 @@ export const operationDescribed = {
   severity: 'warning',
   run(ctx, check) {
     for (const entry of ctx.operations) {
-      check(hasText(entry.op.summary) || hasText(entry.op.description), { op: entry })
+      check(isSubstantive(entry.op.summary) || isSubstantive(entry.op.description), { op: entry })
     }
   },
 }

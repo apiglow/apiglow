@@ -123,7 +123,7 @@ describe('property-described', () => {
               properties: {
                 id: { type: 'integer' },
                 name: { type: 'string', description: 'Call name' },
-                tag: { type: 'string', title: 'Tag' },
+                tag: { type: 'string', title: 'Free-form label' },
               },
             },
           },
@@ -138,6 +138,32 @@ describe('property-described', () => {
       dataPath: '/components/schemas/Pet/properties/id',
       params: { name: 'id' },
     })
+  })
+
+  // What code generators emit for every property: the name, title-cased.
+  it('does not count the name read back as a title or a description', () => {
+    const result = run(
+      propertyDescribed,
+      doc({
+        components: {
+          schemas: {
+            User: {
+              type: 'object',
+              properties: {
+                userId: { type: 'string', title: 'User Id' },
+                user_status: { type: 'integer', description: 'The user status.' },
+                email: { type: 'string', description: 'TODO' },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((finding) => finding.params.name)).toEqual([
+      'userId',
+      'user_status',
+      'email',
+    ])
   })
 })
 

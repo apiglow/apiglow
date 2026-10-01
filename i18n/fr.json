@@ -980,7 +980,7 @@
   "audit.help.severity.info": "Bon à savoir, et à trancher sciemment — pas forcément quelque chose à changer.",
   "audit.help.categories": "Les catégories",
   "audit.help.category.correctness": "Ce qui est faux : identifiants en double, paramètres qui ne mènent nulle part, exemples que leur propre schéma rejette, constructions qui contredisent la version OpenAPI déclarée.",
-  "audit.help.category.completeness": "Ce qui manque : opérations, paramètres, propriétés et corps de requête sans description, réponses sans exemple, bloc info vide.",
+  "audit.help.category.completeness": "Ce qui manque : opérations, paramètres, propriétés et corps de requête sans description, réponses sans exemple, bloc info vide. Un texte bouche-trou — « TODO », « string », le nom répété — compte comme une absence de description.",
   "audit.help.category.deprecation": "L'inventaire de tout ce qui est marqué déprécié, et si chaque élément dit par quoi le remplacer ou à quelle échéance il disparaît.",
   "audit.help.category.consistency": "Si le document tient ses propres conventions : nommage des paramètres, des propriétés et des segments de chemin, et formes recopiées en ligne au lieu d'être partagées.",
   "audit.help.category.readiness": "Ce que cette documentation ne peut pas faire avec ce schéma : liens profonds instables, opérations sans groupe, aucun environnement à amorcer, aucun flow OAuth à exécuter, requêtes préremplies faute d'exemples.",

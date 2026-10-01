@@ -1,5 +1,5 @@
 import { pointer } from '../pointer.js'
-import { hasText } from '../text.js'
+import { isSubstantive } from '../text.js'
 
 // Property descriptions are what the schema view and the try-it body editor show
 // next to each field; without them the reader gets a name and a type and has to
@@ -17,12 +17,17 @@ export const propertyDescribed = {
       if (!schema.properties || typeof schema.properties !== 'object') continue
       for (const [name, property] of Object.entries(schema.properties)) {
         if (!property || typeof property !== 'object') continue
-        check(hasText(property.description) || hasText(property.title), {
-          op,
-          location,
-          dataPath: `${dataPath}${pointer('properties', name)}`,
-          params: { name },
-        })
+        // A `title` counts like a description — unless it is the name read
+        // back, which is what code generators emit for every property.
+        check(
+          isSubstantive(property.description, { name }) || isSubstantive(property.title, { name }),
+          {
+            op,
+            location,
+            dataPath: `${dataPath}${pointer('properties', name)}`,
+            params: { name },
+          },
+        )
       }
     }
   },

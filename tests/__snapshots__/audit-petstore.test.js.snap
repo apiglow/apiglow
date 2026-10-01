@@ -2,12 +2,13 @@
 
 exports[`audit report on the demo petstore > matches the recorded report 1`] = `
 "OpenAPI 3.2.0 — grade A (95/100)
-error 0 · warning 4 · info 62
+error 0 · warning 5 · info 63
 
 ## correctness — 100 % over 320 checks
   (no finding)
 
 ## completeness — 80 % over 236 checks
+  warning parameter-described — uploadFile {"name":"additionalMetadata"}
   warning request-body-described — subscribeToPet (onPetStatus · POST {$request.body#/callbackUrl})
   warning request-body-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring)
   warning request-body-described — orderPlacedWebhook
@@ -46,6 +47,7 @@ error 0 · warning 4 · info 62
   info property-described — /components/schemas/User/properties/lastName {"name":"lastName"}
   info property-described — /components/schemas/User/properties/password {"name":"password"}
   info property-described — /components/schemas/User/properties/phone {"name":"phone"}
+  info property-described — /components/schemas/User/properties/userStatus {"name":"userStatus"}
   info property-described — /components/schemas/User/properties/username {"name":"username"}
   info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"expiresAt"}
   info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"subscriptionId"}

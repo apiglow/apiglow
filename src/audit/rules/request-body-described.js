@@ -1,4 +1,4 @@
-import { hasText } from '../text.js'
+import { isSubstantive } from '../text.js'
 
 // The request body is the one input the reader cannot infer from the URL. Its
 // description is where the semantics live — what a partial update accepts, which
@@ -15,7 +15,10 @@ export const requestBodyDescribed = {
       const body = entry.op.requestBody
       if (!body || typeof body !== 'object' || seen.has(body)) continue
       seen.add(body)
-      check(hasText(body.description), { op: entry, dataPath: `${entry.pointer}/requestBody` })
+      check(isSubstantive(body.description), {
+        op: entry,
+        dataPath: `${entry.pointer}/requestBody`,
+      })
     }
   },
 }
