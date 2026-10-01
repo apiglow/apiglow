@@ -144,6 +144,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- The try-it says what the browser refuses to send, instead of failing in
+  silence or as a network error. A header no page may set — `Origin`,
+  `Content-Length`, any `Sec-` header, the full list of the Fetch standard —
+  is named under the headers as soon as the request carries it, and a TRACE
+  operation gets an error saying browsers refuse the method. Both stay in the
+  cURL command. A pasted cURL or a HAR no longer brings in its `Sec-` and
+  `Proxy-` headers either.
 - A GET or HEAD request with a body in the document is no longer blocked by
   that body: the browser cannot send one, so the try-it now says so next to
   the body editor and sends the request without it. The body stays in the

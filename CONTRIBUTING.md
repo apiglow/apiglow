@@ -346,6 +346,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Host-provided credentials (`window.apidoc`, overlay, merge source, 401 replay) | `host-credentials.test.js`, `variable-source.test.js` | `host-credentials.spec.js` |
 | OAuth2 (PKCE + client credentials) | `oauth.test.js`, `oauth-flow.test.js` | `oauth.spec.js` |
 | Send pipeline, CORS proxy, request building | `send.test.js`, `request-builder.test.js` | `tryit.spec.js` |
+| What the browser refuses (Fetch forbidden headers and methods, a GET/HEAD body): named in the try-it, kept in the cURL command, left out of an import | `forbidden.test.js`, `request-builder.test.js`, `import-match.test.js` | `request-fidelity.spec.js` |
 | Operation/path-level `servers` precedence; cancelable send | `request-builder.test.js`, `model.test.js` | `tryit.spec.js` |
 | Schema type → form field (arrays, objects, maps, tuples, enums) | `params.test.js`, `model.test.js`, `coerce.test.js` | `tryit.spec.js` |
 | Enum value descriptions (`x-enum-descriptions`, `x-enumDescriptions`, a `oneOf` of constants) listed with their values | `model.test.js` | `schema-keywords.spec.js` |

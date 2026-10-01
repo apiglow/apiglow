@@ -175,7 +175,7 @@ describe('pre-filled try-it state', () => {
 
   it('drops the headers a browser refuses to set, and says so for cookies', () => {
     const candidate = first(
-      `curl https://api.test/v1/pets -H 'Host: api.test' -H 'Content-Length: 3' -H 'X-Trace: t1' -H 'Cookie: sid=1'`,
+      `curl https://api.test/v1/pets -H 'Host: api.test' -H 'Content-Length: 3' -H 'Sec-Fetch-Mode: cors' -H 'X-Trace: t1' -H 'Cookie: sid=1'`,
     )
     expect(candidate.request.headers).toEqual([{ name: 'X-Trace', value: 't1' }])
     expect(candidate.warnings).toContainEqual({ code: 'import-cookie-dropped', value: 'sid=1' })

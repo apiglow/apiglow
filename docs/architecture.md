@@ -679,6 +679,13 @@ load, a revision we do not know. An overlay never breaks a load.
   that body blocks the send — neither its validation nor a missing
   variable — and the history records the request as it left, with no body
   (`canHaveBody` in `src/openapi/methods.js`).
+- **What `fetch` refuses is said, not left to fail**: a header the Fetch
+  standard forbids a script to set (`Origin`, `Content-Length`, `Sec-*`…) is
+  named under the headers as soon as the request carries it — the browser
+  would drop it silently; a `CONNECT` / `TRACE` / `TRACK` operation blocks
+  the send with its own error rather than a network diagnosis. Both stay in
+  the cURL command. One module holds the standard's lists
+  (`src/openapi/forbidden.js`), shared with the request import.
 - Native `fetch`; duration measured via `performance.now()`; the actual send
   pipeline is the pure-ish module `src/openapi/send.js`, shared with the
   scenario runner.

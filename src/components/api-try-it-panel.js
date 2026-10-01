@@ -15,6 +15,7 @@ import { fileBodyLabel } from '../openapi/body-kind.js'
 import { isMultiValue, isObjectValue } from '../openapi/params.js'
 import { prefilledValues } from '../openapi/prefill.js'
 import { canHaveBody, wireMethod } from '../openapi/methods.js'
+import { isForbiddenMethod, isForbiddenRequestHeader } from '../openapi/forbidden.js'
 import {
   buildRequest,
   effectiveBaseUrl,
@@ -1047,9 +1048,20 @@ class ApiTryItPanel extends HTMLElement {
     // The auth injection is summarized read-only here (line updated in
     // #refresh) — a manual header of the same name overrides it.
     this.#ui.authSummary = el('div', 'text-xs font-mono text-faint break-all')
+    // Filled in #refresh, from the built request: a header the browser drops
+    // can come from a row, a declared parameter or the credential alike.
+    this.#ui.forbiddenHeadersNote = el('p', 'text-xs text-faint')
+    this.#ui.forbiddenHeadersNote.hidden = true
     return labeledBlock(
       t('tryit.headers'),
-      el('div', 'flex flex-col gap-1', this.#ui.authSummary, rowsBox, add),
+      el(
+        'div',
+        'flex flex-col gap-1',
+        this.#ui.authSummary,
+        rowsBox,
+        this.#ui.forbiddenHeadersNote,
+        add,
+      ),
     )
   }
 
@@ -1490,6 +1502,18 @@ class ApiTryItPanel extends HTMLElement {
       ]
       this.#ui.authSummary.textContent = lines.join('\n')
     }
+    if (this.#ui.forbiddenHeadersNote) {
+      // A folded Cookie header already has its own notes (cookie parameters,
+      // cookie credential).
+      const dropped = Object.entries(built.headers)
+        .filter(([name, value]) => isForbiddenRequestHeader(name, value))
+        .map(([name]) => name)
+        .filter((name) => !(built.hasCookies && name.toLowerCase() === 'cookie'))
+      this.#ui.forbiddenHeadersNote.hidden = !dropped.length
+      this.#ui.forbiddenHeadersNote.textContent = dropped.length
+        ? t('tryit.forbiddenHeadersNote', { names: dropped.join(', ') })
+        : ''
+    }
     this.#ui.exportBar?.refresh()
     this.dispatchEvent(new CustomEvent('tryit-state', { detail: this.currentValues() }))
     return built
@@ -1504,6 +1528,10 @@ class ApiTryItPanel extends HTMLElement {
     // Blocking: missing variable or validation error ⇒ no send, explicit
     // message (docs/architecture.md §5.3/§5.5 — never a literal {{var}} sent).
     const problems = []
+    // Fetch throws on these before anything leaves: left to run, the failure
+    // reads as a network error and the diagnosis blames the API.
+    if (isForbiddenMethod(built.method))
+      problems.push(t('tryit.forbiddenMethod', { method: wireMethod(built.method) }))
     // A missing credential is a missing variable like any other, but naming
     // `auth.petstore` at someone about to make their first call explains
     // nothing: the cartouche is what they have to fill, so the message names

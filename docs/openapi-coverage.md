@@ -83,12 +83,19 @@ tier the browser platform allows:
 - **T1 — rendered**: modeled and displayed faithfully.
 - **T2 — executable**: additionally drives the try-it request.
 - **T3 — rendered with documented fallback**: the browser cannot execute
-  it — fetch forbids the `Cookie` header, no client certificates for
-  `mutualTLS`, `deviceAuthorization` needs out-of-browser polling. Each one
-  says so in the UI (i18n'd hint, not silence). The cookie case also keeps
-  the value in the cURL export (the cookie-auth path in
-  `request-builder.js` does exactly this: cookies become a `Cookie` header
-  for cURL, `hasCookies` flags the browser limitation at send time);
+  it — fetch forbids the `Cookie` header and every other forbidden request
+  header of the Fetch standard, the `CONNECT` / `TRACE` / `TRACK` methods and
+  a `GET` / `HEAD` body; no client certificates for `mutualTLS`,
+  `deviceAuthorization` needs out-of-browser polling. Each one says so in
+  the UI (i18n'd hint, not silence). The cookie case also keeps the value in
+  the cURL export (the cookie-auth path in `request-builder.js` does exactly
+  this: cookies become a `Cookie` header for cURL, `hasCookies` flags the
+  browser limitation at send time). So do the other request-side ones: the
+  try-it names a forbidden header under its headers as soon as the request
+  carries it, blocks a forbidden method's send with an error of its own
+  instead of a network diagnosis, and notes next to the body editor that a
+  `GET` / `HEAD` body is not sent — the Fetch lists live in
+  `src/openapi/forbidden.js`;
   `mutualTLS` and `deviceAuthorization` are named by
   `platformLimits` (`src/openapi/auth.js`) and stated wherever the scheme
   appears — operation doc, auth overview, and the try-it Credentials
@@ -736,8 +743,10 @@ pre-filled request carries `authSchemeName`, so a token belonging to the
 second applicable scheme does not leave under the first one's header.
 
 Headers a browser refuses to set are not imported at all — `Host`,
-`Content-Length`, `User-Agent`, a HAR's HTTP/2 pseudo-headers: keeping
-them would fill the header table with rows `fetch` silently strips.
+`Content-Length`, every `Sec-` and `Proxy-` header (the Fetch standard's
+list, `src/openapi/forbidden.js`) — nor what a recording adds of its own:
+`User-Agent`, a HAR's HTTP/2 pseudo-headers. Keeping them would fill the
+header table with rows `fetch` silently strips.
 `Cookie` is the one that leaves with a warning (T3 domain; the cURL export
 still carries it).
 
@@ -952,10 +961,11 @@ are enumerated in `scenarios.md` §8.4; the dependency-side waivers live in
 | Arazzo `replacements` on a step payload | reported as missing, not applied: a pointer-addressed patch list over a payload is a second body-editing language on top of `{{var}}` | §4.7 |
 | Three things in the Arazzo round trip | `persist`/`sensitive` on an extraction (Arazzo has no such notion), a variable name carrying a dot, and the 2xx expectation that comes back as the default verdict. Working around them would mean writing `x-` extensions into a document other tools must read | §4.7 |
 
-Separately, the **T3 constructs** of §1.1 (the `Cookie` header on send,
+Separately, the **T3 constructs** of §1.1 (the `Cookie` header and the
+other forbidden headers on send, a forbidden method, a `GET` / `HEAD` body,
 `mutualTLS`, `deviceAuthorization`) are platform limits, not choices: each
-states its limit in the UI, and the cookie path additionally keeps the
-value in the cURL export (§1.1).
+states its limit in the UI, and the request-side ones additionally keep
+what the browser drops in the cURL export (§1.1).
 
 ### 5.2 Beyond OpenAPI — out of scope, deliberately
 

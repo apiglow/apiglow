@@ -7,6 +7,8 @@
 // here is untrusted (a pasted command, a file picked from disk), so a parser
 // never throws. It returns codes the UI translates.
 
+import { isForbiddenRequestHeader } from '../openapi/forbidden.js'
+
 export function makeDraft(overrides = {}) {
   return {
     // Human label for the candidates list. A cURL command has none; a Postman
@@ -33,35 +35,17 @@ export function makeDraft(overrides = {}) {
   }
 }
 
-// Header names a browser refuses to let `fetch` set: importing them would
-// build a request the send silently strips. `Cookie` is not here — it is
-// dropped with a warning instead (T3: the cURL export still carries it).
-const FORBIDDEN_HEADERS = new Set([
-  'accept-charset',
-  'accept-encoding',
-  'access-control-request-headers',
-  'access-control-request-method',
-  'connection',
-  'content-length',
-  'date',
-  'dnt',
-  'expect',
-  'host',
-  'keep-alive',
-  'origin',
-  'permissions-policy',
-  'referer',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-  'user-agent',
-  'via',
-])
+// Headers an import does not turn into rows: the ones a browser refuses to let
+// `fetch` set (importing them would build a request the send silently strips),
+// and what a recording adds of its own — the browser's `User-Agent`, a
+// `Permissions-Policy` that is not a request header at all, HTTP/2
+// pseudo-headers (`:method`, `:authority`…) from a HAR export. `Cookie` passes:
+// `match.js` drops it with a warning instead (T3: the cURL export still
+// carries it).
+const RECORDING_HEADERS = new Set(['user-agent', 'permissions-policy'])
 
-// HTTP/2 pseudo-headers (`:method`, `:authority`…) come out of a browser's HAR
-// export and are not headers a request can carry back.
 export function isTransportHeader(name) {
   const lower = String(name ?? '').toLowerCase()
-  return lower.startsWith(':') || FORBIDDEN_HEADERS.has(lower)
+  if (lower === 'cookie') return false
+  return lower.startsWith(':') || RECORDING_HEADERS.has(lower) || isForbiddenRequestHeader(lower)
 }

@@ -1389,6 +1389,8 @@
     "tryit.duration",
     "tryit.durationSub",
     "tryit.exposeNote",
+    "tryit.forbiddenHeadersNote",
+    "tryit.forbiddenMethod",
     "tryit.headerCount",
     "tryit.headerName",
     "tryit.headerValue",

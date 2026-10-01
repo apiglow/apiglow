@@ -62,6 +62,21 @@
         "responses": { "200": { "description": "Matching books" } }
       }
     },
+    "/echo": {
+      "get": {
+        "operationId": "echoOrigin",
+        "tags": ["Requests"],
+        "summary": "Echo the declared origin",
+        "parameters": [{ "name": "Origin", "in": "header", "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "The echoed origin" } }
+      },
+      "trace": {
+        "operationId": "traceEcho",
+        "tags": ["Requests"],
+        "summary": "Trace the request",
+        "responses": { "200": { "description": "The request as received" } }
+      }
+    },
     "/books": {
       "post": {
         "operationId": "createBook",

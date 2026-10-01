@@ -136,3 +136,36 @@ test('a GET body stays in the cURL command, is said not to leave, and blocks not
   expect(calls[0].method).toBe('GET')
   expect(calls[0].body).toBeNull()
 })
+
+// A browser drops a forbidden header without a word: the panel names it while
+// it is being typed, not after a send that silently went without it.
+test('a header the browser will not send is named, and the request leaves without it', async ({
+  page,
+}) => {
+  const calls = await mockApi(page)
+  await gotoOp(page, PAGE, 'echoOrigin')
+  const note = tryIt(page).getByText('The browser will not send these headers')
+  await expect(note).toBeHidden()
+
+  await tryIt(page).getByLabel('Header value').fill('https://elsewhere.example')
+  await expect(note).toContainText(': Origin.')
+  await expect(tryIt(page)).toContainText("-H 'Origin: https://elsewhere.example'")
+
+  await send(page)
+  await expectResponded(page)
+  expect(calls[0].headers.origin).not.toBe('https://elsewhere.example')
+})
+
+test('a TRACE operation says the browser refuses it, instead of a network failure', async ({
+  page,
+}) => {
+  const calls = await mockApi(page)
+  await gotoOp(page, PAGE, 'traceEcho')
+
+  await send(page)
+  await expect(tryIt(page).locator('.alert-error')).toContainText(
+    'Browsers refuse to send a TRACE request',
+  )
+  await expect(tryIt(page)).not.toContainText('Request failed at network level')
+  expect(calls).toHaveLength(0)
+})
