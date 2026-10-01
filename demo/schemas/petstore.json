@@ -528,11 +528,15 @@
             "name": "filter",
             "in": "querystring",
             "description": "RSQL expression, sent verbatim as the query string.",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "status==available;tags=in=(dog,puppy)"
-              ]
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "examples": [
+                    "status==available;tags=in=(dog,puppy)"
+                  ]
+                }
+              }
             }
           }
         ],

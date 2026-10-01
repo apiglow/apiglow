@@ -194,8 +194,12 @@
             "name": "filter",
             "in": "querystring",
             "description": "Whole query string, as typed",
-            "schema": {
-              "type": "string"
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           }
         ],

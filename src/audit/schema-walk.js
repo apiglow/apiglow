@@ -103,6 +103,11 @@ export function collectSchemas(document, operations) {
   for (const entry of operations) {
     for (const { param, dataPath } of entry.parameters) {
       visit(param.schema, `${dataPath}/schema`, entry, null)
+      // A parameter serialized by media type (`content`) carries its schema
+      // there — 3.2's `querystring` always does.
+      for (const [mediaType, content] of Object.entries(param.content ?? {})) {
+        visit(content?.schema, `${dataPath}${pointer('content', mediaType, 'schema')}`, entry, null)
+      }
     }
     for (const { content, dataPath } of operationContents(entry)) {
       visit(content.schema, `${dataPath}/schema`, entry, null)

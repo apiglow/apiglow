@@ -50,7 +50,7 @@
             "name": "filter",
             "in": "querystring",
             "description": "Whole query string, JSONPath syntax",
-            "schema": { "type": "string" }
+            "content": { "application/jsonpath": { "schema": { "type": "string" } } }
           }
         ],
         "responses": { "200": { "summary": "Matches" } }

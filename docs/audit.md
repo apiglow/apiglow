@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (70 rules across the five §4
+2. **Curated, doc-oriented ruleset** (80 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-70 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+80 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -374,6 +374,64 @@ graded like `field-without-value`: one check per defect, none otherwise.
   or whose chain of parents loops ("The named tag MUST exist … circular
   references … MUST NOT be used", Tag Object); every tag of a loop is
   reported. This app files such a tag at the top level of the navigation.
+- `path-syntax` (`error`) — a Paths key that is not a path template: no
+  leading `/` (OAS 3.x Paths Object, MUST), unbalanced, nested or empty
+  braces, a variable used twice (3.2 Path Templating, MUST NOT), a `?` or `#`
+  in the path. A literal brace stays in the request the try-it builds, and
+  after a `#` the query parameters it appends never reach the server.
+  Webhook and callback keys are names and expressions, not paths. A
+  variable with no parameter is `path-param-declared`'s.
+- `paths-identical` (`error`) — two Paths keys equal once their variable
+  names are set aside (`/pets/{id}`, `/pets/{petId}`) — OAS 3.x Path
+  Templating Matching, MUST NOT. A request pasted into the import dialog
+  fits both, and the reader has to choose. One finding on each later key.
+- `paths-ambiguous` (`info`) — two keys a single URL can match where
+  concrete-first matching cannot order them: same segment count, compatible
+  at every position, each literal where the other is templated
+  (`/{entity}/me`, `/books/{id}`). The specification leaves the choice to the
+  tooling; the import dialog asks the reader. True ambiguities only:
+  `/pets/mine` against `/pets/{id}` is ordered by the spec. A segment holding
+  any `{…}` counts as templated. On the demo GitHub schema: 67 pairs, mostly
+  `/…/{role_id}/teams` against `/…/teams/{team_slug}`.
+- `parameters-unique` (`error`) — a Path Item's or an Operation's
+  `parameters` naming the same `name` + `in` twice (OAS 3.x, MUST NOT);
+  header names compared without case. Read dereferenced, each list on its
+  own — an operation redeclaring a Path Item parameter overrides it. This
+  documentation keeps the last declaration; a generator may keep the first.
+- `header-parameter-ignored` (`warning`) — an `in: header` parameter named
+  `Accept`, `Content-Type` or `Authorization`, and a Response header named
+  `Content-Type` (OAS 3.x, SHALL be ignored). Generators drop them; this
+  documentation shows such a parameter in the try-it and sends what is typed
+  in it, over the body's Content-Type and the injected credential. Reported
+  at the definition, a shared parameter once.
+- `header-name-token` (`error`) — a header name that is not an RFC 9110
+  token (§5.1, §5.6.2): an `in: header` parameter's `name`, the keys of a
+  Response's and an Encoding's `headers`. The browser's `fetch` refuses the
+  request before sending it; the try-it reports a failed send. Keys of
+  `components.headers` are component names and are not read.
+- `parameter-style-valid` (`error`) — a `style` the parameter's `in` does not
+  allow (path: matrix / label / simple; query: form / spaceDelimited /
+  pipeDelimited / deepObject; header: simple; cookie: form, 3.2 cookie;
+  querystring: none) or its declared type does not (deepObject → object;
+  space/pipeDelimited → array or object) — OAS 3.x Style Values. An unknown
+  style is `field-value-kind`'s, `cookie` before 3.2 `version-construct`'s;
+  no declared type, no verdict on it.
+- `querystring-parameter` (`error`) — 3.2 `in: querystring` (Parameter
+  Locations, MUST): described with `schema` instead of `content`, a second
+  one on the same operation (Path Item's counted), or one next to an
+  `in: query` parameter. Read on each operation's merged list; `schema` is
+  reported once per declaration. The demo petstore's and two e2e fixtures'
+  `filter` parameters use `schema`.
+- `additional-operation-method` (`error`) — a 3.2 `additionalOperations` key
+  the Path Item has a field for, whatever its case (`POST`, `query`) — MUST
+  NOT — or one that is no RFC 9110 method token (`GET users`). This
+  documentation drops the first kind (its operation never appears); the
+  browser refuses to send the second.
+- `server-variables` (`error`) — a server URL `{name}` with no `variables`
+  entry, a `default` outside its `enum` (MUST), an empty `enum` (3.1+, MUST
+  NOT). Every Server Object: root, Path Item, Operation, a Link's `server`.
+  The base URL this documentation builds keeps the literal braces. A
+  variable declared but unused is not reported.
 
 **Schemas.** The rules below read the dereferenced schemas (`ctx.schemas`,
 each reported once, at its component when it has one), except

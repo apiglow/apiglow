@@ -62,6 +62,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   a media type key that is none, a component name with forbidden characters,
   a URL or email field holding neither, a licence identifier that is no SPDX
   expression, duplicate tags and 3.2 tag parents that lead nowhere.
+  Paths and parameters: a path that is no path template, two paths that are
+  the same once their variables are renamed, a parameter listed twice, a
+  header name `fetch` refuses, a style the parameter's location does not
+  allow, a server URL variable with no definition, the 3.2 `querystring`
+  parameter and `additionalOperations` used against their rules.
   Schemas are held to their own keywords: an `enum` its type rejects, bounds
   no value satisfies, a `pattern` that is no regular expression, a `format`
   the type cannot carry, a keyword that cannot apply (`maxLength` on an

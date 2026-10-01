@@ -75,6 +75,16 @@ import { licenseIdentifierSpdx } from './license-identifier-spdx.js'
 import { selfUri } from './self-uri.js'
 import { tagUnique } from './tag-unique.js'
 import { tagParent } from './tag-parent.js'
+import { pathSyntax } from './path-syntax.js'
+import { pathsIdentical } from './paths-identical.js'
+import { pathsAmbiguous } from './paths-ambiguous.js'
+import { parametersUnique } from './parameters-unique.js'
+import { headerParameterIgnored } from './header-parameter-ignored.js'
+import { headerNameToken } from './header-name-token.js'
+import { parameterStyleValid } from './parameter-style-valid.js'
+import { querystringParameter } from './querystring-parameter.js'
+import { additionalOperationMethod } from './additional-operation-method.js'
+import { serverVariables } from './server-variables.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -112,6 +122,16 @@ export const RULES = [
   selfUri,
   tagUnique,
   tagParent,
+  pathSyntax,
+  pathsIdentical,
+  pathsAmbiguous,
+  parametersUnique,
+  headerParameterIgnored,
+  headerNameToken,
+  parameterStyleValid,
+  querystringParameter,
+  additionalOperationMethod,
+  serverVariables,
   // §4.1 schemas: values and keywords
   enumValid,
   nullableEnumNull,
