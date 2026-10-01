@@ -283,7 +283,9 @@ test('the audit of a heavy schema renders as rules, not as thousands of rows', a
   const startedAt = Date.now()
   await page.goto(`${HEAVY_PAGE}#/audit`)
   const report = page.locator('audit-report')
-  await expect(report.locator('h1')).toBeVisible()
+  // The page shows the run in progress first; the report is there once the
+  // summary is.
+  await expect(report.locator('[data-audit-summary]')).toBeVisible()
   const renderedMs = Date.now() - startedAt
 
   const rows = await report.locator('li[data-rule-id]').count()

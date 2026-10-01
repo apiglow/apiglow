@@ -291,8 +291,8 @@ describe('unbounded-input', () => {
       }),
     )
     expect(result.findings.map((f) => [f.location, f.params])).toEqual([
-      ['POST /search', { count: 7, names: 'q, loose, open, …' }],
-      ['POST /things', { count: 6, names: 'owner.name, tags, tags[], …' }],
+      ['POST /search', { count: 7, names: 'q, loose, open (+4)' }],
+      ['POST /things', { count: 6, names: 'owner.name, tags, tags[] (+3)' }],
     ])
     expect(result.findings[0]).toMatchObject({ severity: 'info', dataPath: '/paths/~1search/post' })
   })

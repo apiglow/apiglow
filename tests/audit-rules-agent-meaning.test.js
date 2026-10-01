@@ -124,7 +124,7 @@ describe('enum-values-undescribed', () => {
 
   it('lists the first three unexplained values and elides the rest', () => {
     const result = enumParam({ type: 'string', enum: ['a1', 'b2', 'c3', 'd4', 'e5'] })
-    expect(result.findings[0].params).toEqual({ count: 5, missing: 'a1, b2, c3, …' })
+    expect(result.findings[0].params).toEqual({ count: 5, missing: 'a1, b2, c3 (+2)' })
   })
 
   it('has nothing to ask of a boolean enum, a single value, or null', () => {

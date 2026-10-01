@@ -87,10 +87,12 @@ const PLACEHOLDERS = new Set([
   'vide',
 ])
 
-// A finding's list of names, kept to one line: the first three, then `…`.
+// A finding's list of names, kept to one line: the first three, then how many
+// more — a figure, which reads the same in every language and leaves the
+// sentence around it free to end on its own punctuation.
 const SHOWN = 3
 
 export function abbreviate(values) {
   const shown = values.slice(0, SHOWN).join(', ')
-  return values.length > SHOWN ? `${shown}, …` : shown
+  return values.length > SHOWN ? `${shown} (+${values.length - SHOWN})` : shown
 }

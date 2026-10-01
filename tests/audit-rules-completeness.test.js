@@ -171,7 +171,7 @@ describe('property-described', () => {
       }),
     )
     expect(result.findings.map((finding) => finding.params)).toEqual([
-      { count: 4, names: 'userId, user_status, email, …' },
+      { count: 4, names: 'userId, user_status, email (+1)' },
     ])
   })
 })

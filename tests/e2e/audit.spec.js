@@ -92,7 +92,7 @@ test('the report names the API it graded and offers its schema', async ({ page }
   // The document in figures, same units as the home page's stats plus the
   // schemas. The perimeter is the audit's, not the navigation's: this fixture
   // hides no operation, but the counts span the hidden ones when it does.
-  const stats = identity.locator('.stat')
+  const stats = identity.locator('[data-audit-fact]')
   await expect(stats).toHaveCount(5)
   await expect(stats.filter({ hasText: 'Operations' })).toContainText('6')
   await expect(stats.filter({ hasText: 'Groups' })).toContainText('2')
@@ -116,11 +116,13 @@ test('a summary score bar jumps to the section it scores', async ({ page }) => {
   // Correctness is clean here: no section to jump to, so no offer to jump.
   await expect(summary.locator('[data-audit-jump="correctness"]')).toHaveCount(0)
   // A bar that jumps sits next to bars that don't, so it says so without being
-  // pointed at: link color, underline, and an arrow for where the click goes.
+  // pointed at: link color, underline, and an arrow for where the click goes;
+  // a clean category carries a check mark instead.
   const jump = summary.locator('[data-audit-jump="readiness"]')
-  await expect(jump).toHaveClass(/link-primary/)
-  await expect(jump.locator('svg')).toHaveCount(1)
-  expect(await jump.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe('underline')
+  const name = jump.locator('.link-primary')
+  await expect(name.locator('svg')).toHaveCount(1)
+  expect(await name.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe('underline')
+  await expect(jump).toHaveAccessibleName('Go to Docs readiness')
 
   await summary.locator('[data-audit-jump="readiness"]').click()
   const section = report(page).locator('[data-audit-category="readiness"]')
@@ -308,6 +310,22 @@ test('a schema with a syntax error opens, and its audit names the error', async 
   await expect(finding).toContainText(
     'The file is not valid YAML at line 12, column 7: Map keys must be unique',
   )
+  // The file quoted around the line, the faulty one marked: the position alone
+  // would send the reader to an editor to see what it holds.
+  const excerpt = finding.getByRole('group', { name: 'Excerpt of the file around line 12' })
+  await expect(excerpt.locator('pre[data-prefix="12"]')).toContainText('summary: List every pet')
+  await expect(excerpt.locator('pre[data-prefix=""]')).toContainText('^')
+})
+
+// The run is sliced over frames: the page shows it running rather than staying
+// blank, then swaps in the report.
+test('the audit page shows the run in progress, then the report', async ({ page }) => {
+  await gotoApp(page, '#/audit')
+  const progress = report(page).locator('[data-audit-progress]')
+  const summary = report(page).locator('[data-audit-summary]')
+  await expect(progress.or(summary)).toBeVisible()
+  await expect(summary).toBeVisible()
+  await expect(progress).toHaveCount(0)
 })
 
 test('the report is copied as Markdown, findings and rationales included', async ({ page }) => {

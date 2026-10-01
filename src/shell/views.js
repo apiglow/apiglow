@@ -4,9 +4,10 @@
 // hands these the branding and the resolved model (rule 10). The top bar has
 // its own module (`header.js`).
 import { downloadAction, downloadsBar } from '../components/download-action.js'
-import { el, externalLink, text } from '../components/dom.js'
+import { el, externalLink, icon, text } from '../components/dom.js'
 import { setupBuilderCard } from '../components/env-setup-builder.js'
 import { externalDocsLink } from '../components/external-docs.js'
+import { CALLOUT_WARNING_SVG } from '../components/icons.js'
 import { markdownBlock } from '../components/markdown.js'
 import { mcpCard } from '../components/mcp-card.js'
 import { mostUsedCard } from '../components/most-used-card.js'
@@ -28,17 +29,30 @@ export function loadingView() {
 }
 
 // `details`: lines under the message — what is wrong in a schema the loader
-// could not use, each at its line and column.
-export function errorView(message, details = []) {
-  const body = details.length
-    ? el(
-        'div',
-        'flex flex-col gap-2',
-        el('span', '', text(message)),
-        el('ul', 'list-disc ps-5 text-sm', ...details.map((line) => el('li', '', text(line)))),
-      )
-    : el('span', '', text(message))
-  const alert = el('div', 'alert alert-error', body)
+// could not use, each at its line and column. `retry`: the page is worth
+// reloading (a file being fixed, a server coming back), and says so.
+export function errorView(message, details = [], { retry = false } = {}) {
+  const reload = retry ? el('button', 'btn btn-sm self-start', text(t('error.reload'))) : null
+  reload?.addEventListener('click', () => window.location.reload())
+  if (reload) reload.type = 'button'
+  const alert = el(
+    'div',
+    'rounded-box border border-error/40 bg-error/5 p-5 sm:p-6 flex flex-col gap-4',
+    el(
+      'div',
+      'flex items-start gap-3',
+      icon(CALLOUT_WARNING_SVG, 'contents text-error'),
+      el('p', 'font-semibold min-w-0', text(message)),
+    ),
+    details.length
+      ? el(
+          'ul',
+          'flex flex-col gap-1.5 ps-8 text-sm font-mono break-words',
+          ...details.map((line) => el('li', '', text(line))),
+        )
+      : null,
+    reload,
+  )
   alert.setAttribute('role', 'alert')
   return el('div', 'max-w-2xl mx-auto mt-16 px-4', alert)
 }

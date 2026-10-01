@@ -205,10 +205,13 @@ function normalizeInfo(raw, base) {
   // itself — the identifier is the one a machine can act on.
   const identifier = textOrUndefined(license?.identifier)
   return prune({
-    title: info.title ?? '',
-    version: info.version ?? '',
-    summary: info.summary,
-    description: info.description,
+    // A YAML `version: 1.0` is a number, and a document recovered from a broken
+    // file can hold a mapping where the title belongs: what is shown is text,
+    // or nothing — never "[object Object]".
+    title: scalarText(info.title) ?? '',
+    version: scalarText(info.version) ?? '',
+    summary: scalarText(info.summary),
+    description: scalarText(info.description),
     termsOfService: externalUrl(info.termsOfService, base),
     contact: contact
       ? orUndefined({
@@ -263,6 +266,11 @@ function linkBase(candidate) {
   } catch {
     return null
   }
+}
+
+function scalarText(value) {
+  if (typeof value === 'string') return value
+  return typeof value === 'number' || typeof value === 'boolean' ? String(value) : undefined
 }
 
 function textOrUndefined(value) {

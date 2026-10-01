@@ -163,6 +163,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- The audit page leads with its verdict: one card names the API and its
+  figures, then shows the grade in a ring drawn to the score beside the
+  category bars, which now line up. Finding rows line their titles up, an
+  occurrence says where before what, a syntax error quotes the file around
+  the faulty line with a caret under it, and the page shows the run in
+  progress — in a background tab too — instead of a blank screen. Figures
+  are written the reader's way (`40 148`), on the home page as well.
 - The audit reports one thing to fix once. Undescribed properties make one
   finding per schema, naming them (`property-described`): GitHub's schema
   goes from 28,324 findings to 2,751. Such a schema — like an enum with
@@ -203,6 +210,10 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A schema whose `info.title` or `info.version` is not text — a YAML
+  `version: 1.0`, or a mapping in a file recovered from a syntax error —
+  shows it as text, or not at all, instead of "[object Object]". A schema
+  that cannot be opened gets an error card with a reload button.
 - A valid YAML schema the previous parser refused now opens, and its audit
   runs: OpenAI's, whose `|+` block holds a single blank line, is one.
 - A 3.2 server's `name` is shown wherever the servers are listed — the home

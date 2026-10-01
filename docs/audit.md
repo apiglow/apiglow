@@ -1739,6 +1739,14 @@ applies to all of them).
   `#/audit` (closing the drawer). No live grade in that block: showing
   one would force eager computation, and the drawer must stay cheap to
   open.
+- **While it runs**: the audit is sliced one rule per frame (half a second
+  of work on the 12 MB demo schema), so the page shows a progress card
+  with the share of rules run rather than staying blank. A hidden tab
+  draws no frame and holds its timers to one a second: there the run
+  yields through a message, and still finishes in the background.
+- **One overview card**, the verdict first: the document's identity heads
+  it as a caption, then the grade and the category bars side by side from
+  a tablet up (stacked on a phone, the grade on the first screen).
 - **Identity**: which API, which revision, and what was covered — title,
   `info.version`, declared OpenAPI version, `info.contact` and
   `info.license` when the document carries them, and the same schema
@@ -1751,20 +1759,23 @@ applies to all of them).
   (`architecture.md` §5.1.2).
 - **The document in figures**: operations, groups, webhooks, security
   schemes, schemas — the home page's stats (§5.1 of architecture.md) plus
-  the schemas, which are the audit's own unit of work. Same component
-  (`components/spec-stats.js`), same units, so the two pages are
-  comparable; counted on the document, so hidden operations are in there,
-  unlike the home's. Zeros are shown here rather than omitted: no
-  security scheme, no group, no webhook are all things the report goes on
-  to grade.
-- Header: aggregate letter + per-category score bars (static daisyUI class
-  maps for severity/grade colors — rule 2, no `badge-${severity}`). The
-  category names are the report's index: each jumps to its section, unless
-  the category has no finding and therefore no section. A name that jumps
-  says so at rest — link color, underline and a down arrow — because it
-  sits one row away from names that don't. Jumps are buttons rather than
-  `href="#…"` anchors: the app is hash-routed and an in-page fragment
-  reads as a navigation.
+  the schemas, which are the audit's own unit of work. Same units and
+  labels, so the two pages are comparable, but a line of figures rather
+  than the home's tiles: here they caption the grade. Counted on the
+  document, so hidden operations are in there, unlike the home's. Zeros
+  are shown here rather than omitted: no security scheme, no group, no
+  webhook are all things the report goes on to grade. Figures are written
+  the reader's way (`40 148`).
+- Summary: the aggregate letter inside a ring drawn to the score, the
+  severity counts under it, and per-category score bars (static daisyUI
+  class maps for severity/grade colors — rule 2, no `badge-${severity}`).
+  The bars share one grid, so they start on one line whatever the names.
+  The category rows are the report's index: each jumps to its section,
+  unless the category has no finding and therefore no section — it then
+  carries a check mark. A row that jumps says so at rest — its name in
+  link color, underlined, with a down arrow — and the whole row is the
+  target. Jumps are buttons rather than `href="#…"` anchors: the app is
+  hash-routed and an in-page fragment reads as a navigation.
 - **Help**, collapsed: the grade bands (rendered from `GRADES`, not
   restated), how a category score is computed, what each severity claims,
   what each category looks at. Read once, then never again — so it must
@@ -1774,19 +1785,27 @@ applies to all of them).
   thousand rows. Each category heading carries its score and its own
   severity counts: a reader who jumped straight to a section must not
   have to scroll back to the summary to weigh it. One row per rule that
-  fired = severity badge, the rule's label, the count of what it folds,
+  fired = severity tag (one width for the three severities, so the titles
+  start on one line; above the title on a phone), the rule's label, the
+  count of what it folds,
   and a chevron at the far right turning with the fold state (the native
   marker is suppressed, and nothing else would say the row opens; at the
   edge the chevrons line up in a column instead of reading as punctuation
   mid-row). Expanding shows the rationale and its fix once — hoisted to the group,
   stated expanded rather than behind a second disclosure — then the
-  occurrences: message, deep link (or "hidden" badge), **50 at a time**,
+  occurrences, where first (deep link, "hidden" badge, or location and
+  pointer) then the message, **50 at a time**,
   materialized on first expansion and never before. The count is always
   on the row and the remainder is always on the "show more" button:
   nothing is dropped silently. A rule that fired once is not folded: its
   own message is more informative than the generic label, and its
   rationale sits behind a compact "why" disclosure — the one place a
   second click is cheaper than pushing the next rule down.
+- A reading problem (`document-syntax`) quotes the file around it: the
+  line before, the line itself marked, a caret under the column, the line
+  after — the schema's text as the page's download serves it (the
+  browser's cached copy of the loader's request). A position alone would
+  send the reader to an editor to see what it holds.
 - Long JSON pointers (recursive schemas produce several hundred
   characters of one repeated segment) are elided in the middle on the
   page only. The export keeps them whole — it is what locates the finding

@@ -63,4 +63,18 @@ describe('a malformed document', () => {
       expect(crashes).toEqual([])
     })
   }
+
+  it('shows the info fields as text, or not at all', () => {
+    const info = (value) => normalizeDocument({ openapi: '3.1.0', info: value, paths: {} }).info
+    // What a document recovered from a broken file can hold, and a YAML number.
+    expect(info({ title: { 'T version': '1' }, version: 1.0, description: ['x'] })).toEqual({
+      title: '',
+      version: '1',
+    })
+    expect(info({ title: 'Pets', version: '2.1', summary: true })).toMatchObject({
+      title: 'Pets',
+      version: '2.1',
+      summary: 'true',
+    })
+  })
 })

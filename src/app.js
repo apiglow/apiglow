@@ -1487,15 +1487,31 @@ function appLayout(
     const { config: rules, errors } = audit.readAuditConfig(auditInput.rawConfig)
     for (const error of errors) console.warn('[api-doc]', error)
     const run = audit.auditRun({ ...auditInput, config: rules })
+    const steps = audit.RULES.length + 2
+    let done = 0
     let step = run.next()
     while (!step.done) {
-      await new Promise((resolve) => requestAnimationFrame(() => resolve()))
+      // A frame between two rules keeps the page answering. A hidden tab draws
+      // no frame and holds its timers to one a second, so there the run yields
+      // through a message instead — still a task of its own per rule.
+      await new Promise((resolve) => {
+        if (!document.hidden) return requestAnimationFrame(() => resolve())
+        const channel = new MessageChannel()
+        channel.port1.onmessage = () => resolve()
+        channel.port2.postMessage(null)
+      })
+      done += 1
+      if (auditVisible) auditView.progress = Math.min(1, done / steps)
       step = run.next()
     }
     return step.value
   }
   const showAudit = async () => {
     if (!auditReport) {
+      // The run is sliced over frames: the page shows it running rather than
+      // staying on whatever was there before.
+      if (!auditPending) auditView.progress = 0
+      if (main.firstChild !== auditView) main.replaceChildren(auditView)
       auditPending ??= computeAudit()
       try {
         auditReport = await auditPending
@@ -1505,7 +1521,10 @@ function appLayout(
         // next visit tries again.
         console.error('[api-doc] the schema audit could not be loaded:', err)
         auditPending = null
-        if (auditVisible) showToast('error', t('audit.loadFailed'))
+        if (auditVisible) {
+          showToast('error', t('audit.loadFailed'))
+          main.replaceChildren(errorView(t('audit.loadFailed')))
+        }
         return
       }
       // The reader may have navigated away while the slices ran: the report is
@@ -1999,7 +2018,7 @@ async function boot() {
     )
   } catch (err) {
     console.error('[api-doc]', err, err?.detail?.cause ?? '')
-    root.replaceChildren(errorView(loadErrorMessage(err), loadErrorProblems(err)))
+    root.replaceChildren(errorView(loadErrorMessage(err), loadErrorProblems(err), { retry: true }))
   }
 }
 

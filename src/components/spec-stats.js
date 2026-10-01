@@ -6,7 +6,7 @@
 // out (a document with no webhook has no webhook stat), and the label comes
 // from `welcome.{key}`.
 
-import { t } from '../i18n/index.js'
+import { currentLanguage, t } from '../i18n/index.js'
 import { el, text } from './dom.js'
 
 export function specStats(entries) {
@@ -22,7 +22,12 @@ export function specStats(entries) {
         'div',
         'stat py-3',
         el('div', 'stat-title text-xs', text(t(`welcome.${key}`))),
-        el('div', 'stat-value text-2xl', text(String(value))),
+        el(
+          'div',
+          'stat-value text-2xl tabular-nums',
+          // As the reader's language writes figures: 40 148, not 40148.
+          text(new Intl.NumberFormat(currentLanguage()).format(value)),
+        ),
       ),
     ),
   )

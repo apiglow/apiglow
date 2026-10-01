@@ -7,6 +7,10 @@ import en from './i18n/en.json' with { type: 'json' }
 export { readAuditConfig } from './audit/config.js'
 export { auditRun } from './audit/engine.js'
 
+// How many steps a run takes (one per rule, two to set up): the page's
+// progress bar.
+export { RULES } from './audit/rules/index.js'
+
 export const strings = Object.fromEntries(
   Object.entries(en).filter(([key]) => key.startsWith('audit.rule.')),
 )

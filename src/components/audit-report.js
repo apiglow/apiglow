@@ -1,12 +1,18 @@
 import { CATEGORIES, GRADES, gradeFor, LOWEST_GRADE } from '../audit/constants.js'
 import { profileDetail, toAuditMarkdown } from '../export/audit-markdown.js'
-import { t } from '../i18n/index.js'
+import { currentLanguage, t } from '../i18n/index.js'
 import { opHash } from '../router.js'
 import { copyTextButton } from './copy-button.js'
 import { el, icon, text } from './dom.js'
 import { downloadAction, downloadsBar } from './download-action.js'
-import { CHEVRON_RIGHT_SVG, JUMP_SVG } from './icons.js'
-import { specStats } from './spec-stats.js'
+import {
+  CALLOUT_TIP_SVG,
+  CHECK_MARK_SVG_SM,
+  CHEVRON_RIGHT_SVG,
+  CHEVRON_SVG_SM,
+  COPY_SVG_SM,
+  JUMP_SVG,
+} from './icons.js'
 
 // Schema audit page (docs/audit.md §6), routed on #/audit. Renders the plain
 // report `auditSchema` returns — the component never touches the schema itself,
@@ -15,10 +21,16 @@ import { specStats } from './spec-stats.js'
 // Static class maps (rule 2): a `badge-${severity}` would be purged out of the
 // built CSS.
 const SEVERITY_BADGE = {
-  error: 'badge badge-sm badge-error',
-  warning: 'badge badge-sm badge-warning',
-  info: 'badge badge-sm badge-info',
+  error: 'badge badge-sm badge-soft badge-error',
+  warning: 'badge badge-sm badge-soft badge-warning',
+  info: 'badge badge-sm badge-soft badge-info',
 }
+
+// The same tag at the head of every finding row, one width for the three
+// severities: the titles after it then start on one vertical line, which is
+// what lets the eye run down a section. On a phone the tag sits above the
+// title instead, which keeps the whole width for the text.
+const ROW_BADGE = 'shrink-0 self-start sm:w-28 justify-center sm:mt-0.5'
 
 // Grade color, and the matching bar color for a category score. Both read from
 // the same bands so a green letter never sits above an orange bar.
@@ -40,12 +52,21 @@ const GRADE_PROGRESS = {
 // Same order as the counts in the report, most severe first.
 const SEVERITIES = ['error', 'warning', 'info']
 
+// Figures as the reader's language writes them: 40 148, not 40148.
+function figure(n) {
+  return new Intl.NumberFormat(currentLanguage()).format(n)
+}
+
 class AuditReport extends HTMLElement {
   #report = null
   #download = null
+  #progress = null
+  // The schema's text, fetched once and only for a finding that quotes it.
+  #source = null
 
   set report(report) {
     this.#report = report
+    this.#progress = null
     if (this.isConnected) this.#render()
   }
 
@@ -54,42 +75,94 @@ class AuditReport extends HTMLElement {
   // host config (rule 10). Same descriptor as the home page's.
   set download(descriptor) {
     this.#download = descriptor
+    this.#source = null
     if (this.isConnected && this.#report) this.#render()
+  }
+
+  // While the run is sliced over frames (app.js): its share done, in [0, 1].
+  // Only the bar moves from one call to the next — the card around it is built
+  // once, so the reader is not re-announced the same status every frame.
+  set progress(share) {
+    this.#progress = share
+    if (!this.isConnected || this.#report) return
+    const bar = this.querySelector('[data-audit-progress]')
+    if (bar) bar.value = Math.round(share * 100)
+    else this.#render()
   }
 
   connectedCallback() {
     this.classList.add('block', 'max-w-4xl', 'flex', 'flex-col', 'gap-6')
-    if (this.#report) this.#render()
+    if (this.#report || this.#progress !== null) this.#render()
   }
 
   #render() {
     const report = this.#report
+    if (!report) {
+      this.replaceChildren(pageHeader(null), loadingCard(this.#progress ?? 0))
+      return
+    }
     // Sections are built before the summary so its score bars can hold a
     // reference to the section they score — a category with no finding has no
     // section, and its bar must not offer to jump to one.
+    const quote = (finding) => sourceExcerpt(finding, () => this.#text())
     const sections = new Map(
       report.counts.total
-        ? report.categories.filter((c) => c.findings.length).map((c) => [c.id, categorySection(c)])
+        ? report.categories
+            .filter((c) => c.findings.length)
+            .map((c) => [c.id, categorySection(c, quote)])
         : [],
     )
     this.replaceChildren(
-      el(
-        'header',
-        'flex flex-col gap-1',
-        el(
-          'div',
-          'flex flex-wrap items-center justify-between gap-2',
-          el('h1', 'text-2xl font-bold', text(t('audit.title'))),
-          copyButton(() => toAuditMarkdown(report)),
-        ),
-        el('p', 'text-sm text-subtle', text(t('audit.intro'))),
-      ),
-      identityCard(report, this.#download),
-      summaryCard(report, sections),
+      pageHeader(report),
+      overviewCard(report, sections, this.#download),
       helpBlock(),
       ...(sections.size ? sections.values() : [emptyState()]),
     )
   }
+
+  #text() {
+    if (!this.#download?.load) return Promise.resolve(null)
+    this.#source ??= this.#download.load().catch(() => null)
+    return this.#source
+  }
+}
+
+function pageHeader(report) {
+  return el(
+    'header',
+    'flex flex-col gap-1',
+    el(
+      'div',
+      'flex flex-wrap items-center justify-between gap-2',
+      el('h1', 'text-2xl font-bold', text(t('audit.title'))),
+      report ? copyButton(() => toAuditMarkdown(report)) : null,
+    ),
+    el('p', 'text-sm text-subtle', text(t('audit.intro'))),
+  )
+}
+
+// The run takes half a second on the heaviest schema the demo carries, sliced
+// so the page keeps answering: an empty page for that long reads as broken.
+function loadingCard(share) {
+  const bar = el('progress', 'progress progress-primary w-full')
+  bar.max = 100
+  bar.value = Math.round(share * 100)
+  bar.dataset.auditProgress = ''
+  bar.setAttribute('aria-label', t('audit.running'))
+  const status = el(
+    'p',
+    'flex items-center gap-2 font-semibold',
+    el('span', 'loading loading-spinner loading-sm text-primary'),
+    text(t('audit.running')),
+  )
+  status.setAttribute('role', 'status')
+  return el(
+    'section',
+    'rounded-box border border-base-300 p-6 flex flex-col gap-3',
+    status,
+    bar,
+    el('p', 'text-xs text-subtle', text(t('audit.runningHint'))),
+  )
 }
 
 // A grade and five category names mean nothing without the bands and the
@@ -168,28 +241,36 @@ function definitionList(title, entries) {
   )
 }
 
-// What is being audited, before how it scores: an audit read out of context —
-// pasted screenshot, tab left open next to another one — has to say which API
-// and which revision it graded.
-function identityCard(report, download) {
+// One card for what was graded and how it scored. What comes first is the
+// verdict — the grade, then each category's bar — and the identity of the
+// document heads it as a caption: an audit read out of context (a screenshot,
+// a tab left open beside another) still says which API and which revision it
+// graded, without that taking the first screen on a phone.
+function overviewCard(report, sections, download) {
+  return el(
+    'section',
+    'rounded-box border border-base-300 overflow-hidden',
+    identityBlock(report, download),
+    summaryBlock(report, sections),
+  )
+}
+
+function identityBlock(report, download) {
   const { api, scope } = report
   const meta = [
     api.version ? t('audit.api.version', { version: api.version }) : null,
     report.openapi ? `OpenAPI ${report.openapi}` : null,
   ].filter(Boolean)
-  const card = el(
-    'section',
-    'rounded-box border border-base-300 p-4 flex flex-col gap-3',
+  const head = el(
+    'div',
+    'flex flex-wrap items-start justify-between gap-x-4 gap-y-2',
     el(
       'div',
-      'flex flex-col gap-1',
-      api.title ? el('h2', 'text-xl font-bold', text(api.title)) : null,
-      meta.length ? el('p', 'text-sm text-subtle font-mono', text(meta.join(' — '))) : null,
+      'flex flex-col gap-0.5 min-w-0',
+      api.title ? el('h2', 'text-xl font-bold break-words', text(api.title)) : null,
+      meta.length ? el('p', 'text-sm text-subtle font-mono', text(meta.join(' · '))) : null,
     ),
-    contactLine(api),
-    scopeStats(scope),
   )
-  card.dataset.auditIdentity = ''
   if (download) {
     const bar = downloadsBar([
       downloadAction({
@@ -203,26 +284,48 @@ function identityCard(report, download) {
       }),
     ])
     // The bar carries its own top margin for the home page's flow; here the
-    // card's gap already spaces it.
+    // heading row already spaces it.
     bar.classList.remove('mt-4')
-    card.append(bar)
+    head.append(bar)
   }
-  return card
+  const block = el(
+    'div',
+    'flex flex-col gap-3 p-4 sm:p-5 bg-base-200/50 border-b border-base-300',
+    head,
+    contactLine(api),
+    scopeFacts(scope),
+  )
+  block.dataset.auditIdentity = ''
+  return block
 }
 
 // The perimeter, in figures — hidden operations included, which is exactly what
 // makes it worth printing: the audit spans more than the rendered navigation.
 // Every count is shown, zeros included: a nought here is the finding, not an
 // empty slot (no security scheme, no group, no webhook are all things the
-// report goes on to grade).
-function scopeStats(scope) {
-  return specStats([
-    ['operations', scope.operations],
-    ['groups', scope.groups],
-    ['webhooks', scope.webhooks],
-    ['securitySchemes', scope.securitySchemes],
-    ['schemas', scope.schemas],
-  ])
+// report goes on to grade). A line of figures rather than the home page's
+// tiles: here they caption the grade, they are not the page.
+function scopeFacts(scope) {
+  return el(
+    'dl',
+    'flex flex-wrap gap-x-6 gap-y-2',
+    ...[
+      ['operations', scope.operations],
+      ['groups', scope.groups],
+      ['webhooks', scope.webhooks],
+      ['securitySchemes', scope.securitySchemes],
+      ['schemas', scope.schemas],
+    ].map(([key, value]) => {
+      const fact = el(
+        'div',
+        'flex flex-col',
+        el('dt', 'text-xs text-subtle', text(t(`welcome.${key}`))),
+        el('dd', 'text-lg font-semibold tabular-nums leading-tight', text(figure(value))),
+      )
+      fact.dataset.auditFact = key
+      return fact
+    }),
+  )
 }
 
 // `info.contact` and `info.license` are graded by the `info-metadata` rule:
@@ -273,8 +376,8 @@ function safeHref(value) {
 // paid for only if someone asks for it.
 function copyButton(generate) {
   const btn = copyTextButton({
-    classes: 'btn btn-sm btn-outline',
-    label: t('audit.copy'),
+    classes: 'btn btn-sm btn-outline gap-1.5',
+    label: () => [icon(COPY_SVG_SM, 'contents'), text(t('audit.copy'))],
     getText: generate,
     announceText: t('audit.copied'),
   })
@@ -290,53 +393,77 @@ function severityCounts(counts) {
     el(
       'span',
       SEVERITY_BADGE[severity],
-      text(t(`audit.count.${severity}`, { n: counts[severity] })),
+      text(t(`audit.count.${severity}`, { n: figure(counts[severity]) })),
     ),
   )
 }
 
 // Grade, aggregate score, counts, then one bar per scored category — including
 // the ones with no finding, whose 100 % is exactly what a reader wants to see.
-function summaryCard(report, sections) {
-  // The default ruleset always scores at least the readiness category (one
-  // unconditional check on the document); a configuration switching rules off
-  // can leave nothing to grade, and the card then says so rather than invent a
-  // letter.
-  const grade = report.grade
+// Side by side from a tablet up: the letter is read first, the bars explain it.
+function summaryBlock(report, sections) {
   const counts = severityCounts(report.counts)
-  const card = el(
-    'section',
-    'rounded-box border border-base-300 p-4 flex flex-col gap-4',
+  const block = el(
+    'div',
+    'p-4 sm:p-5 grid gap-6 md:grid-cols-[auto_1fr] md:items-center',
     el(
       'div',
-      'flex flex-wrap items-center gap-x-6 gap-y-2',
+      'flex flex-col items-center gap-3 md:min-w-40',
+      gradeDial(report),
       el(
         'div',
-        'flex items-baseline gap-2',
-        grade
-          ? el('span', `text-5xl font-bold leading-none ${GRADE_TEXT[grade]}`, text(grade))
-          : el('span', 'text-5xl font-bold leading-none text-subtle', text('—')),
-        el(
-          'span',
-          'text-sm text-subtle',
-          text(grade ? t('audit.score', { score: report.score }) : t('audit.ungraded')),
-        ),
-      ),
-      el(
-        'div',
-        'flex flex-wrap items-center gap-2',
-        ...(counts.length ? counts : [el('span', 'badge badge-sm', text(t('audit.noFinding')))]),
+        'flex flex-wrap justify-center gap-1.5',
+        ...(counts.length
+          ? counts
+          : [el('span', 'badge badge-sm badge-soft badge-success', text(t('audit.noFinding')))]),
       ),
     ),
-    profileNote(report.profile),
     el(
       'div',
-      'flex flex-col gap-2',
-      ...report.categories.map((category) => categoryBar(category, sections.get(category.id))),
+      'flex flex-col gap-3 min-w-0',
+      profileNote(report.profile),
+      // One grid for every bar: the bars start on one line whatever the length
+      // of the category names before them.
+      el(
+        'div',
+        'grid grid-cols-[auto_1fr_auto] gap-y-0.5',
+        ...report.categories.map((category) => categoryBar(category, sections.get(category.id))),
+      ),
     ),
   )
-  card.dataset.auditSummary = ''
-  return card
+  block.dataset.auditSummary = ''
+  return block
+}
+
+// The default ruleset always scores at least the readiness category (one
+// unconditional check on the document); a configuration switching rules off
+// can leave nothing to grade, and the dial then says so rather than invent a
+// letter. The ring is the score, the letter its band.
+function gradeDial(report) {
+  const { grade, score } = report
+  const dial = el(
+    'div',
+    `radial-progress ${grade ? GRADE_TEXT[grade] : 'text-base-300'}`,
+    el(
+      'span',
+      'flex flex-col items-center leading-none',
+      el('span', `text-5xl font-bold ${grade ? '' : 'text-subtle'}`, text(grade ?? '—')),
+      el(
+        'span',
+        'text-xs text-subtle mt-1',
+        text(grade ? t('audit.score', { score }) : t('audit.ungraded')),
+      ),
+    ),
+  )
+  dial.style.setProperty('--value', String(score ?? 0))
+  dial.style.setProperty('--size', '7.5rem')
+  dial.style.setProperty('--thickness', '0.5rem')
+  dial.setAttribute('role', 'img')
+  dial.setAttribute(
+    'aria-label',
+    grade ? `${grade} — ${t('audit.score', { score })}` : t('audit.ungraded'),
+  )
+  return dial
 }
 
 // A grade computed under a custom rule set is not the default grade: said next
@@ -357,17 +484,29 @@ function categoryBar(category, section) {
   const label = t(`audit.category.${category.id}`)
   // <progress> alone announces a bare percentage: the label names which score it
   // is, and the visible figure next to it says the same thing to everyone else.
-  const bar = el('progress', `${GRADE_PROGRESS[gradeFor(category.score)]} w-full`)
+  const bar = el('progress', `${GRADE_PROGRESS[gradeFor(category.score)]} w-full min-w-16`)
   bar.value = category.score
   bar.max = 100
   bar.setAttribute('aria-label', t('audit.scoreOf', { category: label, score: category.score }))
-  return el(
-    'div',
-    'grid grid-cols-[minmax(7rem,auto)_1fr_auto] items-center gap-3 text-sm',
-    section ? jumpToSection(label, category.id, section) : el('span', '', text(label)),
-    bar,
-    el('span', 'font-mono text-xs text-subtle', text(`${category.score} %`)),
-  )
+  const score = el('span', 'font-mono text-xs text-subtle text-end', text(`${category.score} %`))
+  // A row spans the three columns of the summary's grid and takes them over
+  // (`subgrid`), so a whole row can be the jump while its cells stay aligned.
+  const row = 'col-span-3 grid grid-cols-subgrid items-center gap-x-3 rounded-field px-2 py-1.5'
+  if (!section) {
+    return el(
+      'div',
+      row,
+      el(
+        'span',
+        'flex items-center gap-1.5 text-sm',
+        text(label),
+        icon(CHECK_MARK_SVG_SM, 'contents text-success'),
+      ),
+      bar,
+      score,
+    )
+  }
+  return jumpToSection(row, label, category.id, section, bar, score)
 }
 
 // The summary's index role, made operable: on a long report the bars are the
@@ -376,20 +515,22 @@ function categoryBar(category, section) {
 // in-page fragment would be read as a navigation.
 //
 // Two signals rather than one, because the bars that jump sit right next to
-// bars that don't: a persistent link color and underline (`link-primary`, not
-// `link-hover`, which is indistinguishable from plain text until pointed at),
-// and the arrow saying where the click goes. Nothing else on this page is
-// primary-colored and underlined.
-function jumpToSection(label, categoryId, section) {
-  const glyph = icon(JUMP_SVG, 'contents')
-  const btn = el(
-    'button',
-    'link link-primary text-left w-fit flex items-center gap-1',
+// bars that don't: a persistent link color and underline on the name
+// (`link-primary`, not `link-hover`, which is indistinguishable from plain
+// text until pointed at), and the arrow saying where the click goes. The
+// whole row is the target. A category with nothing to jump to carries a check
+// mark instead.
+function jumpToSection(row, label, categoryId, section, bar, score) {
+  const name = el(
+    'span',
+    'link link-primary flex items-center gap-1 text-sm w-fit',
     text(label),
-    glyph,
+    icon(JUMP_SVG, 'contents'),
   )
+  const btn = el('button', `${row} text-left cursor-pointer hover:bg-base-200`, name, bar, score)
   btn.type = 'button'
   btn.dataset.auditJump = categoryId
+  btn.setAttribute('aria-label', t('audit.jump', { category: label }))
   btn.title = t('audit.jump', { category: label })
   btn.addEventListener('click', () => {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -405,7 +546,7 @@ function jumpToSection(label, categoryId, section) {
 // section renders them in order, one entry per rule rather than one per
 // finding. A schema-wide omission — every property undescribed — is one
 // decision to make, not two thousand rows to scroll past.
-function categorySection(category) {
+function categorySection(category, quote) {
   const heading = el(
     'h2',
     'text-lg font-bold flex flex-wrap items-center gap-2 scroll-mt-4',
@@ -417,12 +558,12 @@ function categorySection(category) {
   heading.tabIndex = -1
   const section = el(
     'section',
-    'flex flex-col gap-2',
+    'flex flex-col gap-3 scroll-mt-4',
     heading,
     el(
       'ul',
-      'list border border-base-300 rounded-box',
-      ...groupByRule(category.findings).map(ruleGroup),
+      'rounded-box border border-base-300 divide-y divide-base-300 overflow-hidden',
+      ...groupByRule(category.findings).map((group) => ruleGroup(group, quote)),
     ),
   )
   section.dataset.auditCategory = category.id
@@ -448,24 +589,31 @@ function groupByRule(findings) {
 // in the first place.
 const OCCURRENCE_PAGE = 50
 
-function ruleGroup(group) {
-  const row = el('li', 'list-row items-start')
+function ruleGroup(group, quote) {
+  const row = el('li', 'flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 px-4 py-3')
   row.dataset.ruleId = group.ruleId
   // A single occurrence has nothing to fold: its own message says more than the
   // rule's generic label ever could.
   row.append(
-    el('span', SEVERITY_BADGE[group.severity], text(t(`audit.severity.${group.severity}`))),
-    group.findings.length === 1 ? singleFinding(group.findings[0]) : foldedGroup(group),
+    el(
+      'span',
+      `${SEVERITY_BADGE[group.severity]} ${ROW_BADGE}`,
+      text(t(`audit.severity.${group.severity}`)),
+    ),
+    group.findings.length === 1
+      ? singleFinding(group.findings[0], quote)
+      : foldedGroup(group, quote),
   )
   return row
 }
 
-function singleFinding(finding) {
+function singleFinding(finding, quote) {
   const row = el(
     'div',
-    'flex flex-col gap-1 min-w-0',
-    el('p', 'text-sm', text(t(`audit.rule.${finding.ruleId}.message`, finding.params))),
+    'flex flex-col gap-1 min-w-0 flex-1',
+    el('p', 'text-sm font-medium', text(t(`audit.rule.${finding.ruleId}.message`, finding.params))),
     locationLine(finding),
+    quote(finding),
     rationale(finding),
   )
   row.dataset.auditFinding = finding.ruleId
@@ -474,7 +622,7 @@ function singleFinding(finding) {
 
 // The rationale is per rule, so folding hoists it out of the occurrences it was
 // repeated in: the group states the defect once, and unfolds into where.
-function foldedGroup(group) {
+function foldedGroup(group, quote) {
   const count = group.findings.length
   const label = t(`audit.rule.${group.ruleId}.label`)
   // The native marker is suppressed (`list-none`) because it sits outside the
@@ -483,22 +631,22 @@ function foldedGroup(group) {
   const chevron = icon(CHEVRON_RIGHT_SVG, 'contents')
   const summary = el(
     'summary',
-    'text-sm cursor-pointer flex items-center gap-2 list-none',
+    'text-sm font-medium cursor-pointer flex items-center gap-2 list-none',
     // The row no longer wraps — a wrapped line would strand the chevron on its
     // own — so the label is what gives way on a narrow screen.
     el('span', 'link link-hover min-w-0', text(label)),
-    el('span', 'badge badge-sm badge-ghost font-mono', text(String(count))),
+    el('span', 'badge badge-sm badge-ghost font-mono', text(figure(count))),
     chevron,
   )
   // The badge is a bare figure to the eye and an ambiguous one to a screen
   // reader: the accessible name says what it counts.
   summary.setAttribute('aria-label', `${label} — ${t('audit.group.occurrences', { n: count })}`)
-  const list = el('div', 'flex flex-col gap-2 mt-2')
+  const list = el('div', 'flex flex-col gap-2')
   const details = el(
     'details',
-    'group min-w-0',
+    'group min-w-0 flex-1',
     summary,
-    el('div', 'mt-1 flex flex-col gap-2', rationaleText(group.findings[0]), list),
+    el('div', 'mt-3 flex flex-col gap-3', rationaleText(group.findings[0]), list),
   )
   // Occurrences are built on first expansion, then a page at a time: an
   // unopened group of two thousand costs nothing, and an opened one costs a
@@ -509,10 +657,10 @@ function foldedGroup(group) {
   more.dataset.auditMore = group.ruleId
   const showNext = () => {
     const next = group.findings.slice(rendered, rendered + OCCURRENCE_PAGE)
-    list.append(...next.map(occurrenceRow))
+    list.append(...next.map((finding) => occurrenceRow(finding, quote)))
     rendered += next.length
     const remaining = count - rendered
-    more.replaceChildren(text(t('audit.group.showMore', { n: remaining })))
+    more.replaceChildren(text(t('audit.group.showMore', { n: figure(remaining) })))
     more.classList.toggle('hidden', remaining === 0)
   }
   more.addEventListener('click', showNext)
@@ -523,12 +671,16 @@ function foldedGroup(group) {
   return details
 }
 
-function occurrenceRow(finding) {
+// Where first, then what: in a folded group every occurrence breaks the same
+// rule, and what tells them apart — the schema, the operation — is what the
+// eye looks for.
+function occurrenceRow(finding, quote) {
   const row = el(
     'div',
-    'flex flex-col gap-0.5 min-w-0 border-s-2 border-base-300 ps-3',
-    el('p', 'text-sm text-subtle', text(t(`audit.rule.${finding.ruleId}.message`, finding.params))),
+    'flex flex-col gap-0.5 min-w-0 border-s-2 border-base-300 ps-3 py-0.5',
     locationLine(finding),
+    el('p', 'text-sm text-subtle', text(t(`audit.rule.${finding.ruleId}.message`, finding.params))),
+    quote(finding),
   )
   row.dataset.auditFinding = finding.ruleId
   return row
@@ -538,23 +690,25 @@ function occurrenceRow(finding) {
 // gets a badge instead of a dead link, and anything else is located by its
 // JSON pointer into the document.
 function locationLine(finding) {
-  const line = el('div', 'flex flex-wrap items-center gap-2 text-xs min-w-0')
+  const line = el('div', 'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs min-w-0')
   if (finding.opRef) {
     // `py-1` is the 24 px of WCAG 2.5.8: the location sits alone on its line
     // rather than inside a sentence, so the inline exception does not cover it
     // and a bare `text-xs` link would be an 16 px target.
-    const link = el('a', 'link link-primary font-mono py-1', text(finding.location))
+    const link = el('a', 'link link-primary font-mono py-1 break-all', text(finding.location))
     link.href = opHash(finding.opRef)
     link.dataset.auditLink = finding.opRef
     line.append(link)
   } else {
-    if (finding.location) line.append(el('span', 'font-mono text-subtle', text(finding.location)))
+    if (finding.location) {
+      line.append(el('span', 'font-mono font-medium break-all min-w-0', text(finding.location)))
+    }
     if (finding.hidden) {
       line.append(el('span', 'badge badge-xs badge-ghost', text(t('audit.hidden'))))
     } else if (finding.dataPath) {
       const pointer = el(
         'code',
-        'font-mono text-subtle break-all min-w-0',
+        'font-mono text-faint break-all min-w-0',
         text(shortPointer(finding.dataPath)),
       )
       pointer.title = finding.dataPath
@@ -585,10 +739,19 @@ function shortPointer(path) {
 function rationale(finding) {
   return el(
     'details',
-    '',
+    'group/why flex flex-col gap-1',
     // Same 24 px as the location line above: a standalone disclosure, not text
-    // in a sentence.
-    el('summary', 'text-xs cursor-pointer link link-hover w-fit py-1', text(t('audit.why'))),
+    // in a sentence. The chevron is the folded groups' own, turned down: one
+    // sign for "opens" across the page, where the native triangle was another.
+    el(
+      'summary',
+      'text-xs cursor-pointer w-fit py-1 list-none flex items-center gap-1 text-subtle hover:text-base-content',
+      el('span', 'link link-hover', text(t('audit.why'))),
+      icon(
+        CHEVRON_SVG_SM,
+        'contents [&>svg]:transition-transform group-open/why:[&>svg]:rotate-180',
+      ),
+    ),
     rationaleText(finding),
   )
 }
@@ -603,13 +766,18 @@ function rationaleText(finding) {
   const key = `audit.rule.${finding.ruleId}`
   return el(
     'div',
-    'flex flex-col gap-1 text-xs',
+    'flex flex-col gap-2 text-xs rounded-box bg-base-200/60 p-3',
     el('p', 'text-subtle', text(t(`${key}.why`, finding.params))),
     el(
       'p',
-      '',
-      el('span', 'font-semibold', text(`${t('audit.howToFix')} `)),
-      text(t(`${key}.fix`, finding.params)),
+      'flex gap-2',
+      icon(CALLOUT_TIP_SVG, 'contents [&>svg]:size-4 text-success'),
+      el(
+        'span',
+        '',
+        el('span', 'font-semibold', text(`${t('audit.howToFix')} `)),
+        text(t(`${key}.fix`, finding.params)),
+      ),
     ),
   )
 }
@@ -617,7 +785,8 @@ function rationaleText(finding) {
 function emptyState() {
   const alert = el(
     'div',
-    'alert alert-success alert-soft',
+    'alert alert-success alert-soft items-start',
+    icon(CHECK_MARK_SVG_SM, 'contents [&>svg]:size-5'),
     el(
       'div',
       'flex flex-col gap-1',
@@ -627,6 +796,56 @@ function emptyState() {
   )
   alert.setAttribute('role', 'status')
   return alert
+}
+
+// What a reading problem points at, quoted from the file: the line before, the
+// line itself with a caret under the column, the line after. A position alone
+// sends the reader to an editor to find out what "line 12, column 7" holds;
+// the excerpt usually says it at a glance. Filled once the text arrives (the
+// download descriptor's, the browser's cached copy of the request the loader
+// made); nothing is shown if it cannot be read.
+const EXCERPT_CONTEXT = 1
+const EXCERPT_WIDTH = 100
+
+function sourceExcerpt(finding, loadText) {
+  const { line, column } = finding.params ?? {}
+  if (finding.ruleId !== 'document-syntax' || !Number.isInteger(line)) return null
+  const slot = el('div', 'min-w-0')
+  loadText().then((source) => {
+    const lines = typeof source === 'string' ? source.split(/\r?\n/) : []
+    if (line < 1 || line > lines.length) return
+    const first = Math.max(1, line - EXCERPT_CONTEXT)
+    const last = Math.min(lines.length, line + EXCERPT_CONTEXT)
+    // A minified one-line JSON file holds the whole document on line 1: the
+    // window moves to the column rather than quoting megabytes.
+    const from = Math.max(0, (column ?? 1) - 1 - EXCERPT_WIDTH / 2)
+    const cut = (textLine) => {
+      const piece = textLine.slice(from, from + EXCERPT_WIDTH)
+      return `${from ? '…' : ''}${piece}${textLine.length > from + EXCERPT_WIDTH ? '…' : ''}`
+    }
+    const code = el('div', 'mockup-code text-xs before:hidden pt-3 pb-3')
+    for (let at = first; at <= last; at += 1) {
+      const pre = el(
+        'pre',
+        at === line ? 'bg-error/25' : '',
+        el('code', '', text(cut(lines[at - 1]))),
+      )
+      pre.dataset.prefix = String(at)
+      code.append(pre)
+      if (at === line && column) {
+        // Spaces under the text before the column, tabs kept as tabs, so the
+        // caret lands under the same character whatever the tab width.
+        const lead = lines[at - 1].slice(from, column - 1).replace(/[^\t]/g, ' ')
+        const caret = el('pre', 'text-error', el('code', '', text(`${from ? ' ' : ''}${lead}^`)))
+        caret.dataset.prefix = ''
+        code.append(caret)
+      }
+    }
+    code.setAttribute('aria-label', t('audit.excerpt', { line }))
+    code.setAttribute('role', 'group')
+    slot.append(code)
+  })
+  return slot
 }
 
 if (!customElements.get('audit-report')) customElements.define('audit-report', AuditReport)

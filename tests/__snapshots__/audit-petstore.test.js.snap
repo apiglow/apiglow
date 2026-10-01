@@ -48,14 +48,14 @@ error 0 · warning 14 · info 76
   info secured-op-errors — getUserByName {"missing":"401 / 403"}
   info secured-op-errors — updateUser {"missing":"401 / 403"}
   info unbounded-input — failValidation {"count":1,"names":"email"}
-  info unbounded-input — addPet {"count":6,"names":"name, category.name, photoUrls, …"}
-  info unbounded-input — updatePet {"count":6,"names":"name, category.name, photoUrls, …"}
-  info unbounded-input — searchPets {"count":4,"names":"name, status, tags, …"}
+  info unbounded-input — addPet {"count":6,"names":"name, category.name, photoUrls (+3)"}
+  info unbounded-input — updatePet {"count":6,"names":"name, category.name, photoUrls (+3)"}
+  info unbounded-input — searchPets {"count":4,"names":"name, status, tags (+1)"}
   info unbounded-input — subscribeToPet {"count":2,"names":"callbackUrl, events"}
   info unbounded-input — uploadFile {"count":1,"names":"caption"}
-  info unbounded-input — createUser {"count":6,"names":"username, firstName, lastName, …"}
-  info unbounded-input — createUsersWithListInput {"count":7,"names":"application/json, [].username, [].firstName, …"}
-  info unbounded-input — updateUser {"count":6,"names":"username, firstName, lastName, …"}
+  info unbounded-input — createUser {"count":6,"names":"username, firstName, lastName (+3)"}
+  info unbounded-input — createUsersWithListInput {"count":7,"names":"application/json, [].username, [].firstName (+4)"}
+  info unbounded-input — updateUser {"count":6,"names":"username, firstName, lastName (+3)"}
 
 ## completeness — 93 % over 287 checks
   warning parameter-described — uploadFile {"name":"additionalMetadata"}
@@ -65,13 +65,13 @@ error 0 · warning 14 · info 76
   warning request-body-described — petStatusChangedWebhook
   info property-described — /components/schemas/ApiResponse/properties {"count":3,"names":"code, type, message"}
   info property-described — /components/schemas/Category/properties {"count":2,"names":"id, name"}
-  info property-described — /components/schemas/Order/properties {"count":5,"names":"id, petId, quantity, …"}
-  info property-described — /components/schemas/Pet/properties {"count":5,"names":"id, name, category, …"}
+  info property-described — /components/schemas/Order/properties {"count":5,"names":"id, petId, quantity (+2)"}
+  info property-described — /components/schemas/Pet/properties {"count":5,"names":"id, name, category (+2)"}
   info property-described — /components/schemas/PetSearch/properties {"count":2,"names":"tags, limit"}
-  info property-described — /components/schemas/PetStatusEvent/properties {"count":4,"names":"petId, name, previousStatus, …"}
-  info property-described — /components/schemas/Subscription/properties {"count":5,"names":"id, petId, callbackUrl, …"}
+  info property-described — /components/schemas/PetStatusEvent/properties {"count":4,"names":"petId, name, previousStatus (+1)"}
+  info property-described — /components/schemas/Subscription/properties {"count":5,"names":"id, petId, callbackUrl (+2)"}
   info property-described — /components/schemas/Tag/properties {"count":2,"names":"id, name"}
-  info property-described — /components/schemas/User/properties {"count":8,"names":"id, username, firstName, …"}
+  info property-described — /components/schemas/User/properties {"count":8,"names":"id, username, firstName (+5)"}
   info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"count":2,"names":"subscriptionId, expiresAt"}
   info response-example — /components/schemas/ApiResponse {"status":"200"}
   info response-example — /components/schemas/Order {"status":"200"}

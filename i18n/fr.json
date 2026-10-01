@@ -15,6 +15,7 @@
   "error.load.invalidSchema": "Ce document n'est pas un schéma OpenAPI exploitable.",
   "error.load.unsupportedVersion": "Version « {found} » non supportée. Versions supportées : OpenAPI 3.0.x, 3.1.x, 3.2.x et Swagger 2.0.",
   "error.load.unexpected": "Erreur inattendue au chargement du schéma.",
+  "error.reload": "Recharger",
   "nav.otherGroup": "Autres",
   "nav.pagesSection": "Documentation",
   "nav.externalLink": "ouvre dans un nouvel onglet",
@@ -957,6 +958,9 @@
   "audit.intro": "Ce que ce schéma donne à voir aux outils qui le lisent, cette documentation comprise. Tout est calculé dans votre navigateur — rien n’est envoyé nulle part.",
   "audit.disabled": "L’audit du schéma est désactivé sur cette documentation.",
   "audit.loadFailed": "L’audit du schéma n’a pas pu être chargé. Rechargez la page pour réessayer.",
+  "audit.running": "Audit du schéma en cours…",
+  "audit.runningHint": "Les règles passent une à une, entre deux images : la page reste utilisable pendant ce temps.",
+  "audit.excerpt": "Extrait du fichier autour de la ligne {line}",
   "audit.specOverlaid": "Cet audit note le schéma avec {count} overlay(s) OpenAPI que cette documentation applique ; le téléchargement donne le fichier publié, sans eux.",
   "audit.specOverlaidUser": "Cet audit note le schéma avec {count} overlay(s) OpenAPI appliqués, votre correctif local compris ; le téléchargement donne le fichier publié, sans eux.",
   "audit.api.version": "Version {version}",
@@ -1556,7 +1560,7 @@
   "audit.rule.sensitive-field-exposure.why": "Le schéma dit que l’API rend le secret à quiconque lit la ressource : OWASP API3:2023 classe l’exposition de propriétés qui ne devraient pas être lues parmi les défauts d’autorisation. writeOnly est le mot-clé d’une valeur que le client envoie et ne reçoit jamais en retour : OpenAPI 3.0 dit qu’elle ne devrait pas figurer dans une réponse, JSON Schema 2020-12 (§9.4) qu’elle n’est jamais présente quand l’instance est lue. Les clients générés typent la réponse avec ce champ, et l’exemple de réponse de cette documentation l’affiche rempli, là où une propriété writeOnly est omise.",
   "audit.rule.sensitive-field-exposure.fix": "Marquez la propriété writeOnly: true et gardez la valeur hors des réponses de l’API. Si la réponse renvoie vraiment un secret, comme une clé d’API affichée une seule fois à sa création, retirez-y format: password et dites-le dans la description.",
   "audit.rule.unbounded-input.label": "Entrées sans limite de taille",
-  "audit.rule.unbounded-input.message": "Entrées de cette opération sans taille maximale : {names} ({count} au total). L’OWASP demande une longueur maximale pour chaque chaîne et un nombre maximal d’éléments pour chaque tableau qu’une API accepte.",
+  "audit.rule.unbounded-input.message": "Entrées de cette opération sans taille maximale ({count}) : {names}. L’OWASP demande une longueur maximale pour chaque chaîne et un nombre maximal d’éléments pour chaque tableau qu’une API accepte.",
   "audit.rule.unbounded-input.why": "OWASP API4:2023 (consommation de ressources sans restriction) en fait la première des préventions : une longueur maximale pour les chaînes et un nombre maximal d’éléments pour les tableaux, sur chaque paramètre et chaque contenu. Une limite que le serveur applique sans que le document l’énonce, chaque client la découvre en échouant, et une passerelle qui valide d’après le schéma laisse passer n’importe quelle taille. Une chaîne est bornée par maxLength, un enum ou un const, un format de forme fixe (date, date-time, time, uuid, ipv4, ipv6, duration) ou un pattern ancré par ^ et $ qui ne répète rien sans limite ; un tableau par maxItems, un enum ou un const, ou des prefixItems avec items: false. Les fichiers, les nombres et les propriétés readOnly ne comptent pas.",
   "audit.rule.unbounded-input.fix": "Ajoutez maxLength aux chaînes et maxItems aux tableaux parmi {names}, aux valeurs que le serveur applique."
 }
