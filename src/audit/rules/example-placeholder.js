@@ -10,7 +10,7 @@ import { describeValue } from '../value-check.js'
 // an example as the API's own word for what a real payload looks like; this
 // documentation shows it as written under "Example", and the try-it prefills it
 // as the value to send. A placeholder fills the slot and shows nothing, so
-// `operation-examples` and `response-example` do not count it as an example.
+// `response-example` does not count it as an example.
 //
 // Narrow on purpose (`src/audit/placeholder-example.js`): a dull but plausible
 // value is an example, and a value the schema's `enum`/`const` allows is

@@ -8,6 +8,7 @@ import { drivableFlows } from '../openapi/oauth.js'
 import { displayableExample, exampleText, isExternalExample } from '../openapi/examples.js'
 import { isMultiValue, isObjectValue } from '../openapi/params.js'
 import { effectiveBaseUrl } from '../openapi/request-builder.js'
+import { serverAddress } from '../openapi/servers.js'
 import { isXmlMedia } from '../openapi/sample-xml.js'
 import { opHash } from '../router.js'
 import { readHeaderMemory } from '../storage/header-memory.js'
@@ -1001,7 +1002,7 @@ function linkRow(link) {
   const expressions = [
     ...(link.parameters ?? []).map((p) => [p.name, p.expression]),
     ...(link.requestBody !== undefined ? [[t('doc.requestBody'), link.requestBody]] : []),
-    ...(link.server ? [[t('doc.linkServer'), link.server.url]] : []),
+    ...(link.server ? [[t('doc.linkServer'), serverAddress(link.server)]] : []),
   ]
   if (expressions.length) {
     row.append(

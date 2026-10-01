@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadApiModel, SchemaLoadError } from '../src/openapi/loader.js'
+import { effectiveBaseUrl } from '../src/openapi/request-builder.js'
+import { serverUrl } from '../src/openapi/servers.js'
 
 // The four input formats the app claims for the schema document
 // (docs/registry/specs-registry.md): OpenAPI 3.x and Swagger 2.0, each
@@ -143,5 +145,33 @@ describe('loadApiModel', () => {
     await expect(loadApiModel('https://api.example.com/openapi.yaml')).rejects.toMatchObject({
       code: 'network',
     })
+  })
+
+  // The host's `openapi.url` is handed over as written, relative to the page.
+  it('reads $self and resolves relative URLs against the document under a page-relative URL', async () => {
+    vi.stubGlobal('location', { href: 'https://docs.example.com/guide/index.html' })
+    serve(
+      JSON.stringify({
+        openapi: '3.2.0',
+        $self: 'https://api.example.com/specs/openapi.json',
+        info: { title: 'Self', version: '1.0' },
+        paths: {
+          '/ping': {
+            get: { servers: [{ url: '/v2' }], responses: { 200: { description: 'ok' } } },
+          },
+        },
+      }),
+    )
+    const { model } = await loadApiModel('specs/openapi.json')
+    expect(model.baseUri).toBe('https://api.example.com/specs/openapi.json')
+    expect(effectiveBaseUrl(model.operations[0])).toBe('https://api.example.com/v2')
+  })
+
+  it('resolves relative URLs against where a document without $self was read from', async () => {
+    vi.stubGlobal('location', { href: 'https://docs.example.com/guide/index.html' })
+    serve(JSON_30.replace('"paths"', '"servers":[{"url":"v1"}],"paths"'))
+    const { model } = await loadApiModel('specs/openapi.json')
+    expect(model.linkBase).toBe('https://docs.example.com/guide/specs/openapi.json')
+    expect(serverUrl(model.servers[0])).toBe('https://docs.example.com/guide/specs/v1')
   })
 })

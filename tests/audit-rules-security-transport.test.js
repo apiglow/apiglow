@@ -13,13 +13,15 @@ import { auditContext, doc, okResponse } from './audit-context.js'
 
 const run = (rule, document) => runRule(rule, auditContext(document))
 // A document whose 3.2 `$self` the loader resolved to `baseUri`.
-const runAt = (rule, document, baseUri) =>
+const runAt = (rule, document, baseUri) => runWith(rule, document, { baseUri })
+// `documentUrl`: where the loader read a document without `$self` from.
+const runWith = (rule, document, options) =>
   runRule(
     rule,
     createAuditContext({
       source: document,
       document,
-      model: normalizeDocument(document, { baseUri }),
+      model: normalizeDocument(document, options),
     }),
   )
 const op = (extra = {}) => ({ responses: okResponse, ...extra })
@@ -130,6 +132,19 @@ describe('server-https', () => {
     const https = runAt(serverHttps, doc({ servers }), 'https://api.example.com/openapi.json')
     expect(https).toMatchObject({ checks: 2, findings: [] })
   })
+
+  it('resolves it without $self against the URL the document was read from', () => {
+    const servers = [{ url: '/v1' }]
+    const read = runWith(serverHttps, doc({ servers }), {
+      documentUrl: 'http://api.example.com/openapi.json',
+    })
+    expect(read.findings.map((f) => f.params.url)).toEqual(['http://api.example.com/v1'])
+    // Read off the disk (the CLI): no web address, no verdict.
+    const onDisk = runWith(serverHttps, doc({ servers }), {
+      documentUrl: 'file:///srv/openapi.json',
+    })
+    expect(onDisk.findings).toEqual([])
+  })
 })
 
 describe('oauth-url-tls', () => {
@@ -151,6 +166,22 @@ describe('oauth-url-tls', () => {
       }),
     )
     expect(result).toMatchObject({ checks: 4, findings: [] })
+  })
+
+  it('judges a relative endpoint where the app sends it: against the document', () => {
+    const document = schemes({
+      o: oauth({ clientCredentials: { tokenUrl: '/oauth/token', scopes: {} } }),
+    })
+    const read = runWith(oauthUrlTls, document, {
+      documentUrl: 'http://api.example.com/openapi.json',
+    })
+    expect(read.findings.map((f) => [f.params.field, f.params.url])).toEqual([
+      ['tokenUrl', '/oauth/token'],
+    ])
+    const https = runWith(oauthUrlTls, document, {
+      documentUrl: 'https://api.example.com/openapi.json',
+    })
+    expect(https).toMatchObject({ checks: 1, findings: [] })
   })
 
   it('flags every cleartext endpoint, one check per URL', () => {

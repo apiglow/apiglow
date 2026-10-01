@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { runRule } from '../src/audit/engine.js'
-import { duplicateInlineSchema } from '../src/audit/rules/duplicate-inline-schema.js'
 import { parameterNaming } from '../src/audit/rules/parameter-naming.js'
 import { pathStyle } from '../src/audit/rules/path-style.js'
 import { propertyNaming } from '../src/audit/rules/property-naming.js'
@@ -149,79 +148,6 @@ describe('path-style', () => {
   it('says nothing on a document with too few segments to have a convention', () => {
     expect(
       run(pathStyle, doc({ paths: { '/pets': { get: { responses: okResponse } } } })).checks,
-    ).toBe(0)
-  })
-})
-
-describe('duplicate-inline-schema', () => {
-  // Big enough to be worth a component: the threshold is on the serialized size.
-  const address = (description) => ({
-    type: 'object',
-    description,
-    properties: {
-      street: { type: 'string', description: 'Street and number' },
-      city: { type: 'string', description: 'City name' },
-      zipCode: { type: 'string', description: 'Postal code' },
-      country: { type: 'string', description: 'ISO 3166-1 alpha-2 country code' },
-    },
-  })
-
-  const withSchemas = (schemas) =>
-    doc({
-      paths: Object.fromEntries(
-        Object.entries(schemas).map(([path, schema]) => [
-          path,
-          { get: { responses: { 200: { content: { 'application/json': { schema } } } } } },
-        ]),
-      ),
-    })
-
-  it('flags the copies and leaves the first occurrence alone', () => {
-    const result = run(
-      duplicateInlineSchema,
-      withSchemas({ '/a': address('An address'), '/b': address('An address') }),
-    )
-    expect(result.checks).toBe(2)
-    expect(result.findings).toHaveLength(1)
-    expect(result.findings[0]).toMatchObject({
-      ruleId: 'duplicate-inline-schema',
-      severity: 'info',
-      location: 'GET /b',
-      params: { count: 2 },
-    })
-  })
-
-  it('sees through a different key order but not through a different content', () => {
-    const reordered = {
-      properties: address('An address').properties,
-      type: 'object',
-      description: 'An address',
-    }
-    expect(
-      run(duplicateInlineSchema, withSchemas({ '/a': address('An address'), '/b': reordered }))
-        .findings,
-    ).toHaveLength(1)
-    expect(
-      run(duplicateInlineSchema, withSchemas({ '/a': address('One'), '/b': address('Another') }))
-        .findings,
-    ).toEqual([])
-  })
-
-  it('does not mistake a component reused at several sites for a copy', () => {
-    // What dereferencing produces: the same object at every `$ref` site.
-    const shared = address('An address')
-    const document = withSchemas({
-      '/a': { type: 'array', items: shared },
-      '/b': { type: 'array', items: shared },
-    })
-    document.components = { schemas: { Address: shared } }
-    expect(run(duplicateInlineSchema, document).findings).toEqual([])
-  })
-
-  it('ignores a shape too small to deserve a component', () => {
-    const small = { type: 'string', format: 'date-time' }
-    expect(
-      run(duplicateInlineSchema, withSchemas({ '/a': small, '/b': { ...small } })).checks,
     ).toBe(0)
   })
 })

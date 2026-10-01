@@ -5,7 +5,7 @@ import { isObject } from '../value-check.js'
 
 // A deprecation that says nothing is a dead end: the reader learns the thing is
 // going away and not what to do about it. Only the deprecated elements are
-// checked here — the rest is the inventory rule's business.
+// checked.
 //
 // The heuristic is deliberately loose. It catches the flag set and then
 // forgotten, not the badly worded migration note: any word pointing to a

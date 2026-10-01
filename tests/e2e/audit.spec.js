@@ -55,13 +55,13 @@ test('the report grades the schema and scores each category', async ({ page }) =
   await expect(header).toContainText('A')
   await expect(header).toContainText('90 / 100')
   await expect(header).toContainText('12 warning(s)')
-  await expect(header).toContainText('45 note(s)')
+  await expect(header).toContainText('26 note(s)')
   // One bar per scored category, including the one with no finding: a 100 % is
   // exactly what the author wants to see.
   await expect(header).toContainText('Correctness')
   await expect(header).toContainText('100 %')
   await expect(header).toContainText('Docs readiness')
-  await expect(header).toContainText('89 %')
+  await expect(header).toContainText('90 %')
   // Score bars are not left to color alone.
   await expect(header.locator('progress').first()).toHaveAttribute(
     'aria-label',
@@ -69,8 +69,8 @@ test('the report grades the schema and scores each category', async ({ page }) =
   )
 
   // A category with no finding gets no section: only its bar above. Here
-  // correctness, deprecation and consistency are clean, so four sections
-  // remain after the summary's, in the report's own category order.
+  // correctness and consistency are clean, and nothing is deprecated, so four
+  // sections remain after the summary's, in the report's own category order.
   const sections = report(page).locator('section h2')
   await expect(sections).toHaveCount(5)
   await expect(sections.nth(1)).toContainText('Security')
@@ -154,22 +154,22 @@ test('the report explains its own grades, severities and categories', async ({ p
 // report nobody scrolls to the end of.
 test('findings of the same rule fold into one counted row', async ({ page }) => {
   await gotoApp(page, '#/audit')
-  const group = report(page).locator('[data-rule-id="operation-examples"]')
+  const group = report(page).locator('[data-rule-id="response-example"]')
   await expect(group).toHaveCount(1)
   await expect(group).toContainText('Note')
-  await expect(group).toContainText('Operation without any example')
+  await expect(group).toContainText('Success response with no example')
   // A chevron says the row opens at all — the native marker is suppressed.
   const chevron = group.locator('summary svg')
   await expect(chevron).toHaveCount(1)
   // The counter says how much is folded — nothing is dropped silently.
   const count = Number(await group.locator('.badge-ghost').innerText())
   expect(count).toBeGreaterThan(1)
-  await expect(group).not.toContainText('carries no example')
+  await expect(group).not.toContainText('has no example, or only placeholders')
 
   await group.locator('summary').click()
   // Expanded: the rationale once, then every occurrence with its own message.
   await expect(group).toContainText('generated from the schema')
-  await expect(group.getByText('carries no example')).toHaveCount(count)
+  await expect(group.getByText('has no example, or only placeholders')).toHaveCount(count)
   // The chevron turns with the state rather than being swapped by a listener.
   // Tailwind 4 rotates through the standalone `rotate` property, not `transform`,
   // and the row transitions into it — hence the poll rather than a single read.
@@ -182,9 +182,9 @@ test('each category section carries its own counts', async ({ page }) => {
   await gotoApp(page, '#/audit')
   const heading = report(page).locator('[data-audit-category="readiness"] h2')
   await expect(heading).toContainText('Docs readiness')
-  await expect(heading).toContainText('89 %')
+  await expect(heading).toContainText('90 %')
   await expect(heading).toContainText('2 warning(s)')
-  await expect(heading).toContainText('8 note(s)')
+  await expect(heading).toContainText('5 note(s)')
   // A severity with nothing in it is left out: "0 error(s)" reads as a finding.
   await expect(heading).not.toContainText('error(s)')
 })
@@ -213,7 +213,7 @@ test('a finding names its rule, its rationale, its fix and where it applies', as
 
 test('a finding on a routable operation deep-links to it', async ({ page }) => {
   await gotoApp(page, '#/audit')
-  await report(page).locator('[data-rule-id="operation-examples"] summary').click()
+  await report(page).locator('[data-rule-id="response-example"] summary').click()
   const link = report(page).locator('a[data-audit-link="getAccount"]').first()
   await expect(link).toHaveText('GET /account')
   await link.click()
@@ -299,11 +299,11 @@ test('the report is copied as Markdown, findings and rationales included', async
   // The whole perimeter travels with it, same units as the page's stats.
   expect(markdown).toContain('Operations: 6 · Groups: 2 · Webhooks: 2 · Security schemes: 4')
   // Counts per category, not only for the report as a whole.
-  expect(markdown).toContain('- Docs readiness: 89 % — 2 warning(s) · 8 note(s)')
-  expect(markdown).toContain('## Docs readiness — 89 % · 2 warning(s) · 8 note(s)')
+  expect(markdown).toContain('- Docs readiness: 90 % — 2 warning(s) · 5 note(s)')
+  expect(markdown).toContain('## Docs readiness — 90 % · 2 warning(s) · 5 note(s)')
   // A finding travels with where it applies and why it matters.
   expect(markdown).toContain(
-    '**Note** — This operation carries no example anywhere, or only placeholders.',
+    '**Note** — The 200 response’s payload has no example, or only placeholders.',
   )
   expect(markdown).toContain('*Why it matters*:')
   // The button confirms, and the outcome reaches the announcement channel.

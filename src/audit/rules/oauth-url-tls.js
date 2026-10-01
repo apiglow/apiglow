@@ -1,6 +1,7 @@
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
 import { isCleartext } from '../../openapi/mixed-content.js'
+import { documentUrl } from '../security.js'
 
 // An OAuth or OpenID Connect endpoint over plain http. TLS is not advice
 // there, it is the protocol: RFC 6749 requires it on the authorization
@@ -23,7 +24,8 @@ import { isCleartext } from '../../openapi/mixed-content.js'
 // it (the spec's "Applies To"), and only under an `oauth2` scheme;
 // `openIdConnectUrl` on an `openIdConnect` scheme, `oauth2MetadataUrl` on an
 // `oauth2` one. Anywhere else nothing fetches it. Loopback is exempt, like
-// everywhere in this category (`isCleartext`).
+// everywhere in this category (`isCleartext`). A relative URL is judged where
+// the app sends it: resolved against the document's own URI.
 //
 // One check per such URL present. A missing URL is `oauth-flow-urls`'; one
 // that is not a URL at all, `uri-form`'s.
@@ -44,7 +46,7 @@ export const oauthUrlTls = {
   run(ctx, check) {
     const grade = (url, field, dataPath) => {
       if (typeof url !== 'string') return
-      check(!isCleartext(url), {
+      check(!isCleartext(documentUrl(ctx, url)), {
         ...placeOf(ctx.operations, dataPath),
         dataPath,
         params: { field, url },

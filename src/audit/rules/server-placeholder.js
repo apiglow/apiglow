@@ -11,10 +11,10 @@ import { serverDefaultUrl } from '../security.js'
 //
 // The URL is read as this documentation sends to it (`serverDefaultUrl`):
 // variables at their defaults, a relative URL resolved against the document's
-// 3.2 `$self` — without one, it takes the host of wherever the document is
-// served from, which the audit is not told. `.test` and `localhost` are not
-// placeholders: RFC 6761 sets them aside for testing and local servers, which
-// a document may legitimately point at.
+// own URI (3.2 `$self`, else where the document was read from) — with no
+// http(s) base, a file the CLI reads off the disk, it gives no verdict.
+// `.test` and `localhost` are not placeholders: RFC 6761 sets them aside for
+// testing and local servers, which a document may legitimately point at.
 // Every Server the client calls: root, Path Item, Operation; not a Link's
 // `server`, nor one inside a webhook or a callback (the API calls those).
 // Plain http is `server-https`'s; an undeclared variable, `server-variables`'.

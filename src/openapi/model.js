@@ -48,9 +48,10 @@ export function* pathItemOperations(pathItem) {
 
 // `hide`: host config patterns (see hide.js), passed in by the shell.
 // `baseUri`: the document's own URI, resolved by the loader from 3.2's `$self`
-// (absent when the document declares none) — the model carries it so the shell
-// resolves relative servers against it without ever reading the raw document.
+// (absent when the document declares none).
 // `documentUrl`: where the loader read the document from (absent inline).
+// Together they make `linkBase`, the one base every relative URL of the
+// document resolves against (see `ctx.linkBase`).
 export function normalizeDocument(raw, { hide, baseUri, documentUrl } = {}) {
   const hidden = compileHideRules(hide)
   // A hidden tag hides all operations that carry it: it's the
@@ -116,7 +117,7 @@ export function normalizeDocument(raw, { hide, baseUri, documentUrl } = {}) {
     // the model carries the effective (most-specific) list, so no consumer
     // re-implements the operation > path precedence.
     const pathServers = objectsOf(pathItem.servers).length
-      ? objectsOf(pathItem.servers).map(normalizeServer)
+      ? objectsOf(pathItem.servers).map((server) => normalizeServer(server, ctx.linkBase))
       : null
     for (const [method, op, verb] of pathItemOperations(pathItem)) {
       if (isHidden(path, method, op, operationKey(path, method, op))) {
@@ -171,9 +172,14 @@ export function normalizeDocument(raw, { hide, baseUri, documentUrl } = {}) {
     // from — a relative `$self` means "next to me", and only the loader knows
     // where that is.
     baseUri: baseUri ?? undefined,
+    // What a relative URL of the document resolves against: `$self`, else
+    // where the document was read from, else the host page — http(s) only.
+    // Servers carry it (`server.base`) and the OAuth URLs come out resolved;
+    // it is here for the audit, which reads raw Server Objects.
+    linkBase: ctx.linkBase ?? undefined,
     info: normalizeInfo(raw.info, ctx.linkBase),
     externalDocs: normalizeExternalDocs(raw.externalDocs, ctx.linkBase),
-    servers: objectsOf(raw.servers).map(normalizeServer),
+    servers: objectsOf(raw.servers).map((server) => normalizeServer(server, ctx.linkBase)),
     tags,
     groups: buildGroups(tags, operations),
     operations,
@@ -183,7 +189,7 @@ export function normalizeDocument(raw, { hide, baseUri, documentUrl } = {}) {
     hiddenOperations: hiddenOperations || undefined,
     securitySchemes: Object.entries(raw.components?.securitySchemes ?? {})
       .filter(([, scheme]) => scheme !== null && typeof scheme === 'object')
-      .map(([name, scheme]) => normalizeSecurityScheme(name, scheme)),
+      .map(([name, scheme]) => normalizeSecurityScheme(name, scheme, ctx.linkBase)),
     security: raw.security ?? [],
   })
 }
@@ -476,7 +482,7 @@ function normalizeOperation(path, method, op, pathParams, ctx, cbDepth = 0, path
     // on this operation. The distinction matters for credential injection.
     security: op.security ?? null,
     servers: objectsOf(op.servers).length
-      ? objectsOf(op.servers).map(normalizeServer)
+      ? objectsOf(op.servers).map((server) => normalizeServer(server, ctx.linkBase))
       : pathServers,
   })
 }
@@ -695,7 +701,9 @@ function normalizeLinks(raw, ctx) {
       parameters: parameters.length ? parameters : undefined,
       requestBody: link.requestBody !== undefined ? expressionText(link.requestBody) : undefined,
       server:
-        link.server && typeof link.server === 'object' ? normalizeServer(link.server) : undefined,
+        link.server && typeof link.server === 'object'
+          ? normalizeServer(link.server, ctx.linkBase)
+          : undefined,
     })
     ctx.links?.push(entry)
     links.push(entry)
@@ -830,11 +838,15 @@ function firstDefined(...values) {
   return undefined
 }
 
-function normalizeServer(raw) {
+// `url` stays the template as written: its variables are substituted before
+// it is resolved (servers.js), so `base` travels with it rather than being
+// applied here.
+function normalizeServer(raw, base) {
   return prune({
     // `name`: 3.2, stable identifier of a server to reference it.
     name: raw.name,
     url: raw.url,
+    base: base ?? undefined,
     description: raw.description,
     variables: Object.entries(raw.variables ?? {}).map(([name, v]) =>
       prune({ name, default: v?.default, enum: v?.enum, description: v?.description }),
@@ -842,7 +854,12 @@ function normalizeServer(raw) {
   })
 }
 
-function normalizeSecurityScheme(name, raw) {
+// The OAuth and OpenID Connect URLs are fetched or navigated to, not merely
+// shown: resolved here against the document's base, so a relative
+// `tokenUrl` does not reach the page's origin instead, and held to http(s)
+// like every outbound URL — a `javascript:` authorizationUrl would otherwise
+// run on the full-page redirect.
+function normalizeSecurityScheme(name, raw, base) {
   return prune({
     name, // key in securitySchemes → the `auth.{name}` environment variable
     type: raw.type, // apiKey | http | oauth2 | openIdConnect | mutualTLS (3.1)
@@ -851,19 +868,19 @@ function normalizeSecurityScheme(name, raw) {
     in: raw.in, // for apiKey: header | query | cookie
     paramName: raw.name, // for apiKey: actual header/param name (≠ scheme key)
     description: raw.description,
-    openIdConnectUrl: raw.openIdConnectUrl,
+    openIdConnectUrl: externalUrl(raw.openIdConnectUrl, base),
     // 3.2: a scheme can be deprecated, and declare the metadata URL of
     // its authorization server (RFC 8414).
     deprecated: raw.deprecated === true || undefined,
-    oauth2MetadataUrl: raw.oauth2MetadataUrl,
+    oauth2MetadataUrl: externalUrl(raw.oauth2MetadataUrl, base),
     flows: raw.flows
       ? Object.entries(raw.flows).map(([key, flow]) =>
           prune({
             key, // authorizationCode | clientCredentials | implicit | password | deviceAuthorization (3.2)
-            authorizationUrl: flow?.authorizationUrl,
-            deviceAuthorizationUrl: flow?.deviceAuthorizationUrl,
-            tokenUrl: flow?.tokenUrl,
-            refreshUrl: flow?.refreshUrl,
+            authorizationUrl: externalUrl(flow?.authorizationUrl, base),
+            deviceAuthorizationUrl: externalUrl(flow?.deviceAuthorizationUrl, base),
+            tokenUrl: externalUrl(flow?.tokenUrl, base),
+            refreshUrl: externalUrl(flow?.refreshUrl, base),
             scopes: flow?.scopes,
           }),
         )

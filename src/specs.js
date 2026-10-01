@@ -334,31 +334,6 @@ function resolveScenarios(rootScenarios, spec, multi, warnings) {
   return entries
 }
 
-// A rule set on both sides, one of them in the object form: merged field by
-// field, a string standing for its severity — the spec's `"warning"` must not
-// drop the root's options. Anything malformed is left as it comes, for
-// `readAuditConfig` to name.
-function mergeAuditRules(rootRules, specRules) {
-  const merged = { ...rootRules, ...specRules }
-  for (const id of Object.keys(merged)) {
-    const root = rootRules?.[id]
-    const own = specRules?.[id]
-    if (root === undefined || own === undefined || !(isPlainObject(root) || isPlainObject(own))) {
-      continue
-    }
-    merged[id] = { ...asRuleObject(root), ...asRuleObject(own) }
-  }
-  return merged
-}
-
-function asRuleObject(setting) {
-  return isPlainObject(setting) ? setting : { severity: setting }
-}
-
-function isPlainObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
 // Environments: same merge as pages, by name.
 function mergeEnvironments(rootEnvs, spec) {
   const specNames = new Set((spec.environments ?? []).map((e) => String(e?.name ?? '')))
@@ -409,7 +384,7 @@ export function resolveSpecConfig(config, spec, { multi = false } = {}) {
     // first, so a spec can narrow what the installation declared. Validation is
     // the audit's own (`readAuditConfig`), on this effective value.
     audit: {
-      rules: mergeAuditRules(config.audit?.rules, spec.audit?.rules),
+      rules: { ...config.audit?.rules, ...spec.audit?.rules },
       overrides: [
         ...(Array.isArray(config.audit?.overrides) ? config.audit.overrides : []),
         ...(Array.isArray(spec.audit?.overrides) ? spec.audit.overrides : []),

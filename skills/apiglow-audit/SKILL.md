@@ -39,7 +39,7 @@ The JSON report (`format: "apiglow-audit-report"`):
   changes.
 
 `npx --yes apiglow@0.2.0 audit --explain <ruleId>` prints one rule — why,
-how to fix, its severity and options; `--list-rules` prints every rule as
+how to fix, its severity; `--list-rules` prints every rule as
 JSON.
 
 ## Fix, then audit again

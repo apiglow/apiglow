@@ -167,7 +167,7 @@ Config keys (all optional except one of `openapi.url` / `openapi.spec`):
 | `announcements` | Operator announcements shown as a strip above the header: an array of `{ text, level?, dismissible?, startsAt?, endsAt?, id? }` **or** a string URL pointing at a file holding `{ "announcements": [ … ] }` — the form that publishes news without redeploying the host page. `text` is inline Markdown and accepts a per-language map. Overridable per spec by accumulation (§5.17). |
 | `scenarios[]` | Scenarios shipped with the docs — see [scenarios.md](scenarios.md). |
 | `features` | Feature switches: `scenarios` / `audit` / `ci` (on by default, `false` removes the feature entirely — `ci` being the "Automate this scenario" panel of `docs/scenario-handoff.md` §4, and that panel alone: what a declared scenario publishes never depends on it), `onboarding` (off by default, `true` adds the generated "First call" page — §5.5.7). |
-| `audit` | The schema audit's rule configuration: `rules` (rule id → `error` / `warning` / `info` / `off`, or an object with the rule's options and an optional `severity`) and `overrides` (severities, under JSON pointer patterns). Overridable per spec; read by the audit page and `apiglow audit` alike ([audit.md](audit.md) §2.2). |
+| `audit` | The schema audit's rule configuration: `rules` (rule id → `error` / `warning` / `info` / `off`) and `overrides` (severities, under JSON pointer patterns). Overridable per spec; read by the audit page and `apiglow audit` alike ([audit.md](audit.md) §2.2). |
 | `branding` | `{ productName, logoUrl }` — the name and the logo the header carries (§7). |
 | `feedback.url` | Endpoint receiving the docs-page "Was this page helpful?" verdict (`POST { page, verdict }`). `null` by default: without it no feedback row renders and nothing ever leaves the browser (§5.8, [docs-pages.md](docs-pages.md)). |
 | `tryIt.proxyUrl` | Optional CORS proxy template, e.g. `"https://my-proxy.example.com/?url={{target}}"`. `null` by default. |
@@ -199,9 +199,15 @@ per spec — the merge rules live in [multi-spec.md §2](multi-spec.md).
   (§5.1.2).
 - **`$self` (3.2)** names the URI the document claims as its own. When it is
   there, it — and not the URL the file happened to be fetched from — is the
-  base for relative external `$ref`s and for relative server URLs. The loader
-  resolves it and exposes it as `model.baseUri`; the shell reads only the
-  model (rule 10).
+  base for relative external `$ref`s and for every other relative URL in the
+  document. The loader resolves it and exposes it as `model.baseUri`.
+  Normalization folds it into `model.linkBase` — `$self`, else the URL the
+  document was read from, else the host page for an inline one, http(s)
+  only — which every relative URL resolves against: links and examples,
+  OAuth/OpenID URLs (resolved in the model), and servers, which stay
+  templates and carry the base beside them (`server.base`, applied by
+  `src/openapi/servers.js` once their variables are substituted). The shell
+  reads only the model (rule 10).
 - `$ref` resolution via `@apidevtools/json-schema-ref-parser`: internal,
   external HTTP, and circular refs. Documents whose references are all
   internal `#/…` pointers — the overwhelming case — take a single-pass

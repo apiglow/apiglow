@@ -7,8 +7,7 @@
 // tags included — and a line break does not survive the one-line places.
 //
 // Every operation, webhook and callback with a non-blank summary: one check
-// each. No length or punctuation test: length is `summary-length`'s, wording
-// is the author's.
+// each. No length or punctuation test: those are the author's.
 const MARKUP = /\*\*|__|`|\[[^\]\n]*\]\([^)\n]*\)|<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>|[\r\n]/
 
 export const operationSummaryStyle = {

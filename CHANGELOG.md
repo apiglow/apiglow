@@ -102,17 +102,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   request bodies whose strings and arrays have no maximum size.
 - An agent readiness category in the audit: what an AI agent gets when it
   calls your API through a tool — an MCP bridge, a GPT Action, Semantic
-  Kernel. Fifteen rules, each naming what concretely goes wrong: an
-  `operationId` OpenAI refuses as a tool name, two operations whose tools
-  say the same thing, more operations than a platform takes as tools,
-  inputs with no type or no shape, unions an agent cannot tell apart, a body
-  that is not an object, recursion a bridge cuts, enum values nothing
-  explains, a parameter and a body property sharing a name (Semantic Kernel
-  drops the operation, bridges overwrite one), request examples written
-  where no tool sees them, errors returned as prose, and what this
-  documentation's own MCP export cannot carry (cookies, credentials outside
-  a header).
-- 31 more audit rules, 147 in all. HTTP semantics: a body on a GET, HEAD
+  Kernel. Eight rules, each naming what concretely goes wrong: inputs with
+  no type or no shape, unions an agent cannot tell apart, a body that is not
+  an object, enum values nothing explains, a parameter and a body property
+  sharing a name (Semantic Kernel drops the operation, bridges overwrite
+  one), request examples written where no tool sees them, and errors
+  returned as prose.
+- 30 more audit rules, 135 in all. HTTP semantics: a body on a GET, HEAD
   or TRACE, content on a 204, a 304 or any HEAD response, a redirect with no
   `Location`, a 405 with no `Allow`, a 206 with no `Content-Range`, a date
   header declared as RFC 3339 instead of an HTTP-date, a 3.2 QUERY with no
@@ -124,19 +120,16 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   titles, an operation with no summary or with Markdown in it, tags used but
   not declared, declared but undescribed or unused, HTML the sanitizer
   removes, relative links that break once rendered, responses with no
-  schema, placeholder examples, examples with no summary or only in an
-  external file, untyped response fields, headers and methods a browser
-  refuses to send, servers on `example.com`, servers a reader cannot tell
-  apart, a document with no operation at all.
+  schema, placeholder examples, examples only in an external file, untyped
+  response fields, headers and methods a browser refuses to send, servers
+  on `example.com`, servers a reader cannot tell apart, a document with no
+  operation at all.
 - `apiglow audit --explain <rule>` prints one rule — why it matters, how to
-  fix it, its severity and options — and `--list-rules` prints them all as
-  JSON.
+  fix it, its severity — and `--list-rules` prints them all as JSON.
 - The npm package ships an agent skill, `skills/apiglow-audit/SKILL.md`:
   drop it where your coding agent reads skills and it runs the audit, fixes
   the findings and audits again — without inventing what your API does, and
   without silencing a rule on its own.
-- An audit rule can take options, set next to its severity:
-  `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
 - The audit's rules are configurable: switch one off, or change its severity,
@@ -147,8 +140,29 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   never passes for the default one, and the CLI refuses to run on an entry it
   cannot read.
 
+### Removed
+
+- Four audit rules that flagged no defect in the document: the list of
+  everything deprecated (`deprecated-inventory`), a shape written inline
+  twice (`duplicate-inline-schema`), an operation with no example anywhere
+  (`operation-examples`) and schemas nested past what the page expands on
+  its own (`schema-expand-walls`). Missing examples are still reported per
+  response (`response-example`) and per request body (`request-example`).
+
 ### Changed
 
+- The audit reports one thing to fix once. Undescribed properties make one
+  finding per schema, naming them (`property-described`), and weigh as one
+  check: GitHub's schema goes from 28,324 findings to 2,751. A missing
+  example is asked of success responses only, once per payload — at the
+  shared schema or response when there is one (`response-example`). A body
+  on a GET or HEAD is reported once, as a body to remove, rather than also
+  as undescribed or as a form without fields. A document that tags no
+  operation, or whose secured operations never document a 401 or 403, gets
+  one finding for it instead of one per operation. An enum of plain words
+  (`active`, `past_due`) no longer asks for each value to be explained —
+  only codes like `A1` or `3` do. Relative links in descriptions and a
+  `default` on a required field are notes rather than warnings.
 - The audit holds examples and defaults to their whole schema: nested
   properties, required members, lengths, patterns, bounds, sizes, formats
   and compositions. A finding names the keyword and where in the value it
@@ -181,6 +195,15 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 - A relative link in the schema — an external example (`externalValue`), an
   `externalDocs`, license or contact URL — now points next to the schema, as
   OpenAPI 3.1 says, instead of next to the documentation page.
+- A relative server on a path or an operation (`/v2`), and a relative OAuth
+  or OpenID Connect URL, now resolve next to the schema — its `$self`, else
+  the URL it was read from — instead of next to the documentation page: the
+  try-it sends there, and the login goes there. A schema's `$self` is also
+  honoured when `openapi.url` is relative. An OAuth URL that is not http(s)
+  is ignored, like any other link of the schema. The audit judges a relative
+  server without `$self` too, against the URL the schema was read from.
+  The welcome page, the Link servers and the Markdown exports show a
+  relative server at its absolute address, `{variables}` kept.
 - A `[link](#errors)` in a description or a docs page now scrolls to the
   element with that id, on the page you are reading. It used to send you back
   to the home page.
@@ -238,11 +261,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   OpenAPI 3.1 says: it used to be dropped on most documents and kept on the
   ones with external references.
 - The audit no longer asks for examples on files: a download or an upload (a
-  PDF, an export, an image) has no example to write, and neither
-  `operation-examples` nor `response-example` counts one against you anymore.
-- `schema-expand-walls` no longer flags recursive schemas. A tree or a form
-  that describes itself is your data model, not something to fix; deep
-  nesting is still reported.
+  PDF, an export, an image) has no example to write, and `response-example`
+  no longer counts one against you.
 - `npx apiglow bake`, and the `apiglow` bin npm installs, now run the command:
   they used to exit at once without doing anything.
 - The bake reads the overlays a config names from the config's own

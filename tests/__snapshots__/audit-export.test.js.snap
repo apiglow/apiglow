@@ -16,7 +16,7 @@ exports[`audit JSON report > declares its format and version, and carries the ru
       "category": "readiness",
       "fix": "Add at least one tag, and declare it with a description in the top-level tags list.",
       "label": "Operation without tag",
-      "message": "This operation carries no tag.",
+      "message": "Operations without a tag: {count}.",
       "why": "It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.",
     },
     "security-scheme-described": {
@@ -108,7 +108,9 @@ exports[`audit JSON report > declares its format and version, and carries the ru
                 "hidden": true,
                 "location": "DELETE /admin/reset",
                 "opRef": null,
-                "params": {},
+                "params": {
+                  "count": 1,
+                },
                 "ruleId": "operation-tagged",
                 "severity": "info",
               },
@@ -174,7 +176,7 @@ Operations: 19 · Groups: 3 · Webhooks: 2 · Security schemes: 2 · Schemas: 64
   \`components.securitySchemes.apiKey\` · \`/components/securitySchemes/apiKey\`
   *Why it matters*: The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.
   *How to fix:* Add a description to the scheme saying where to get the credential and in what form to paste it.
-- **Note** — This operation carries no tag.
+- **Note** — Operations without a tag: 1.
   \`DELETE /admin/reset\` · (Hidden operation) · \`/paths/~1admin~1reset/delete\`
   *Why it matters*: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
   *How to fix:* Add at least one tag, and declare it with a description in the top-level tags list.
@@ -230,14 +232,14 @@ Docs readiness — 74 %
   Note · Operation without tag (1) [operation-tagged]
     Why it matters: It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.
     How to fix: Add at least one tag, and declare it with a description in the top-level tags list.
-    - This operation carries no tag.
+    - Operations without a tag: 1.
       DELETE /admin/reset · (Hidden operation) · /paths/~1admin~1reset/delete
 "
 `;
 
 exports[`audit reports for CI platforms > writes GitHub workflow commands, escaped 1`] = `
 "::error file=apis/pets/openapi.yaml,line=10,col=5,title=Duplicate operationId [duplicate-operation-id]::operationId “getPet” is used by more than one operation.%0AGET /pet/{petId} · /paths/~1pet~1{petId}/get%0AHow to fix: Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).
-::notice file=apis/pets/openapi.yaml,line=11,col=5,title=Operation without tag [operation-tagged]::This operation carries no tag.%0ADELETE /admin/reset · /paths/~1admin~1reset/delete%0AHow to fix: Add at least one tag, and declare it with a description in the top-level tags list.
+::notice file=apis/pets/openapi.yaml,line=11,col=5,title=Operation without tag [operation-tagged]::Operations without a tag: 1.%0ADELETE /admin/reset · /paths/~1admin~1reset/delete%0AHow to fix: Add at least one tag, and declare it with a description in the top-level tags list.
 ::warning file=apis/pets/openapi.yaml,line=10,col=5,title=Security scheme without description [security-scheme-described]::Security scheme “apiKey” has no description.%0Acomponents.securitySchemes.apiKey · /components/securitySchemes/apiKey%0AHow to fix: Add a description to the scheme saying where to get the credential and in what form to paste it.
 "
 `;
@@ -270,7 +272,7 @@ exports[`audit reports for CI platforms > writes GitLab Code Quality with our fi
   },
   {
     "check_name": "operation-tagged",
-    "description": "This operation carries no tag.",
+    "description": "Operations without a tag: 1.",
     "fingerprint": "default|operation-tagged|/paths/~1admin~1reset/delete|0",
     "location": {
       "lines": {
@@ -357,13 +359,15 @@ exports[`audit reports for CI platforms > writes SARIF 2.1.0, one run per spec 1
             },
           ],
           "message": {
-            "text": "This operation carries no tag.",
+            "text": "Operations without a tag: 1.",
           },
           "partialFingerprints": {
             "apiglowFingerprint/v1": "default|operation-tagged|/paths/~1admin~1reset/delete|0",
           },
           "properties": {
-            "params": {},
+            "params": {
+              "count": 1,
+            },
             "pointer": "/paths/~1admin~1reset/delete",
           },
           "ruleId": "operation-tagged",
@@ -503,15 +507,12 @@ How to fix: Add a description to the scheme saying where to get the credential a
 }
 `;
 
-exports[`audit rule descriptions > explains one rule: its texts, severity and options 1`] = `
+exports[`audit rule descriptions > explains one rule: its texts and severity 1`] = `
 "operation-id-present — Docs readiness · Warning
 Operation without operationId
 
 Why it matters: That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.
 How to fix: Give the operation a stable, unique operationId — a verb and a noun, in letters, digits and underscores (listPets).
-
-Options:
-  depth = 3 (1–9)
 "
 `;
 
@@ -555,22 +556,6 @@ exports[`audit rule descriptions > lists the rules as a versioned JSON document 
       "id": "operation-id-present",
       "label": "Operation without operationId",
       "message": "No operationId — the deep link falls back to “{fallbackId}”.",
-      "severity": "warning",
-      "why": "That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.",
-    },
-    {
-      "category": "readiness",
-      "fix": "Give the operation a stable, unique operationId — a verb and a noun, in letters, digits and underscores (listPets).",
-      "id": "operation-id-present",
-      "label": "Operation without operationId",
-      "message": "No operationId — the deep link falls back to “{fallbackId}”.",
-      "options": {
-        "depth": {
-          "default": 3,
-          "max": 9,
-          "min": 1,
-        },
-      },
       "severity": "warning",
       "why": "That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.",
     },

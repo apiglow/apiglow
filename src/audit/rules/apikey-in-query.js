@@ -18,8 +18,7 @@ import { unescapePointerToken } from '../../scenarios/pointer.js'
 // parameter of its own — and the server's own logs keep it whatever the docs
 // do.
 //
-// One check per `apiKey` Security Scheme. The MCP export cannot carry a query
-// key at all — that is `bridge-degradation`'s, per operation.
+// One check per `apiKey` Security Scheme.
 export const apikeyInQuery = {
   id: 'apikey-in-query',
   category: 'security',

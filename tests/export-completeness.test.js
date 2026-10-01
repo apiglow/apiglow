@@ -58,6 +58,8 @@ const DOC_EMITTED = {
 const DOC_WAIVED = {
   baseUri:
     '3.2 `$self`, resolved at load time — where the document was read from, not what it documents',
+  linkBase:
+    'the base relative URLs resolve against, already applied to every URL the export prints',
   convertedFrom:
     'conversion diagnostic, surfaced by the settings panel; a reader gets the effective version above',
   sourceDialect:
@@ -87,6 +89,7 @@ const INDEX_WAIVED = {
     'which requirement applies to which operation is the contract, not the map — the index names the schemes and links to the full text',
   tags: 'nav metadata; the index groups by `groups`, which is derived from it',
   baseUri: '3.2 `$self`, where the document was read from — not what it documents',
+  linkBase: 'the base relative URLs resolve against — where the document was read from',
   convertedFrom: 'conversion diagnostic, surfaced by the settings panel',
   sourceDialect: 'recorded but never acted upon (every schema is read as 2020-12)',
 }

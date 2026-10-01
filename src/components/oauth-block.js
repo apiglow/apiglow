@@ -185,10 +185,10 @@ export function oauthBlock({ scheme, model, op, envStore, configClientId, notify
       }
       // Authorization Code + PKCE: URL validation before any persistence,
       // an invalid authorizationUrl must not trigger a re-render that
-      // would detach the error zone. A relative URL is valid — it means
-      // "same origin as the docs" and resolves against the page.
+      // would detach the error zone. The model resolved it against the
+      // document's own URI (buildAuthorizationUrl).
       try {
-        new URL(state.flow.authorizationUrl, globalThis.location?.href)
+        new URL(state.flow.authorizationUrl)
       } catch {
         return showError(t('oauth.error.exchange', { message: state.flow.authorizationUrl }))
       }

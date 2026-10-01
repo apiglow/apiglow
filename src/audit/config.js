@@ -7,17 +7,10 @@ import { isObject } from './value-check.js'
 // `openapi.specs[]` entries alike — and the CLI reads the same key, so the page
 // and the pipeline grade one document the same way.
 //
-//   { "rules": { "<ruleId>": "error" | "warning" | "info" | "off",
-//                "<ruleId>": { "severity": "warning", "<option>": <value> } },
+//   { "rules": { "<ruleId>": "error" | "warning" | "info" | "off" },
 //     "overrides": [ { "paths": ["/paths/~1legacy~1*"],
 //                      "rules": { "<ruleId>": "off" },
 //                      "reason": "frozen legacy API" } ] }
-//
-// The object form carries the options a rule declares (`rule.options`), next
-// to an optional severity — Redocly's shape, the one OpenAPI authors already
-// write. Options are document-wide: an override changes severities only, since
-// a threshold that moves from one path to the next would grade one document by
-// two different yardsticks.
 //
 // A grade computed under such a configuration is not the default grade, and is
 // never presented as one: the report carries the profile it was computed
@@ -33,13 +26,13 @@ const SETTINGS = [...SEVERITIES, RULE_OFF]
 // name the entry; the valid part of the block is kept, so the page can still
 // apply it while the CLI refuses to run (it treats any error as fatal).
 export function readAuditConfig(raw, rules = RULES) {
-  const known = new Map(rules.map((rule) => [rule.id, rule]))
+  const known = new Set(rules.map((rule) => rule.id))
   const errors = []
-  const config = { rules: {}, options: {}, overrides: [] }
+  const config = { rules: {}, overrides: [] }
   if (raw == null) return { config, errors }
   if (!isObject(raw)) return { config, errors: ['audit: expected an object'] }
 
-  config.rules = readRules(raw.rules, 'audit.rules', known, errors, config.options)
+  config.rules = readRules(raw.rules, 'audit.rules', known, errors)
   if (raw.overrides !== undefined && !Array.isArray(raw.overrides)) {
     errors.push('audit.overrides: expected a list')
   }
@@ -73,9 +66,7 @@ export function readAuditConfig(raw, rules = RULES) {
   return { config, errors }
 }
 
-// `options` is where the object form's options go — absent, as under an
-// override, an object form setting any is refused; its severity alone is read.
-function readRules(raw, at, known, errors, options = null) {
+function readRules(raw, at, known, errors) {
   const rules = {}
   if (raw === undefined) return rules
   if (!isObject(raw)) {
@@ -83,57 +74,12 @@ function readRules(raw, at, known, errors, options = null) {
     return rules
   }
   for (const [id, setting] of Object.entries(raw)) {
-    const rule = known.get(id)
-    if (!rule) errors.push(`${at}: unknown rule "${id}"`)
-    else if (isObject(setting)) {
-      const { severity, ...values } = setting
-      if (severity !== undefined && !SETTINGS.includes(severity)) {
-        errors.push(`${at}.${id}.severity: "${severity}" is not one of ${SETTINGS.join(', ')}`)
-      } else if (severity !== undefined) rules[id] = severity
-      if (!options) {
-        if (Object.keys(values).length) {
-          errors.push(`${at}.${id}: options are set under audit.rules, for the whole document`)
-        }
-        continue
-      }
-      const read = readOptions(rule, values, `${at}.${id}`, errors)
-      if (Object.keys(read).length) options[id] = read
-    } else if (!SETTINGS.includes(setting)) {
-      errors.push(`${at}.${id}: "${setting}" is not one of ${SETTINGS.join(', ')}`)
+    if (!known.has(id)) errors.push(`${at}: unknown rule "${id}"`)
+    else if (!SETTINGS.includes(setting)) {
+      errors.push(`${at}.${id}: ${JSON.stringify(setting)} is not one of ${SETTINGS.join(', ')}`)
     } else rules[id] = setting
   }
   return rules
-}
-
-// A rule's options as declared — `{ name: { default, min, max } }`, integers
-// for now, the only kind a rule takes — checked one by one. A wrong value is
-// refused rather than clamped: a pipeline graded by a bound nobody wrote is the
-// failure this whole reader exists to prevent.
-function readOptions(rule, values, at, errors) {
-  const read = {}
-  for (const [name, value] of Object.entries(values)) {
-    const spec = rule.options?.[name]
-    if (!spec) {
-      const known = Object.keys(rule.options ?? {})
-      errors.push(
-        `${at}.${name}: unknown option — ${known.length ? `this rule takes ${known.join(', ')}` : 'this rule takes none'}`,
-      )
-    } else if (!Number.isInteger(value) || value < spec.min || value > spec.max) {
-      errors.push(`${at}.${name}: expected an integer, ${spec.min} to ${spec.max}`)
-    } else read[name] = value
-  }
-  return read
-}
-
-// rule → the options its run gets: its declared defaults, under what the
-// configuration sets.
-export function optionsResolver(config) {
-  return (rule) => {
-    const defaults = Object.fromEntries(
-      Object.entries(rule.options ?? {}).map(([name, spec]) => [name, spec.default]),
-    )
-    return { ...defaults, ...config?.options?.[rule.id] }
-  }
 }
 
 // rule → its severity at a given pointer: the check's own (a rule may grade
@@ -160,13 +106,11 @@ export function severityResolver(config) {
 
 // What the report says about the configuration it was graded under. `custom`
 // is the flag a reader needs; the counts tell them how far from the default.
-// `rules` holds the severities, `options` the options, each by rule id.
+// `rules` holds the severities, by rule id.
 export function auditProfile(config) {
   const rules = config?.rules ?? {}
-  const options = config?.options ?? {}
   const overrides = config?.overrides?.length ?? 0
-  const reconfigured = new Set([...Object.keys(rules), ...Object.keys(options)]).size
-  return { custom: reconfigured > 0 || overrides > 0, rules, options, overrides }
+  return { custom: Object.keys(rules).length > 0 || overrides > 0, rules, overrides }
 }
 
 // A JSON pointer pattern → a predicate. `*` matches within one segment, `**`

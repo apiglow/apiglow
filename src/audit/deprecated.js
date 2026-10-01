@@ -1,6 +1,5 @@
-// The elements OpenAPI lets an author deprecate, in one walk: the inventory
-// rule checks all of them, the replacement rule only the deprecated ones
-// (docs/audit.md §4.3). Yields `{ node, target }`, `target` being what the
+// The elements OpenAPI lets an author deprecate, in one walk; the replacement
+// rule checks the deprecated ones (docs/audit.md §4.3). Yields `{ node, target }`, `target` being what the
 // engine needs to locate a finding.
 
 import { pointer } from './pointer.js'

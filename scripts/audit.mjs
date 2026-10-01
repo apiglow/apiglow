@@ -247,7 +247,7 @@ const USAGE = `Usage: apiglow audit <spec>... [options]
                      stops the run
   --fetch-timeout    seconds to wait for each fetched document (default: ${FETCH_TIMEOUT})
   --explain          print one rule — why it matters, how to fix it, its
-                     severity and options — and audit nothing
+                     severity — and audit nothing
   --list-rules       print every rule as JSON (format apiglow-audit-rules) and
                      audit nothing
 

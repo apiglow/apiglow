@@ -67,9 +67,9 @@ const RULES_VERSION = 1
 
 // The rule set as `apiglow audit --list-rules` prints it: every rule the
 // command can report, with the same texts the report's `rules` carries for the
-// ones that fired, its default severity and the options a configuration can
-// set — what an agent reads to know the rules before any run, or to configure
-// one. Versioned like the report, for the same reason.
+// ones that fired and its default severity — what an agent reads to know the
+// rules before any run, or to configure one. Versioned like the report, for
+// the same reason.
 export function toAuditRulesJson(rules, { tool }) {
   const list = {
     format: RULES_FORMAT,
@@ -84,7 +84,6 @@ export function toAuditRulesJson(rules, { tool }) {
       message: t(`audit.rule.${rule.id}.message`),
       why: t(`audit.rule.${rule.id}.why`),
       fix: t(`audit.rule.${rule.id}.fix`),
-      ...(rule.options ? { options: rule.options } : {}),
     })),
   }
   return `${JSON.stringify(list, null, 2)}\n`

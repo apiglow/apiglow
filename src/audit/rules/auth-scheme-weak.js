@@ -7,7 +7,7 @@ import { toolOperations } from '../tool-inputs.js'
 // applies (the operation's, else the document's) names the scheme in any
 // alternative, and one of the servers the operation goes to (its own, else its
 // Path Item's, else the document's, as the try-it sends to it: variables at
-// their defaults, a relative URL resolved against the document's `$self`,
+// their defaults, a relative URL resolved against the document's own URI,
 // `serverDefaultUrl`) is cleartext:
 //
 // - a bearer token — `http` `bearer`, and the access token of an `oauth2` or

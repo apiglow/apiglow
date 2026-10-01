@@ -101,6 +101,23 @@ describe('buildAuthorizationUrl', () => {
     expect(url.searchParams.get('scope')).toBe('read:pets write:pets')
   })
 
+  // The model resolved a relative one against the document's own URI; one
+  // still relative had no http(s) base, and the page is not a stand-in for it.
+  it('refuses a URL left relative rather than resolving it against the page', () => {
+    const page = globalThis.location
+    globalThis.location = { href: 'https://docs.example/page' }
+    try {
+      expect(() =>
+        buildAuthorizationUrl(
+          { ...AUTH_CODE_FLOW, authorizationUrl: '/oauth/authorize' },
+          { clientId: 'cid', redirectUri: 'https://docs.example/', state: 's', codeChallenge: 'c' },
+        ),
+      ).toThrow()
+    } finally {
+      globalThis.location = page
+    }
+  })
+
   it('omits scope with no selection', () => {
     const url = new URL(
       buildAuthorizationUrl(AUTH_CODE_FLOW, {

@@ -100,6 +100,13 @@ describe('request-body-described', () => {
     expect(run(requestBodyDescribed, doc({ paths: { '/pets': { get: {} } } })).checks).toBe(0)
   })
 
+  it('leaves a body on a GET to request-body-method, which asks to remove it', () => {
+    const getBody = doc({
+      paths: { '/pets': { get: { requestBody: { content: {} }, responses: okResponse } } },
+    })
+    expect(run(requestBodyDescribed, getBody).checks).toBe(0)
+  })
+
   it('flags a body with no description', () => {
     const result = run(requestBodyDescribed, withBody({ content: {} }))
     expect(result.findings[0]).toMatchObject({
@@ -112,7 +119,7 @@ describe('request-body-described', () => {
 })
 
 describe('property-described', () => {
-  it('flags each undescribed property at its own pointer, title counting as one', () => {
+  it('grades a schema once, naming its undescribed properties, a title counting', () => {
     const result = run(
       propertyDescribed,
       doc({
@@ -126,17 +133,18 @@ describe('property-described', () => {
                 tag: { type: 'string', title: 'Free-form label' },
               },
             },
+            Owner: { type: 'object', properties: { name: { description: 'Full name' } } },
           },
         },
       }),
     )
-    expect(result.checks).toBe(3)
+    expect(result.checks).toBe(2)
     expect(result.findings).toHaveLength(1)
     expect(result.findings[0]).toMatchObject({
       severity: 'info',
       location: 'components.schemas.Pet',
-      dataPath: '/components/schemas/Pet/properties/id',
-      params: { name: 'id' },
+      dataPath: '/components/schemas/Pet/properties',
+      params: { count: 1, names: 'id' },
     })
   })
 
@@ -153,16 +161,15 @@ describe('property-described', () => {
                 userId: { type: 'string', title: 'User Id' },
                 user_status: { type: 'integer', description: 'The user status.' },
                 email: { type: 'string', description: 'TODO' },
+                age: { type: 'integer' },
               },
             },
           },
         },
       }),
     )
-    expect(result.findings.map((finding) => finding.params.name)).toEqual([
-      'userId',
-      'user_status',
-      'email',
+    expect(result.findings.map((finding) => finding.params)).toEqual([
+      { count: 4, names: 'userId, user_status, email, …' },
     ])
   })
 })
@@ -232,13 +239,61 @@ describe('response-example', () => {
       ruleId: 'response-example',
       severity: 'info',
       location: 'GET /pets',
-      dataPath: '/paths/~1pets/get/responses/200/content/application~1json',
+      dataPath: '/paths/~1pets/get/responses/200',
       params: { status: '200' },
     })
   })
 
   it('has nothing to check on a response with no schema', () => {
     expect(run(responseExample, withResponse({ description: 'No content' })).checks).toBe(0)
+  })
+
+  it('asks it of success responses only', () => {
+    const body = { content: { 'application/json': { schema: { type: 'object' } } } }
+    const result = run(
+      responseExample,
+      doc({
+        paths: {
+          '/pets': {
+            get: {
+              responses: {
+                '2XX': { description: 'OK', ...body },
+                404: { description: 'Gone', ...body },
+                default: { description: 'Error', ...body },
+              },
+            },
+          },
+        },
+      }),
+    )
+    expect(result.findings.map((f) => f.params.status)).toEqual(['2XX'])
+  })
+
+  it('checks a shared payload once, where an example serves every use', () => {
+    const pet = { type: 'object', properties: { id: { type: 'integer' } } }
+    const listed = { description: 'OK', content: { 'application/json': { schema: pet } } }
+    const shown = {
+      description: 'OK',
+      content: { 'application/json': { schema: pet, example: { id: 7 } } },
+    }
+    const page = { description: 'Page', content: { 'application/json': { schema: {} } } }
+    const result = run(
+      responseExample,
+      doc({
+        components: { schemas: { Pet: pet }, responses: { Page: page } },
+        paths: {
+          '/pets/{id}': { get: { responses: { 200: listed } } },
+          '/pets/{id}/twin': { get: { responses: { 200: shown } } },
+          '/a': { get: { responses: { 200: page } } },
+          '/b': { get: { responses: { 200: page } } },
+        },
+      }),
+    )
+    expect(result.checks).toBe(2)
+    expect(result.findings.map((f) => [f.dataPath, f.location])).toEqual([
+      ['/components/schemas/Pet', 'components.schemas.Pet'],
+      ['/components/responses/Page', 'components.responses.Page'],
+    ])
   })
 
   it('does not count a placeholder example as one', () => {

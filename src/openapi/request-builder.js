@@ -29,7 +29,8 @@ const JSON_MEDIA_RE = /json/i
 // the whole precedence chain: pinned operation server, else the caller's base
 // (environment override or root server). Display surfaces use it too, so the
 // URL a reader sees is the URL the send will hit.
-// A pinned server's variables take their defaults (servers.js).
+// A pinned server's variables take their defaults, and a relative one resolves
+// against the document's own URI, which the model attached to it (servers.js).
 export function effectiveBaseUrl(op, baseUrl) {
   return op?.servers?.[0] ? serverUrl(op.servers[0]) : (baseUrl ?? '')
 }

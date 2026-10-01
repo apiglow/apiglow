@@ -31,7 +31,7 @@ import {
 export const markdownLinks = {
   id: 'markdown-links',
   category: 'readiness',
-  severity: 'warning',
+  severity: 'info',
   run(ctx, check) {
     for (const { dataPath, renders } of markdownFields(ctx)) {
       const targets = renders.flatMap(({ inline, code }) =>

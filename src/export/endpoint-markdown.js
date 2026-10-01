@@ -5,6 +5,7 @@
 // these are technical artifacts, not UI.
 
 import { displayableExample } from '../openapi/examples.js'
+import { serverAddress } from '../openapi/servers.js'
 
 const MAX_DEPTH = 3
 
@@ -154,7 +155,7 @@ export function toEndpointMarkdown(op, { baseUrl = '' } = {}) {
     lines.push('', '## Servers', '', 'These override the base URL above for this operation:', '')
     for (const server of op.servers) {
       const label = [oneLine(server.name), oneLine(server.description)].filter(Boolean).join(': ')
-      lines.push(`- ${server.url}${label ? ` — ${label}` : ''}`)
+      lines.push(`- ${serverAddress(server)}${label ? ` — ${label}` : ''}`)
     }
   }
 

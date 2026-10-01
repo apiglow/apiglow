@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (147 rules across the seven §4
+2. **Curated, doc-oriented ruleset** (135 rules across the seven §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -50,7 +50,7 @@ drifting.
    "audit": {
      "rules": { "property-described": "off", "parameter-described": "error" },
      "overrides": [{ "paths": ["/paths/~1legacy~1*"],
-                     "rules": { "operation-examples": "off" },
+                     "rules": { "response-example": "off" },
                      "reason": "frozen legacy API" }]
    }
    ```
@@ -64,20 +64,9 @@ drifting.
      them.
    - A check where its rule is off does not count at all — neither as a
      finding nor in the score; a rule off everywhere is not even run.
-   - A rule that takes options is configured with an object — its options
-     next to an optional `severity`, Redocly's shape:
-     `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
-     Options apply to the whole document: an override changes severities
-     only, since a threshold that moved from one path to the next would
-     grade one document by two yardsticks — it takes a severity in either
-     form, `"warning"` or `{ "severity": "warning" }`, and refuses an
-     option. Each value is checked against what the rule declares;
-     `apiglow audit --explain <id>` lists a rule's options with their
-     defaults and bounds.
+   - A setting is a severity or `off`, written as a string.
    - Per spec: rules merge by id (the spec's last), overrides accumulate,
-     root first. A rule set in the object form on either side merges
-     field by field: a root `{ "maxLength": 128 }` under a spec's
-     `"warning"` keeps its `maxLength`, the spec's severity on top.
+     root first.
    - `reason` is free text for the next reader of the config — JSON has no
      comments — and the audit only checks it is text.
    - Every entry is checked against the registry: the page names a wrong
@@ -165,9 +154,9 @@ The report also carries its own identity and perimeter:
   carrying it). No
   "callbacks" figure: the scope counts the same units as the home page,
   and nothing in the app counts callbacks.
-- `report.profile`: `{ custom, rules, options, overrides }` — whether the
-  run used a rule configuration (§2.2), the severities and the options it
-  set, by rule, and how many path overrides it declared. `custom: false` is the default grade. A
+- `report.profile`: `{ custom, rules, overrides }` — whether the run used
+  a rule configuration (§2.2), the severities it set, by rule, and how many
+  path overrides it declared. `custom: false` is the default grade. A
   configuration that switches every applicable rule off leaves nothing to
   grade: `score` and `grade` are then `null`, and the page shows a dash
   rather than inventing a letter.
@@ -199,7 +188,7 @@ checks all four over the registry, in both languages.
 
 ## 4. Rule catalog
 
-147 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+135 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -247,7 +236,7 @@ that contradicts the declared version is a correctness finding.
   and is skipped, unless it says `additionalProperties: false`: then no
   name is declarable and every required one fails. One check per required
   name.
-- `required-with-default` (`warning`) — a required parameter, or a
+- `required-with-default` (`info`) — a required parameter, or a
   property listed in `required`, that still declares a `default`. The
   default can never apply — the caller always supplies the value — and it
   says the opposite of `required`, so readers and code generators get
@@ -734,7 +723,8 @@ not.
   are positional and left alone. A composed schema is not judged: an `allOf`
   of objects is one form, every member's properties its fields
   (`src/openapi/all-of.js`); a choice of forms (`oneOf` / `anyOf`) is
-  legitimate, and the try-it not offering its fields is this app's gap.
+  legitimate, and the try-it not offering its fields is this app's gap. A
+  body on a GET or HEAD is `request-body-method`'s, whose fix removes it.
 - `binary-placement` (`warning`) — raw bytes where only text can go: a
   `format: binary` string, or a 3.1 `contentMediaType` of a binary family
   (image, audio, video, font, octet-stream, pdf, archives, `vnd.*`) without
@@ -849,17 +839,28 @@ that merely mentions its name ("User id of the account owner") is substance.
   without `description`.
 - `parameter-described` (`warning`) — parameter without `description`.
 - `request-body-described` (`warning`) — request body without
-  `description`.
-- `property-described` (`info`) — schema property without `description`.
+  `description`. A body on a GET or HEAD is `request-body-method`'s, whose
+  fix removes it rather than describes it.
+- `property-described` (`info`) — a schema with properties lacking a
+  `description` (a `title` counts unless it reads the name back). One check
+  per schema, its finding naming the undescribed properties: the author
+  writes them in one sitting, and self-explanatory `id` / `created_at`
+  fields must not read — or weigh — as hundreds of findings.
 - `error-responses-documented` (`warning`) — no error responses at all
   (no 4xx, and no `default`, which covers them) on a mutating operation —
   3.2's `query` method counts as a read. Skips webhooks and callbacks:
   those
   responses come from the integrator's server, not this API.
-- `response-example` (`info`) — response schema declared without any
-  example (the app generates one, but a hand-written example is always
-  better). One check per status rather than per media type: the same
-  payload as JSON and as XML is one example to write. A placeholder
+- `response-example` (`info`) — a success response (`2xx`, `2XX`) whose
+  payload has no example (the app generates one, but a hand-written example
+  is what the reader copies into their client); an error body's shape is
+  the schema's and `error-machine-readable`'s business. One check per
+  distinct payload: a `components.responses` entry once, at the component,
+  and a payload whose schema is a `components.schemas` entry once, at that
+  schema — passing when every response returning it shows an example. One
+  check per response rather than per media type: the same payload as JSON
+  and as XML is one example to write. Tool operations only: a webhook's or
+  a callback's response is the integrator's. A placeholder
   example (`example-placeholder`: `"string"`, Swagger's `{ "id": 0,
   "name": "string" }`) does not count — it shows no more than the
   generated sample. A file response — a PDF, an export, anything the app
@@ -946,21 +947,11 @@ that merely mentions its name ("User id of the account owner") is substance.
   Header's or Media Type's `example`, an Example Object's `value` and
   `dataValue` — read on the source, a shared example once at its component.
   The reader takes an example as the API's word, and the try-it prefills it
-  as the value to send; `operation-examples` and `response-example` do not
-  count a placeholder. A value contradicting its schema is
+  as the value to send; `response-example` does not count a placeholder. A value contradicting its schema is
   `example-type-mismatch`'s.
 
 ### 4.3 Deprecation hygiene
 
-- `deprecated-inventory` (`info`) — inventory of every
-  `deprecated: true` (operations, parameters, schema nodes — request and
-  response bodies included — and security
-  schemes): the report *is* the deliverable here, since deprecation marks
-  are scattered across the pages that carry them. Every **deprecable**
-  element is a check, not only the deprecated ones — the score then reads
-  as the share of the surface still current: an API with no deprecation
-  scores 100 %, one deprecated operation out of fifty barely moves the
-  needle, and a document that is half legacy says so.
 - `deprecation-replacement` (`warning`) — deprecated element whose
   description does not mention a replacement or sunset (heuristic, on the
   description and summary: absent, or free of any whole word naming a
@@ -1031,12 +1022,6 @@ kebab-case at once.
   rather than an operation: it links to the first routable operation
   declared on it (§3), because no page renders a path on its own and the
   reader still has somewhere to go.
-- `duplicate-inline-schema` (`info`) — the same shape written out inline
-  several times instead of shared via components (cheap heuristic:
-  identical serialized subtrees above a size threshold). A referenced
-  component is collapsed to its name before comparing — dereferencing
-  would otherwise turn an array-of-`$ref` written at six endpoints into
-  six "copies".
 - `operation-id-collision` (`warning`) — two different operationIds that
   generate one name: `getUser`, `get_user`, `GetUser`, `get-user`. The key
   is the name camelized as openapi-generator does it: the separators its
@@ -1083,7 +1068,9 @@ Each message states the concrete degradation *in this app*:
   other than `nav`) lands there too, and is flagged the same way.
   Webhooks and callbacks are exempt: the nav lists
   webhooks flat in their own section and never groups them by tag, and
-  nothing groups callbacks — the finding would name no degradation.
+  nothing groups callbacks — the finding would name no degradation. A
+  document that tags no operation at all made one decision: one check, at
+  `paths`, counting the operations.
 - `servers-declared` (`warning`) — no `servers` → environment seeding
   (§5.3 of architecture.md) has nothing to offer.
 - `security-scheme-described` (`info`) — security scheme without
@@ -1091,26 +1078,6 @@ Each message states the concrete degradation *in this app*:
 - `oauth-flow-urls` (`warning`) — OAuth2 flow missing
   `authorizationUrl`/`tokenUrl` → the try-it "Get a token" block cannot
   run.
-- `operation-examples` (`info`) — no example anywhere on the operation →
-  try-it prefills fall back to generated samples. Any example counts,
-  parameters included: a parameter example prefills the try-it just as well,
-  on the parameter or, for one serialized by media type (`content`, 3.2's
-  `querystring`), on its media type. A placeholder does not
-  (`example-placeholder`): it prefills exactly the meaningless sample the
-  rule asks to replace. Only payloads that can carry an example count: an
-  operation whose only payloads are files (a download, an upload) has
-  nothing to check, like one that exchanges no payload at all.
-- `schema-expand-walls` (`info`) — schemas nested deeper than the
-  lazy-expansion default → readers will hit "expand" walls. Info only —
-  the app handles it, but authors should know. Recursion is not flagged: a
-  recursive schema (a tree, a form that describes itself) is the data
-  model, no edit removes it, and the app expands it lazily on purpose
-  (rule 7) — the finding could only be acknowledged, on every operation
-  using the schema. Nesting is what an author can act on, typically a
-  wrapper adding levels the payload does not need. The depth mirrors
-  `MAX_AUTO_DEPTH` from `src/components/schema-view.js` as a local
-  constant: the core must not import a component, and the two move
-  together.
 - `operation-summary-present` (`info`) — an operation or a webhook with a
   substantive description and no substantive summary → its navigation
   entry and page heading show the path (a webhook's name), its tab title the
@@ -1124,7 +1091,7 @@ Each message states the concrete degradation *in this app*:
   plain text everywhere — navigation, page heading, tab title (one line,
   breaks collapsed), a callback's line, the pager. Operations, webhooks and
   callbacks, one check per non-blank summary. No length or wording test:
-  length is `summary-length`'s (§4.7).
+  those are the author's.
 - `tag-declared` (`info`) — a tag operations carry that the top-level `tags`
   list does not declare → its navigation group has no description, no
   external docs, and comes after every declared group, in order of first
@@ -1170,7 +1137,7 @@ Each message states the concrete degradation *in this app*:
   Text in code spans and code blocks is shown as typed and not judged; HTML
   comments are meant to be hidden. One check per description holding raw
   HTML or a link; the finding names the first thing stripped, as written.
-- `markdown-links` (`warning`) — a link or image in a CommonMark
+- `markdown-links` (`info`) — a link or image in a CommonMark
   description whose target is relative (`./auth.md`, `../x`, `/docs/errors`,
   `diagram.png`, `?page=2`) → OpenAPI resolves it "in their rendered
   context, which might differ from the context of the API description"
@@ -1193,16 +1160,6 @@ Each message states the concrete degradation *in this app*:
   document on purpose — a library of schemas other documents reference — and
   it fires there too: such a document is not one to publish as an API
   reference, or the rule is to be switched off for it. One document check.
-- `example-summary` (`info`) — an Example in an `examples` map of
-  two entries or more without a substantive `summary` (`isSubstantive`,
-  the map key as its name — `summary: Sold out` under `soldOut` reads the
-  key back). This app lists each named example as "Example — key
-  (summary)", one after the other, with no picker: without a summary the
-  key is all the reader gets. Other renderers put the summary in their
-  example picker. Read on the dereferenced map, so a 3.1+ Reference's own
-  `summary` overrides its target's, as it does on the page; an Example
-  shared through `components.examples` is checked once, at the component,
-  under the key of its first use.
 - `example-external-only` (`info`) — an Example with
   `externalValue` and no inline value (`value`, `dataValue`,
   `serializedValue`). This app never fetches it — a page retrieving
@@ -1258,8 +1215,8 @@ Each message states the concrete degradation *in this app*:
   host that is not the API. `.test` and `localhost` are not placeholders
   (RFC 6761 testing and local names). One check per Server the client
   calls — root, Path Item, Operation — with an absolute URL, a relative one
-  resolved against the document's 3.2 `$self` when it declares one; not a Link's
-  `server`, nor one inside a webhook or a callback. Plain http is
+  resolved against the document's own URI (`$self`, else where it was read
+  from); not a Link's `server`, nor one inside a webhook or a callback. Plain http is
   `server-https`'s, an undeclared variable `server-variables`'.
 - `server-described` (`info`) — with two top-level servers or more,
   one with neither a substantive `description` nor a `name`. This app
@@ -1344,47 +1301,6 @@ the same. Webhooks and callbacks are requests the API sends, never tools.
 An operation's inputs are its parameters and its non-file request bodies
 (`src/audit/tool-inputs.js`); `readOnly` properties are never sent.
 
-- `operation-id-tool-name` (`info`) — an `operationId` outside
-  `^[A-Za-z_][A-Za-z0-9_-]{0,maxLength-1}$`, the names every platform
-  accepts as a tool name: OpenAI and AWS Bedrock take letters, digits, `_`
-  and `-` up to 64 characters, Vertex AI wants a letter or `_` first,
-  Anthropic and MCP stop at 128. OpenAI validates the tool list as a whole,
-  so one invalid name fails every call; `@ivotoby/openapi-mcp-server`
-  rewrites it to lowercase, abbreviated and hashed. Option `maxLength`
-  (default 64, 1 to 128) for a team serving only Anthropic or MCP clients.
-  One check per tool operation that has an operationId — a missing one is
-  `operation-id-present`'s, a duplicate `duplicate-operation-id`'s. On the
-  demo GitHub schema: all 1220 (`meta/root`).
-- `summary-length` (`info`) — an operation `summary` over the 300 characters
-  GPT Actions allows per endpoint, counted in characters, not UTF-16 units.
-  The summary is the line a tool list shows, and the tool's description when
-  the operation has none. The description is not graded: long prose belongs
-  there.
-- `operations-indistinct` (`info`) — two tool operations whose tools carry
-  the same description: the operation's `description`, else its `summary`,
-  as both MCP bridges and Semantic Kernel build it — compared trimmed,
-  whitespace collapsed, without case. Identity only, never similarity: the
-  parallel summaries of a CRUD API are not a defect. One finding on each
-  operation after the first, naming it. On the demo petstore: the three user
-  operations sharing "This can only be done by the logged in user."; on the
-  GitHub schema, 41 (64 if summaries alone were compared).
-- `tool-surface-size` (`info`) — more than 30 tool operations: GPT Actions
-  takes 30 per action; past 128, the OpenAI API refuses the tool list and
-  VS Code / GitHub Copilot enable no more at a time, and the message names
-  that limit instead. Hidden
-  operations count — a bridge reading the file serves them. One document
-  check, at `/paths`; none on a document with no operation.
-- `bridge-degradation` (`info`) — an operation the MCP server this
-  documentation exports cannot call as written: a cookie parameter (neither
-  bridge sends cookies), or an effective security (the operation's, else the
-  document's) with no alternative whose schemes the generated config all
-  holds — an `apiKey` in a query or a cookie, `mutualTLS`, a deprecated
-  scheme, or a scheme whose header an earlier declared one already fills
-  (`basic` then `bearer`: one `Authorization` header, the first scheme's).
-  The verdict is the export's own (`carriedSchemes`, `src/export/mcp.js`),
-  so the rule and the generated config cannot disagree; an empty
-  alternative (`{}`) is anonymous access and passes. An undeclared scheme
-  gives no verdict: `security-scheme-declared`'s.
 - `untyped-input` (`warning`) — an input schema that says nothing about
   its value: no `type`, no `enum`/`const`, no structure, no composition —
   `{}`, `true`, or annotations only (`description`, `example`, `format`) —
@@ -1445,26 +1361,6 @@ An operation's inputs are its parameters and its non-file request bodies
   a root that says nothing gets no verdict (`untyped-input`'s). One check
   per JSON request media type; when the API cannot change, the finding is
   one to accept in the configuration.
-- `recursive-input` (`info`) — a request input that reaches itself: a
-  schema met again among its own ancestors on the walk of what an agent
-  sends (`readOnly` properties are not sent, so a cycle through one alone
-  does not count). One check per tool operation with inputs; the finding
-  sits where the input reaches back, named after the `components.schemas`
-  entry it re-enters — for an inline schema, its `title`, else the property
-  it was met as, else the input (the parameter's name, the body's media
-  type). `@ivotoby/openapi-mcp-server` cuts the cycle into
-  `{}`; Anthropic's strict mode and Gemini refuse recursion; OpenAI's
-  strict mode supports it. Info: the data model is legitimate, the finding
-  says what agents receive.
-- `input-complexity` (`info`) — a request body past the limits tool
-  schemas live under: more than 10 levels of object nesting (Semantic
-  Kernel's OpenAPI plugin skips the operation; OpenAI's strict mode
-  refuses it), more than 5000 object properties or more than 1000 enum
-  values (OpenAI's strict mode). The body object is level 1, each property
-  holding an object — directly or as array items — one more; properties
-  and enum values are counted over the body's schemas, each once. One
-  check per tool operation with a non-file request body; a cycle stops the
-  depth where it closes (`recursive-input`'s).
 - `enum-values-undescribed` (`info`) — an input enum of two values or more
   (`enum`, or a `oneOf` / `anyOf` of constants) with a value nothing
   explains → an agent filling the tool guesses which value the user's
@@ -1480,8 +1376,12 @@ An operation's inputs are its parameters and its non-file request bodies
   every place's names the value, whatever the order of the operations. The
   message names the first three unexplained values. The fix leads
   with the description, which travels to every tool: OpenAI strict mode keeps
-  standard keywords only and drops the `x-` extensions. `null` and boolean
-  enums are skipped; one check per input enum, each schema object once, a
+  standard keywords only and drops the `x-` extensions. A value its spelling
+  explains — words of two letters or more joined by `_`, `-`, a space or
+  camelCase: `active`, `past_due`, `inProgress` — needs nothing more: an
+  enum of such words is not checked, and in a mixed one only the codes
+  (`A1`, `3`, `x_ok`) are asked for. `null` and boolean enums are skipped;
+  one check per input enum holding a code, each schema object once, a
   component's at the component.
   Whether the enum is described at all is `property-described`'s and
   `parameter-described`'s.
@@ -1499,8 +1399,7 @@ An operation's inputs are its parameters and its non-file request bodies
 - `request-example` (`info`) — a non-file request body whose schema shows no
   example → the tool's input schema, copied whole from it, gives the agent
   types only. The media type's `example` / `examples` do not count: bridges
-  drop them — that is the difference with `operation-examples`, which counts
-  them because the try-it prefills from them. The schema shows an example
+  drop them, even though the try-it prefills from them. The schema shows an example
   when its root (or an `allOf` member) has `example` / `examples`, or when
   every value it sends does: each top-level property carries `example`,
   `examples`, `enum` or `const`, an object through its properties, an array
@@ -1549,10 +1448,11 @@ applies to all of them).
   CORS proxy, and diagnoses the failure as mixed content. `localhost`,
   `127.0.0.0/8` and `[::1]` are exempt (W3C Secure Contexts: potentially
   trustworthy, and nothing leaves the machine); a relative URL is resolved
-  against the document's 3.2 `$self`, as the try-it does — `/v1` under an
-  http `$self` is cleartext — and without `$self` takes the scheme of
-  wherever the document is served from, which the audit is not told (no
-  verdict); an undeclared variable in the host gives no verdict
+  against the document's own URI, as the try-it does — its 3.2 `$self`,
+  else the URL it was read from, else the host page for an inline one:
+  `/v1` in a document served over http is cleartext — and a document the
+  CLI reads off the disk has no http(s) base, so a relative URL there gives
+  no verdict; an undeclared variable in the host gives no verdict
   (`server-variables`'). Servers the client calls: root, Path Item,
   Operation, a Link's `server`; one inside a webhook or a callback is the
   receiver's. One check per Server with a string URL. The credential an
@@ -1569,13 +1469,14 @@ applies to all of them).
   token request is blocked as mixed content. A URL counts only where
   something fetches it: on a flow that uses it ("Applies To"), under an
   `oauth2` scheme; `openIdConnectUrl` on `openIdConnect`,
-  `oauth2MetadataUrl` on `oauth2`. Loopback exempt. One check per such URL
-  present; a missing one is `oauth-flow-urls`', a malformed one
-  `uri-form`'s.
+  `oauth2MetadataUrl` on `oauth2`. Loopback exempt. A relative URL is
+  judged where the app sends it, resolved against the document's own URI
+  like a server's. One check per such URL present; a missing one is
+  `oauth-flow-urls`', a malformed one `uri-form`'s.
 - `auth-scheme-weak` (`error`, per check) — a tool operation whose
   effective security names, in any alternative, a credential that needs
   TLS, while one of the servers it goes to is cleartext http (read like
-  `server-https`'s, a relative URL against `$self`). A bearer
+  `server-https`'s, a relative URL against the document's own URI). A bearer
   token — `http` `bearer`, and the access token of an `oauth2` or
   `openIdConnect` scheme, sent as `Authorization: Bearer` too — is an
   `error` (RFC 6750 §5.3, MUST); `mutualTLS` is an `error` (the client
@@ -1593,8 +1494,7 @@ applies to all of them).
   logs"), OWASP API2:2023 lists credentials in the URL. In the try-it the
   key is part of the request URL, which the history stores and every export
   of the request carries; redaction masks it there by default, but the
-  server's and every proxy's logs keep it. One check per `apiKey` scheme. That the MCP export cannot carry it is
-  `bridge-degradation`'s.
+  server's and every proxy's logs keep it. One check per `apiKey` scheme.
 - `http-scheme-registered` (`warning`) — an `http` security scheme whose
   `scheme` is not in the IANA HTTP Authentication Schemes registry (as
   updated 2025-02-18: Basic, Bearer, Concealed, Digest, DPoP, GNAP, HOBA,
@@ -1631,7 +1531,9 @@ applies to all of them).
   document how it refuses a caller. Two checks: per operation whose
   effective security has a requirement and no anonymous alternative, a
   `401`, a `403` or the `4XX` range is documented (`default` does not count:
-  it is every other failure); per documented `401` of a tool operation, the
+  it is every other failure) — and when no secured operation documents one,
+  one check at `paths` instead, the document's single decision; per
+  documented `401` of a tool operation, the
   response declares `WWW-Authenticate`, which RFC 9110 §15.5.2 says the
   server MUST send with at least one challenge. A generated client maps each
   documented status to an error, an agent reads it to decide whether to ask
@@ -2001,11 +1903,10 @@ npx apiglow audit --config apidoc.config.json
   loader would otherwise skip with a warning, like an overlay: a job asked
   to stay off the network never passes on a different document.
 - **The rules themselves**, without a schema: `--explain <rule>` prints one
-  — category, default severity, label, why it matters, how to fix it, the
-  options it takes with their defaults and bounds; `--list-rules` prints
-  every rule as JSON (`format: "apiglow-audit-rules"`, `version: 1`), with
-  the same texts the report's `rules` carries plus each rule's default
-  severity and options. Both honor `--language` and refuse anything else on
+  — category, default severity, label, why it matters, how to fix it;
+  `--list-rules` prints every rule as JSON (`format: "apiglow-audit-rules"`,
+  `version: 1`), with the same texts the report's `rules` carries plus each
+  rule's default severity. Both honor `--language` and refuse anything else on
   the line: a run that looked like an audit and printed a rule would mislead
   whoever reads its exit status.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the

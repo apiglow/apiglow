@@ -5,6 +5,7 @@ import { isBinarySchema } from '../schema-keywords.js'
 import { SCHEMA_DEPTH } from '../schema-walk.js'
 import { payloadChildren, toolInputs, toolOperations } from '../tool-inputs.js'
 import { isObject } from '../value-check.js'
+import { abbreviate } from '../text.js'
 
 // An operation taking strings or arrays with no upper bound. OWASP API4:2023
 // (Unrestricted Resource Consumption) puts it first among the preventions:
@@ -82,8 +83,7 @@ const SIZED = ['string', 'array']
 
 // Value positions walked per operation at most. Every path to a shared schema
 // is a position of its own, so a body sharing components at every level grows
-// with the number of paths, not of schemas; `input-complexity` reports a body
-// that large long before this.
+// with the number of paths, not of schemas.
 const POSITIONS = 5000
 
 // The edges `payloadChildren` lists that lead to another description of the
@@ -261,11 +261,4 @@ function anchored(alternative) {
   let escapes = 0
   for (let i = alternative.length - 2; i >= 0 && alternative[i] === '\\'; i--) escapes += 1
   return escapes % 2 === 0
-}
-
-const SHOWN = 3
-
-function abbreviate(values) {
-  const shown = values.slice(0, SHOWN).join(', ')
-  return values.length > SHOWN ? `${shown}, …` : shown
 }

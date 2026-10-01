@@ -10,6 +10,9 @@ import { listOf } from '../../openapi/model.js'
 // Same reason 3.2 label tags do not count: a tag whose `kind` is not
 // navigational badges the operation instead of filing it, so an operation
 // carrying only those lands in the fallback group like an untagged one.
+//
+// One check per operation; when no operation carries a tag at all, that is one
+// decision about the document — one check, at `paths`, counting them.
 export const operationTagged = {
   id: 'operation-tagged',
   category: 'readiness',
@@ -20,14 +23,14 @@ export const operationTagged = {
         .filter((tag) => typeof tag?.kind === 'string' && tag.kind && tag.kind !== 'nav')
         .map((tag) => tag.name),
     )
-    for (const entry of ctx.operations) {
-      if (entry.kind !== 'operation') continue
-      const tags = entry.op.tags
-      check(
-        Array.isArray(tags) &&
-          tags.some((tag) => typeof tag === 'string' && tag.trim() && !labels.has(tag)),
-        { op: entry },
-      )
+    const tagged = (entry) =>
+      Array.isArray(entry.op.tags) &&
+      entry.op.tags.some((tag) => typeof tag === 'string' && tag.trim() && !labels.has(tag))
+    const operations = ctx.operations.filter((entry) => entry.kind === 'operation')
+    if (operations.length > 1 && !operations.some(tagged)) {
+      check(false, { location: 'paths', dataPath: '/paths', params: { count: operations.length } })
+      return
     }
+    for (const entry of operations) check(tagged(entry), { op: entry, params: { count: 1 } })
   },
 }

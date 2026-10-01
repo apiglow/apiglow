@@ -307,4 +307,14 @@ describe('endpoint page Markdown export', () => {
       '- https://ops.example.com — ops',
     )
   })
+
+  it('lists a relative operation server at its absolute address', () => {
+    const pinned = {
+      ...op,
+      servers: [{ url: '/v2', base: 'https://api.example.com/specs/openapi.json' }],
+    }
+    expect(toEndpointMarkdown(pinned, { baseUrl: 'https://api.example.com' })).toContain(
+      '- https://api.example.com/v2',
+    )
+  })
 })

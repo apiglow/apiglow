@@ -1,4 +1,5 @@
 import { mediaEssence } from '../../openapi/body-kind.js'
+import { canHaveBody } from '../../openapi/methods.js'
 import { operationContents } from '../schema-walk.js'
 
 // A form body — `multipart/form-data` or `application/x-www-form-urlencoded` —
@@ -25,6 +26,8 @@ export const multipartSchemaObject = {
     for (const entry of ctx.operations) {
       for (const { kind, mediaType, content, dataPath } of operationContents(entry)) {
         if (kind !== 'request' || !FORMS.has(mediaEssence(mediaType))) continue
+        // A body on a GET or HEAD is `request-body-method`'s, to be removed.
+        if (!canHaveBody(entry.method)) continue
         if (namesFields(content.schema)) continue
         check(false, {
           op: entry,

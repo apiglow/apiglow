@@ -399,11 +399,11 @@ describe('audit report', () => {
     expect(report.counts.total).toBe(0)
     expect(report.score).toBe(100)
     expect(report.grade).toBe('A')
+    // Nothing is deprecated, so no deprecation check applies.
     expect(report.categories.map((c) => c.id)).toEqual([
       'correctness',
       'security',
       'completeness',
-      'deprecation',
       'consistency',
       'readiness',
       'agent',

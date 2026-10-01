@@ -374,11 +374,9 @@ function appLayout(
   // are excluded — their absence doesn't mean "no credentials".
   const authVariables = model.securitySchemes.flatMap((s) => suggestedVariables(s))
   envSwitcher.authVariables = authVariables
-  // OpenAPI `servers` can be relative ("/api/v3"): resolved against
-  // the schema's absolute URL (OpenAPI semantics), itself resolved against the
-  // host page — openapi.url can legitimately be relative (schema hosted
-  // at the same place as the doc). Inline schema: no document URL, the
-  // host page acts as the base.
+  // The schema's absolute URL — openapi.url can legitimately be relative
+  // (schema hosted at the same place as the doc). Inline schema: no document
+  // URL, the host page stands in for it.
   const pageUrl = `${window.location.origin}${window.location.pathname}`
   const schemaUrl = activeSpec.url ? new URL(activeSpec.url, window.location.href).href : pageUrl
   // Changelog snapshot key: the schema URL, or the page + spec id
@@ -395,7 +393,7 @@ function appLayout(
     // (`{region}` → `{{region}}`), pre-filled with the defaults.
     envManager.servers = model.servers.map((server) => ({
       ...server,
-      url: serverTemplate(server, schemaUrl),
+      url: serverTemplate(server),
     }))
     envManager.suggestedVariables = model.securitySchemes.flatMap((s) => [
       ...suggestedVariables(s),
@@ -424,12 +422,10 @@ function appLayout(
     envManager.onBuild = openSetupBuilder
   }
 
-  // Without an environment, falls back to the schema's first `servers`, resolved
-  // against the schema's own base (3.2 `$self` when it declares one, else the
-  // URL it was fetched from) — relative servers like "/api/v3" require it.
-  const fallbackBaseUrl = model.servers[0]
-    ? serverUrl(model.servers[0], model.baseUri ?? schemaUrl)
-    : ''
+  // Without an environment, falls back to the schema's first `servers`. A
+  // relative one ("/api/v3") resolves against the document's own URI, which
+  // the model attached to it (servers.js).
+  const fallbackBaseUrl = model.servers[0] ? serverUrl(model.servers[0]) : ''
 
   const tryIt = document.createElement('api-try-it-panel')
   tryIt.context = {

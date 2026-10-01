@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { runRule } from '../src/audit/engine.js'
-import { deprecatedInventory } from '../src/audit/rules/deprecated-inventory.js'
 import { deprecationReplacement } from '../src/audit/rules/deprecation-replacement.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
@@ -31,34 +30,6 @@ const deprecatingDoc = () =>
       },
     },
   })
-
-describe('deprecated-inventory', () => {
-  it('scores over the whole deprecable surface, not only the deprecated part', () => {
-    const result = run(
-      deprecatedInventory,
-      doc({ paths: { '/pets': { get: { responses: okResponse } } } }),
-    )
-    expect(result.findings).toEqual([])
-    expect(result.checks).toBe(1)
-  })
-
-  it('lists every deprecated element, whatever kind it is', () => {
-    const result = run(deprecatedInventory, deprecatingDoc())
-    expect(result.findings.map((finding) => finding.dataPath)).toEqual([
-      '/paths/~1pets/get',
-      '/paths/~1pets/get/parameters/0',
-      '/components/schemas/Pet/properties/nickname',
-      '/components/securitySchemes/api_key',
-    ])
-    expect(result.findings[0]).toMatchObject({
-      ruleId: 'deprecated-inventory',
-      severity: 'info',
-      category: 'deprecation',
-      location: 'GET /pets',
-      opRef: 'get-pets',
-    })
-  })
-})
 
 describe('deprecation-replacement', () => {
   it('only checks the deprecated elements', () => {

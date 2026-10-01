@@ -168,7 +168,10 @@ function documentBase(doc, url) {
   const self = typeof doc?.$self === 'string' ? doc.$self.trim() : ''
   if (!self) return null
   try {
-    return new URL(self, url ?? globalThis.location?.href ?? 'https://schema.invalid/').href
+    // `url` is the host's `openapi.url` as written, often relative to the page;
+    // a relative base makes `new URL` throw even for an absolute `$self`.
+    const page = globalThis.location?.href ?? 'https://schema.invalid/'
+    return new URL(self, url ? new URL(url, page) : page).href
   } catch {
     return null
   }

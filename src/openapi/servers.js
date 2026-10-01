@@ -6,10 +6,14 @@
 
 const VARIABLE = /\{([^{}]+)\}/g
 
+// `base` defaults to the one the model gave the server (`server.base`, the
+// document's own URI): a relative server means "next to the document", never
+// "next to the page showing it".
+
 // The URL with every declared variable at its default, resolved against
 // `base` when relative. A `{name}` the server does not declare stays as
 // written: there is no value to give it (the audit's `server-variables`).
-export function serverUrl(server, base) {
+export function serverUrl(server, base = server?.base) {
   const url = String(server?.url ?? '').replace(VARIABLE, (match, name) => {
     const variable = declared(server, name)
     return variable?.default != null ? String(variable.default) : match
@@ -21,18 +25,38 @@ export function serverUrl(server, base) {
 // `{region}` → `{{region}}`: what an environment seeded from this server keeps
 // as its base URL, its variables pre-filled with the defaults, so that
 // changing `region` in the environment changes the URL.
-export function serverTemplate(server, base) {
+export function serverTemplate(server, base = server?.base) {
+  return resolveTemplate(
+    server,
+    base,
+    (name) => Boolean(declared(server, name)),
+    (name) => `{{${name}}}`,
+  )
+}
+
+// The address as the document gives it, every `{name}` kept, made absolute
+// when relative: what a page or an export shows, read away from the document
+// a `/v1` was relative to.
+export function serverAddress(server, base = server?.base) {
+  return resolveTemplate(
+    server,
+    base,
+    () => true,
+    (name) => `{${name}}`,
+  )
+}
+
+// Placeholders the URL parser leaves alone wherever they sit — scheme, host
+// (lowercased), path — swapped back once the URL is resolved.
+function resolveTemplate(server, base, keeps, render) {
   const names = []
-  // Placeholders the URL parser leaves alone wherever they sit — scheme, host
-  // (lowercased), path — swapped back once the URL is resolved.
   const url = String(server?.url ?? '').replace(VARIABLE, (match, name) => {
-    if (!declared(server, name)) return match
+    if (!keeps(name)) return match
     names.push(name)
     return `apiglow-var-${names.length - 1}-`
   })
-  return resolveAgainst(url, base).replace(
-    /apiglow-var-(\d+)-/g,
-    (_, index) => `{{${names[Number(index)]}}}`,
+  return resolveAgainst(url, base).replace(/apiglow-var-(\d+)-/g, (_, index) =>
+    render(names[Number(index)]),
   )
 }
 

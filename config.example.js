@@ -410,18 +410,16 @@ window.API_DOC_CONFIG = {
 
   // The schema audit's rule configuration — read by the #/audit page and by
   // `apiglow audit` alike, so the published grade and the CI one agree.
-  // `rules`: rule id → 'error' | 'warning' | 'info' | 'off', or for a rule that
-  // takes options, an object holding them and an optional `severity`
-  // ({ severity: 'warning', maxLength: 128 }). `overrides`: severities only,
-  // under JSON pointer patterns (`*` within one segment, `**` any depth;
-  // a pattern covers everything below it), the last match winning. Rule ids are
-  // listed in docs/audit.md §4. A grade computed with any of this is labelled
+  // `rules`: rule id → 'error' | 'warning' | 'info' | 'off'. `overrides`: the
+  // same settings, under JSON pointer patterns (`*` within one segment, `**`
+  // any depth; a pattern covers everything below it), the last match winning.
+  // Rule ids are listed in docs/audit.md §4. A grade computed with any of this is labelled
   // "custom rule set" wherever it is shown. Overridable per spec: rules merge
   // by id, overrides accumulate, root first. A wrong entry is named in the
   // console and left out; the CLI refuses to run on it.
   audit: {
     rules: {}, // e.g. { 'property-described': 'off', 'parameter-described': 'error' }
-    overrides: [], // e.g. [{ paths: ['/paths/~1legacy~1*'], rules: { 'operation-examples': 'off' }, reason: 'frozen' }]
+    overrides: [], // e.g. [{ paths: ['/paths/~1legacy~1*'], rules: { 'response-example': 'off' }, reason: 'frozen' }]
   },
 
   // Header name and logo. In multi-spec, each `openapi.specs` entry can

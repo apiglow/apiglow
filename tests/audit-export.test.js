@@ -77,7 +77,7 @@ const REPORT = {
           location: 'DELETE /admin/reset',
           opRef: null,
           dataPath: '/paths/~1admin~1reset/delete',
-          params: {},
+          params: { count: 1 },
           hidden: true,
         },
       ],
@@ -253,21 +253,15 @@ describe('audit JSON report', () => {
   })
 })
 
-// The rule set itself, before any run (`--explain`, `--list-rules`): a rule
-// declaring an option, to pin how one is printed.
+// The rule set itself, before any run (`--explain`, `--list-rules`).
 describe('audit rule descriptions', () => {
-  const withOption = { ...operationIdPresent, options: { depth: { default: 3, min: 1, max: 9 } } }
-
-  it('explains one rule: its texts, severity and options', () => {
-    expect(toAuditRuleText(withOption)).toMatchSnapshot()
-    expect(toAuditRuleText(operationIdPresent)).not.toContain('Options')
+  it('explains one rule: its texts and severity', () => {
+    expect(toAuditRuleText(operationIdPresent)).toMatchSnapshot()
   })
 
   it('lists the rules as a versioned JSON document', () => {
     const list = JSON.parse(
-      toAuditRulesJson([operationIdPresent, withOption], {
-        tool: { name: 'apiglow', version: '0.0.0' },
-      }),
+      toAuditRulesJson([operationIdPresent], { tool: { name: 'apiglow', version: '0.0.0' } }),
     )
     expect(list).toMatchObject({ format: 'apiglow-audit-rules', version: 1 })
     expect(list).toMatchSnapshot()

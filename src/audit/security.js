@@ -34,17 +34,23 @@ const ABSOLUTE = /^[a-z][a-z\d+.-]*:/i
 
 // A raw Server Object's URL as the try-it sends to it: each declared variable
 // at its default (`serverUrl`; an undeclared `{name}` stays, `server-variables`'),
-// a relative URL resolved against the document's 3.2 `$self`. Without `$self`
-// the try-it resolves it against wherever the document was read from, which
-// the audit is not told: the URL stays relative. An absolute URL is kept as
+// a relative URL resolved against the document's own URI, the base the try-it
+// resolves it against (`model.linkBase`: 3.2 `$self`, else where the document
+// was read from, else the host page). With no http(s) base — a file read off
+// the disk by the CLI — the URL stays relative. An absolute URL is kept as
 // written, so a finding quotes it the way the author spelled it.
 export function serverDefaultUrl(ctx, server) {
   const variables = Object.entries(server.variables ?? {}).map(([name, variable]) => ({
     name,
     default: variable?.default,
   }))
-  const url = serverUrl({ url: server.url, variables })
-  const base = ctx.model.baseUri
+  return documentUrl(ctx, serverUrl({ url: server.url, variables }))
+}
+
+// A URL of the document as the app reaches it: a relative one resolved against
+// the document's own URI (`model.linkBase`), an absolute one kept as written.
+export function documentUrl(ctx, url) {
+  const base = ctx.model.linkBase
   if (!base || ABSOLUTE.test(url)) return url
   try {
     return new URL(url, base).href

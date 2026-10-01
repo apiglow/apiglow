@@ -1,5 +1,6 @@
 {
   "openapi": "3.2.0",
+  "$self": "https://api.e2e.test/specs/request.json",
   "info": { "title": "Request fidelity E2E API", "version": "1.0.0" },
   "servers": [{ "url": "https://api.e2e.test/v3" }],
   "tags": [{ "name": "Requests" }],
@@ -75,6 +76,15 @@
         "tags": ["Requests"],
         "summary": "Trace the request",
         "responses": { "200": { "description": "The request as received" } }
+      }
+    },
+    "/ping": {
+      "get": {
+        "operationId": "pingLegacy",
+        "tags": ["Requests"],
+        "summary": "Ping the legacy API",
+        "servers": [{ "url": "/v2" }],
+        "responses": { "200": { "description": "Alive" } }
       }
     },
     "/books": {

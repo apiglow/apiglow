@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { runRule } from '../src/audit/engine.js'
 import { oauthFlowUrls } from '../src/audit/rules/oauth-flow-urls.js'
-import { operationExamples } from '../src/audit/rules/operation-examples.js'
 import { operationIdPresent } from '../src/audit/rules/operation-id-present.js'
 import { operationTagged } from '../src/audit/rules/operation-tagged.js'
-import { schemaExpandWalls } from '../src/audit/rules/schema-expand-walls.js'
 import { securitySchemeDescribed } from '../src/audit/rules/security-scheme-described.js'
 import { serversDeclared } from '../src/audit/rules/servers-declared.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
@@ -63,12 +61,32 @@ describe('operation-tagged', () => {
         paths: {
           '/pets': { get: { responses: okResponse } },
           '/owners': { get: { tags: [], responses: okResponse } },
+          '/vets': { get: { tags: ['vets'], responses: okResponse } },
         },
       }),
     )
-    expect(result.checks).toBe(2)
-    expect(result.findings).toHaveLength(2)
+    expect(result.checks).toBe(3)
+    expect(result.findings.map((f) => [f.location, f.params])).toEqual([
+      ['GET /pets', { count: 1 }],
+      ['GET /owners', { count: 1 }],
+    ])
     expect(result.findings[0].severity).toBe('info')
+  })
+
+  it('reports a document tagging nothing once, as one decision', () => {
+    const result = run(
+      operationTagged,
+      doc({
+        paths: {
+          '/pets': { get: { responses: okResponse } },
+          '/owners': { get: { responses: okResponse } },
+        },
+      }),
+    )
+    expect(result.checks).toBe(1)
+    expect(result.findings).toEqual([
+      expect.objectContaining({ location: 'paths', dataPath: '/paths', params: { count: 2 } }),
+    ])
   })
 
   it('ignores webhooks, which the nav never groups by tag', () => {
@@ -171,245 +189,6 @@ describe('oauth-flow-urls', () => {
     const result = run(
       oauthFlowUrls,
       doc({ components: { securitySchemes: { basic: { type: 'http', scheme: 'basic' } } } }),
-    )
-    expect(result.checks).toBe(0)
-  })
-})
-
-describe('operation-examples', () => {
-  const withContent = (content) =>
-    doc({ paths: { '/pets': { post: { requestBody: { content }, responses: okResponse } } } })
-
-  it('passes on a media-type example', () => {
-    const result = run(
-      operationExamples,
-      withContent({
-        'application/json': { schema: { type: 'object' }, example: { name: 'Kitty' } },
-      }),
-    )
-    expect(result).toMatchObject({ checks: 1, findings: [] })
-  })
-
-  it('accepts an example carried by the schema', () => {
-    const result = run(
-      operationExamples,
-      withContent({
-        'application/json': { schema: { type: 'object', examples: [{ name: 'Kitty' }] } },
-      }),
-    )
-    expect(result.findings).toEqual([])
-  })
-
-  it('flags an operation whose payloads have no example at all', () => {
-    const result = run(
-      operationExamples,
-      withContent({ 'application/json': { schema: { type: 'object' } } }),
-    )
-    expect(result.findings[0]).toMatchObject({
-      ruleId: 'operation-examples',
-      severity: 'info',
-      location: 'POST /pets',
-      opRef: 'post-pets',
-    })
-  })
-
-  it('accepts an example carried by a parameter, which prefills the try-it too', () => {
-    const result = run(
-      operationExamples,
-      doc({
-        paths: {
-          '/pets': {
-            get: {
-              parameters: [
-                {
-                  name: 'filter',
-                  in: 'query',
-                  schema: { type: 'string', examples: ['status==available'] },
-                },
-              ],
-              responses: {
-                200: { description: 'OK', content: { 'application/json': { schema: {} } } },
-              },
-            },
-          },
-        },
-      }),
-    )
-    expect(result).toMatchObject({ checks: 1, findings: [] })
-  })
-
-  it('accepts an example on a parameter serialized by media type', () => {
-    const withParameter = (parameter) =>
-      doc({
-        openapi: '3.2.0',
-        paths: {
-          '/pets': {
-            get: {
-              parameters: [{ name: 'filter', in: 'querystring', ...parameter }],
-              responses: {
-                200: { description: 'OK', content: { 'application/json': { schema: {} } } },
-              },
-            },
-          },
-        },
-      })
-    const schema = { type: 'object', properties: { status: { type: 'string' } } }
-    for (const parameter of [
-      { content: { 'application/json': { schema, example: { status: 'sold' } } } },
-      { content: { 'application/json': { schema } }, example: { status: 'sold' } },
-    ]) {
-      expect(run(operationExamples, withParameter(parameter)).findings).toEqual([])
-    }
-  })
-
-  // A download or an upload: no example stands for the bytes of a file, and the
-  // try-it takes it from a file picker rather than prefilling anything.
-  it('has nothing to check on an operation whose only payloads are files', () => {
-    const download = (content) =>
-      doc({
-        paths: {
-          '/mandates/{id}/pdf': {
-            get: {
-              parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-              responses: { 200: { description: 'The signed mandate', content } },
-            },
-          },
-        },
-      })
-    // 3.0 spells the file with `format: binary`, 3.1+ lets the media type carry it.
-    for (const content of [
-      { 'application/pdf': { schema: { type: 'string', format: 'binary' } } },
-      { 'application/pdf': {} },
-      { 'application/octet-stream': { schema: { type: 'string' } } },
-    ]) {
-      expect(run(operationExamples, download(content)).checks).toBe(0)
-    }
-    expect(
-      run(
-        operationExamples,
-        withContent({ 'image/png': { schema: { type: 'string', format: 'binary' } } }),
-      ).checks,
-    ).toBe(0)
-  })
-
-  it('still checks the JSON payloads of an operation that also carries a file', () => {
-    const result = run(
-      operationExamples,
-      withContent({
-        'application/octet-stream': { schema: { type: 'string', format: 'binary' } },
-        'application/json': { schema: { type: 'object' } },
-      }),
-    )
-    expect(result).toMatchObject({ checks: 1, findings: [{ ruleId: 'operation-examples' }] })
-  })
-
-  // Swagger's generated example prefills exactly the meaningless sample the
-  // rule asks to replace.
-  it('does not count a placeholder example as one', () => {
-    for (const media of [
-      { schema: { type: 'object' }, example: { id: 0, name: 'string' } },
-      { schema: { type: 'object', examples: ['string'] } },
-      { schema: { type: 'object' }, examples: { generated: { value: { name: 'TODO' } } } },
-    ]) {
-      const result = run(operationExamples, withContent({ 'application/json': media }))
-      expect(result.findings).toHaveLength(1)
-    }
-  })
-
-  it('counts a value the schema enumerates, even a type name', () => {
-    const result = run(
-      operationExamples,
-      withContent({
-        'application/json': {
-          schema: { type: 'object', properties: { kind: { enum: ['string', 'number'] } } },
-          example: { kind: 'string' },
-        },
-      }),
-    )
-    expect(result.findings).toEqual([])
-  })
-
-  it('has nothing to check on an operation that exchanges no payload', () => {
-    const result = run(
-      operationExamples,
-      doc({ paths: { '/ping': { get: { responses: { 204: { description: 'No content' } } } } } }),
-    )
-    expect(result.checks).toBe(0)
-  })
-})
-
-describe('schema-expand-walls', () => {
-  const withSchema = (schema) =>
-    doc({
-      paths: {
-        '/pets': {
-          get: { responses: { 200: { content: { 'application/json': { schema } } } } },
-        },
-      },
-    })
-
-  it('passes on a schema that fits under the auto-expand depth', () => {
-    const result = run(
-      schemaExpandWalls,
-      withSchema({
-        type: 'object',
-        properties: { owner: { type: 'object', properties: { name: { type: 'string' } } } },
-      }),
-    )
-    expect(result).toMatchObject({ checks: 1, findings: [] })
-  })
-
-  // A tree, a form that describes itself: the recursion is the data model, and
-  // no edit of the document could remove it.
-  it('does not flag a recursive schema', () => {
-    const pet = { type: 'object', properties: { name: { type: 'string' } } }
-    // What ref-parser produces from a circular $ref: a real JS cycle.
-    pet.properties.friend = pet
-    expect(run(schemaExpandWalls, withSchema(pet))).toMatchObject({ checks: 1, findings: [] })
-  })
-
-  it('still flags plain nesting that runs past the line inside a recursive schema', () => {
-    const node = {
-      type: 'object',
-      properties: {
-        meta: {
-          type: 'object',
-          properties: {
-            owner: {
-              type: 'object',
-              properties: {
-                address: {
-                  type: 'object',
-                  properties: { geo: { type: 'object', properties: { lat: { type: 'number' } } } },
-                },
-              },
-            },
-          },
-        },
-      },
-    }
-    node.properties.children = { type: 'array', items: node }
-    expect(run(schemaExpandWalls, withSchema(node)).findings[0]).toMatchObject({
-      ruleId: 'schema-expand-walls',
-      severity: 'info',
-      location: 'GET /pets',
-      params: { depth: 3 },
-    })
-  })
-
-  it('flags a subtree that starts below the auto-expand depth', () => {
-    const deep = (levels) =>
-      levels === 0
-        ? { type: 'string' }
-        : { type: 'object', properties: { child: deep(levels - 1) } }
-    expect(run(schemaExpandWalls, withSchema(deep(3))).findings).toEqual([])
-    expect(run(schemaExpandWalls, withSchema(deep(5))).findings).toHaveLength(1)
-  })
-
-  it('has nothing to check on an operation with no schema', () => {
-    const result = run(
-      schemaExpandWalls,
-      doc({ paths: { '/ping': { get: { responses: { 204: { description: 'No content' } } } } } }),
     )
     expect(result.checks).toBe(0)
   })

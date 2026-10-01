@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`audit report on the demo petstore > matches the recorded report 1`] = `
-"OpenAPI 3.2.0 — grade A (93/100)
-error 0 · warning 14 · info 133
+"OpenAPI 3.2.0 — grade A (95/100)
+error 0 · warning 14 · info 76
 
 ## correctness — 99 % over 409 checks
   warning responses-success — failForbidden
@@ -57,111 +57,55 @@ error 0 · warning 14 · info 133
   info unbounded-input — createUsersWithListInput {"count":7,"names":"application/json, [].username, [].firstName, …"}
   info unbounded-input — updateUser {"count":6,"names":"username, firstName, lastName, …"}
 
-## completeness — 89 % over 394 checks
+## completeness — 93 % over 287 checks
   warning parameter-described — uploadFile {"name":"additionalMetadata"}
   warning request-body-described — subscribeToPet (onPetStatus · POST {$request.body#/callbackUrl})
   warning request-body-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring)
   warning request-body-described — orderPlacedWebhook
   warning request-body-described — petStatusChangedWebhook
-  info property-described — /components/schemas/ApiResponse/properties/code {"name":"code"}
-  info property-described — /components/schemas/ApiResponse/properties/message {"name":"message"}
-  info property-described — /components/schemas/ApiResponse/properties/type {"name":"type"}
-  info property-described — /components/schemas/Category/properties/id {"name":"id"}
-  info property-described — /components/schemas/Category/properties/name {"name":"name"}
-  info property-described — /components/schemas/Order/properties/complete {"name":"complete"}
-  info property-described — /components/schemas/Order/properties/id {"name":"id"}
-  info property-described — /components/schemas/Order/properties/petId {"name":"petId"}
-  info property-described — /components/schemas/Order/properties/quantity {"name":"quantity"}
-  info property-described — /components/schemas/Order/properties/shipDate {"name":"shipDate"}
-  info property-described — /components/schemas/Pet/properties/category {"name":"category"}
-  info property-described — /components/schemas/Pet/properties/id {"name":"id"}
-  info property-described — /components/schemas/Pet/properties/name {"name":"name"}
-  info property-described — /components/schemas/Pet/properties/photoUrls {"name":"photoUrls"}
-  info property-described — /components/schemas/Pet/properties/tags {"name":"tags"}
-  info property-described — /components/schemas/PetSearch/properties/limit {"name":"limit"}
-  info property-described — /components/schemas/PetSearch/properties/tags {"name":"tags"}
-  info property-described — /components/schemas/PetStatusEvent/properties/changedAt {"name":"changedAt"}
-  info property-described — /components/schemas/PetStatusEvent/properties/name {"name":"name"}
-  info property-described — /components/schemas/PetStatusEvent/properties/petId {"name":"petId"}
-  info property-described — /components/schemas/PetStatusEvent/properties/previousStatus {"name":"previousStatus"}
-  info property-described — /components/schemas/Subscription/properties/callbackUrl {"name":"callbackUrl"}
-  info property-described — /components/schemas/Subscription/properties/createdAt {"name":"createdAt"}
-  info property-described — /components/schemas/Subscription/properties/events {"name":"events"}
-  info property-described — /components/schemas/Subscription/properties/id {"name":"id"}
-  info property-described — /components/schemas/Subscription/properties/petId {"name":"petId"}
-  info property-described — /components/schemas/Tag/properties/id {"name":"id"}
-  info property-described — /components/schemas/Tag/properties/name {"name":"name"}
-  info property-described — /components/schemas/User/properties/email {"name":"email"}
-  info property-described — /components/schemas/User/properties/firstName {"name":"firstName"}
-  info property-described — /components/schemas/User/properties/id {"name":"id"}
-  info property-described — /components/schemas/User/properties/lastName {"name":"lastName"}
-  info property-described — /components/schemas/User/properties/password {"name":"password"}
-  info property-described — /components/schemas/User/properties/phone {"name":"phone"}
-  info property-described — /components/schemas/User/properties/userStatus {"name":"userStatus"}
-  info property-described — /components/schemas/User/properties/username {"name":"username"}
-  info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"expiresAt"}
-  info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"name":"subscriptionId"}
+  info property-described — /components/schemas/ApiResponse/properties {"count":3,"names":"code, type, message"}
+  info property-described — /components/schemas/Category/properties {"count":2,"names":"id, name"}
+  info property-described — /components/schemas/Order/properties {"count":5,"names":"id, petId, quantity, …"}
+  info property-described — /components/schemas/Pet/properties {"count":5,"names":"id, name, category, …"}
+  info property-described — /components/schemas/PetSearch/properties {"count":2,"names":"tags, limit"}
+  info property-described — /components/schemas/PetStatusEvent/properties {"count":4,"names":"petId, name, previousStatus, …"}
+  info property-described — /components/schemas/Subscription/properties {"count":5,"names":"id, petId, callbackUrl, …"}
+  info property-described — /components/schemas/Tag/properties {"count":2,"names":"id, name"}
+  info property-described — /components/schemas/User/properties {"count":8,"names":"id, username, firstName, …"}
+  info property-described — subscribeToPet (onSubscriptionExpiring · POST {$request.body#/callbackUrl}?event=expiring) {"count":2,"names":"subscriptionId, expiresAt"}
+  info response-example — /components/schemas/ApiResponse {"status":"200"}
+  info response-example — /components/schemas/Order {"status":"200"}
+  info response-example — /components/schemas/Pet {"status":"200"}
+  info response-example — /components/schemas/PetStatusEvent {"status":"200"}
+  info response-example — /components/schemas/Subscription {"status":"201"}
+  info response-example — /components/schemas/User {"status":"200"}
   info response-example — failMalformed {"status":"200"}
-  info response-example — addPet {"status":"200"}
-  info response-example — updatePet {"status":"200"}
   info response-example — findPetsByStatus {"status":"200"}
   info response-example — findPetsByTags {"status":"200"}
   info response-example — filterPets {"status":"200"}
   info response-example — searchPets {"status":"200"}
-  info response-example — getPetById {"status":"200"}
-  info response-example — updatePetWithForm {"status":"200"}
-  info response-example — streamPetEvents {"status":"200"}
-  info response-example — subscribeToPet {"status":"201"}
-  info response-example — uploadFile {"status":"200"}
   info response-example — getInventory {"status":"200"}
-  info response-example — placeOrder {"status":"200"}
-  info response-example — getOrderById {"status":"200"}
-  info response-example — createUser {"status":"200"}
-  info response-example — createUsersWithListInput {"status":"200"}
   info response-example — loginUser {"status":"200"}
-  info response-example — getUserByName {"status":"200"}
 
-## deprecation — 99 % over 198 checks
-  info deprecated-inventory — /components/securitySchemes/api_key
-  info deprecated-inventory — findPetsByTags
+## deprecation — 100 % over 2 checks
+  (no finding)
 
-## consistency — 99 % over 120 checks
+## consistency — 99 % over 106 checks
   info path-style — failRateLimit {"segment":"rate-limit","style":"kebab-case","dominant":"camelCase"}
   info path-style — failServerError {"segment":"server-error","style":"kebab-case","dominant":"camelCase"}
 
-## readiness — 98 % over 340 checks
+## readiness — 98 % over 260 checks
   warning server-placeholder — failCors {"url":"https://example.com"}
   warning server-placeholder — failUnreachable {"url":"https://api.demo.invalid"}
-  info operation-examples — failMalformed
   info security-scheme-described — /components/securitySchemes/basicAuth {"name":"basicAuth"}
 
-## agent — 93 % over 341 checks
+## agent — 96 % over 164 checks
   warning parameter-name-collision — updateUser {"name":"username","first":"path","second":"body"}
-  info bridge-degradation — failForbidden {"names":"bearerAuth"}
-  info bridge-degradation — failProtected {"names":"bearerAuth"}
-  info bridge-degradation — purgeInventory {"names":"api_key"}
-  info bridge-degradation — getInventory {"names":"bearerAuth"}
-  info bridge-degradation — placeOrder {"names":"bearerAuth"}
-  info bridge-degradation — deleteOrder {"names":"bearerAuth"}
-  info bridge-degradation — getOrderById {"names":"bearerAuth"}
-  info bridge-degradation — createUser {"names":"basicAuth"}
-  info bridge-degradation — createUsersWithListInput {"names":"basicAuth"}
-  info bridge-degradation — loginUser {"names":"basicAuth"}
-  info bridge-degradation — logoutUser {"names":"basicAuth"}
-  info bridge-degradation — deleteUser {"names":"basicAuth"}
-  info bridge-degradation — getUserByName {"names":"basicAuth"}
-  info bridge-degradation — updateUser {"names":"basicAuth"}
-  info enum-values-undescribed — /components/schemas/Order/properties/status {"count":3,"missing":"placed, approved, delivered"}
-  info enum-values-undescribed — /components/schemas/PetSearch/properties/status/items {"count":3,"missing":"available, pending, sold"}
-  info enum-values-undescribed — findPetsByStatus {"count":3,"missing":"available, pending, sold"}
   info enum-values-undescribed — subscribeToPet {"count":2,"missing":"status.changed, order.placed"}
   info input-root-shape — createUsersWithListInput {"shape":"array","mediaType":"application/json"}
-  info operations-indistinct — deleteUser {"other":"POST /user"}
-  info operations-indistinct — updateUser {"other":"POST /user"}
   info request-example — addPet {"mediaType":"application/json"}
   info request-example — updatePet {"mediaType":"application/json"}
   info request-example — searchPets {"mediaType":"application/json"}
   info request-example — uploadFile {"mediaType":"multipart/form-data"}
-  info request-example — placeOrder {"mediaType":"application/json"}
-  info tool-surface-size — /paths {"count":35,"limit":30}"
+  info request-example — placeOrder {"mediaType":"application/json"}"
 `;

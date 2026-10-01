@@ -14,7 +14,7 @@ import { pointer } from '../pointer.js'
 export const requiredWithDefault = {
   id: 'required-with-default',
   category: 'correctness',
-  severity: 'warning',
+  severity: 'info',
   run(ctx, check) {
     // Same identity dedup as the other parameter rules: a `$ref`'d parameter is
     // one decision, fixed once.

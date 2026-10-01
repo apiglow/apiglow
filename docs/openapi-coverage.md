@@ -54,11 +54,17 @@ Normalized and rendered:
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
   `itemEncoding`, XML `nodeType`.
 - **Relative URLs in the document** — an example's `externalValue`,
-  `externalDocs.url`, `license.url`, `contact.url`, `termsOfService` —
-  resolve against the document's own URI (its `$self`, else the URL it was
-  read from), the 3.1+ rule applied to every version; never against the page
-  showing them. A document the CLI reads off the disk keeps them as written
-  (`externalUrl` in `src/openapi/model.js`).
+  `externalDocs.url`, `license.url`, `contact.url`, `termsOfService`, the
+  OAuth flow URLs, `openIdConnectUrl`, `oauth2MetadataUrl`, and every Server
+  Object's `url` (root, Path Item, Operation, Link) — resolve against the
+  document's own URI (its `$self`, else the URL it was read from; the host
+  page only for an inline document), the 3.1+ rule applied to every version;
+  never against the page showing them. The model carries that base as
+  `linkBase`; a server keeps its URL as a template and carries the base
+  beside it (`server.base`), since its variables are substituted before it
+  resolves (`src/openapi/servers.js`). A document the CLI reads off the disk
+  has no http(s) base and keeps them as written (`externalUrl` in
+  `src/openapi/model.js`).
 - **Enum value descriptions**: `x-enum-descriptions` (openapi-generator's
   list parallel to `enum`) and `x-enumDescriptions` (Redocly's map from value
   to text), either read in either shape, and the JSON Schema idiom — a
@@ -234,7 +240,9 @@ Every rendered string from the schema (link descriptions, contact names,
 license names, external URLs) follows rule 5: markdown through the
 existing `markdownBlock` (DOMPurify), URLs restricted to `http(s):` (a
 rejected one is dropped, and the object left empty disappears with it —
-§4.3), outbound links get
+§4.3; an OAuth or OpenID Connect URL that is not http(s) is dropped the
+same way, so a `javascript:` authorization URL never reaches the login
+redirect, and the flow falls back to the manual token), outbound links get
 `target="_blank" rel="noopener noreferrer"`. No `innerHTML` anywhere new.
 
 ### 3.6 No back-compat shims
@@ -565,9 +573,9 @@ lowercase form.
   the explicit test.
 - `$self` (3.2): when the parsed root carries `$self`, dereference runs
   against `new URL(doc.$self, fetchUrl)` instead of the fetch URL, and
-  `model.baseUri` (resolved) feeds the shell's relative-server fallback —
-  the shell keeps reading only the model, never the raw document
-  (rule 10).
+  `model.baseUri` (resolved) becomes the base of every relative URL in the
+  document (`model.linkBase`, §1) — the shell keeps reading only the model,
+  never the raw document (rule 10).
 - **`$ref` siblings**: the target is copied and the siblings laid over it,
   whatever the declared version — the newest version's meaning (§3.2): 3.1
   lets a Reference Object's `summary` and `description` override the

@@ -3,7 +3,6 @@ import { runRule } from '../src/audit/engine.js'
 import { isPlaceholderExample } from '../src/audit/placeholder-example.js'
 import { exampleExternalOnly } from '../src/audit/rules/example-external-only.js'
 import { examplePlaceholder } from '../src/audit/rules/example-placeholder.js'
-import { exampleSummary } from '../src/audit/rules/example-summary.js'
 import { forbiddenInBrowser } from '../src/audit/rules/forbidden-in-browser.js'
 import { responseContentSchema } from '../src/audit/rules/response-content-schema.js'
 import { serverDescribed } from '../src/audit/rules/server-described.js'
@@ -279,85 +278,6 @@ describe('example-placeholder', () => {
       }),
     )
     expect(result).toMatchObject({ checks: 1, findings: [] })
-  })
-})
-
-describe('example-summary', () => {
-  const withExamples = (examples) =>
-    doc({
-      paths: {
-        '/pets': getWith({ 200: { description: 'OK', content: json({ schema: {}, examples }) } }),
-      },
-    })
-
-  it('passes summarized examples, and leaves a lone example alone', () => {
-    expect(
-      run(
-        exampleSummary,
-        withExamples({
-          dog: { summary: 'A dog with an owner', value: {} },
-          cat: { summary: 'A stray cat', value: {} },
-        }),
-      ),
-    ).toMatchObject({ checks: 2, findings: [] })
-    expect(run(exampleSummary, withExamples({ dog: { value: {} } })).checks).toBe(0)
-  })
-
-  it('flags an example of a map of two or more with no substantive summary', () => {
-    const result = run(
-      exampleSummary,
-      withExamples({
-        soldOut: { summary: 'Sold out', value: {} },
-        draft: { summary: 'TODO', value: {} },
-        available: { summary: 'Every pet in stock', value: {} },
-        plain: { value: {} },
-      }),
-    )
-    expect(result.findings.map((f) => f.params.name)).toEqual(['soldOut', 'draft', 'plain'])
-    expect(result.findings[0]).toMatchObject({
-      ruleId: 'example-summary',
-      severity: 'info',
-      category: 'readiness',
-      location: 'GET /pets',
-      dataPath: '/paths/~1pets/get/responses/200/content/application~1json/examples/soldOut',
-    })
-  })
-
-  it('checks a shared example once, at the component, and honours a summary on the $ref', () => {
-    const ref = { $ref: '#/components/examples/Dog' }
-    const result = runRefs(
-      exampleSummary,
-      doc({
-        openapi: '3.1.0',
-        components: { examples: { Dog: { value: { name: 'Rex' } } } },
-        paths: {
-          '/a': getWith({
-            200: {
-              description: 'OK',
-              content: json({ schema: {}, examples: { dog: ref, cat: ref } }),
-            },
-          }),
-          '/b': getWith({
-            200: {
-              description: 'OK',
-              content: json({
-                schema: {},
-                examples: {
-                  dog: { ...ref, summary: 'A good dog' },
-                  other: { summary: 'A cat that hunts', value: 1 },
-                },
-              }),
-            },
-          }),
-        },
-      }),
-    )
-    expect(result.findings).toHaveLength(1)
-    expect(result.findings[0]).toMatchObject({
-      dataPath: '/components/examples/Dog',
-      location: 'components.examples.Dog',
-      params: { name: 'dog' },
-    })
   })
 })
 

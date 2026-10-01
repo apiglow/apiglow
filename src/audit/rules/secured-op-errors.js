@@ -2,6 +2,7 @@ import { pointer } from '../pointer.js'
 import { declaresHeader, responsesWhere } from '../response-sites.js'
 import { effectiveSecurity } from '../security.js'
 import { toolOperations } from '../tool-inputs.js'
+import { isObject } from '../value-check.js'
 
 // A secured operation that does not document how it refuses a caller. The
 // status is how a client tells "authenticate" from any other failure: a 401
@@ -17,7 +18,9 @@ import { toolOperations } from '../tool-inputs.js'
 // - per secured tool operation (an effective security with a requirement and
 //   no anonymous alternative): a `401`, a `403` or the `4XX` range is
 //   documented. `default` does not count — it is every other failure, the
-//   very thing this one must stand apart from;
+//   very thing this one must stand apart from. When no secured operation
+//   documents one, that is one decision about the document: one check, at
+//   `paths`;
 // - per documented `401` response of a tool operation, secured or not: it
 //   declares the `WWW-Authenticate` header (names are case-insensitive). A
 //   401 written once under `components.responses` is checked once, at the
@@ -41,22 +44,24 @@ export const securedOpErrors = {
   category: 'security',
   severity: 'info',
   run(ctx, check) {
-    for (const entry of toolOperations(ctx)) {
+    const secured = toolOperations(ctx).filter((entry) => {
       const { alternatives, anonymous } = effectiveSecurity(ctx, entry)
-      if (anonymous || !alternatives.length) continue
-      const responses = entry.op.responses
-      const statuses =
-        responses && typeof responses === 'object' && !Array.isArray(responses)
-          ? Object.keys(responses)
-          : []
-      check(
-        statuses.some((status) => AUTH_FAILURE.test(status)),
-        {
+      return !anonymous && alternatives.length > 0
+    })
+    const refuses = (entry) =>
+      isObject(entry.op.responses) &&
+      Object.keys(entry.op.responses).some((status) => AUTH_FAILURE.test(status))
+    const params = { missing: '401 / 403' }
+    if (secured.length > 1 && !secured.some(refuses)) {
+      check(false, { location: 'paths', dataPath: '/paths', params })
+    } else {
+      for (const entry of secured) {
+        check(refuses(entry), {
           op: entry,
           dataPath: `${entry.pointer}${pointer('responses')}`,
-          params: { missing: '401 / 403' },
-        },
-      )
+          params,
+        })
+      }
     }
     for (const { response, site } of responsesWhere(ctx, (status) => status === '401')) {
       check(declaresHeader(response, 'www-authenticate'), {

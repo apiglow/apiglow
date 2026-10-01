@@ -821,7 +821,7 @@ describe('required-with-default', () => {
     )
     expect(result.findings[0]).toMatchObject({
       ruleId: 'required-with-default',
-      severity: 'warning',
+      severity: 'info',
       category: 'correctness',
       location: 'GET /pets',
       dataPath: '/paths/~1pets/get/parameters/0',

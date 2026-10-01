@@ -51,10 +51,10 @@ export function buildAuthorizationUrl(
   { clientId, redirectUri, state, codeChallenge, scopes = [] },
 ) {
   // new URL preserves the query params already present in authorizationUrl
-  // (audience, tenant…): we only add our own. A relative authorizationUrl
-  // means "same origin as the docs" and resolves against the page — outside a
-  // browser (tests) there is no base, and absolute URLs behave as before.
-  const url = new URL(flow.authorizationUrl, globalThis.location?.href)
+  // (audience, tenant…): we only add our own. No base: the model already
+  // resolved a relative authorizationUrl against the document's own URI, and
+  // one still relative had no http(s) base to resolve against — it throws.
+  const url = new URL(flow.authorizationUrl)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('client_id', clientId)
   url.searchParams.set('redirect_uri', redirectUri)

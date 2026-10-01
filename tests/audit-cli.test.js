@@ -459,7 +459,6 @@ describe('apiglow audit', () => {
     expect(json.specs[0].report.profile).toEqual({
       custom: true,
       rules: { 'parameter-described': 'error' },
-      options: {},
       overrides: 1,
     })
   })
@@ -526,14 +525,14 @@ describe('apiglow audit', () => {
     const { stdout } = await audit(join(dir, 'openapi.yaml'), '--format', 'json')
     const findings = JSON.parse(stdout).specs[0].report.categories.flatMap((c) => c.findings)
     const property = findings.find((f) => f.ruleId === 'property-described')
-    expect(property.position).toMatchObject({ line: 8, column: 11 })
+    expect(property.position).toMatchObject({ line: 7, column: 9 })
     expect(property.position.file).toMatch(/responses\.yaml$/)
     // Reached through the root file's `$ref`, which is where the walk crossed.
     expect(property.via).toEqual([expect.objectContaining({ line: 8, column: 9 })])
     expect(property.via[0].file).toMatch(/openapi\.yaml$/)
 
     const text = (await audit(join(dir, 'openapi.yaml'))).stdout
-    expect(text).toMatch(/responses\.yaml:8:11 · GET \/pets/)
+    expect(text).toMatch(/responses\.yaml:7:9 · GET \/pets/)
   })
 
   it('places findings relative to the working directory', async () => {
@@ -600,7 +599,7 @@ describe('apiglow audit', () => {
     const unknown = await audit('--explain', 'operation-id')
     expect(unknown.code).toBe(2)
     expect(unknown.stderr).toContain(
-      'did you mean duplicate-operation-id, operation-id-collision, operation-id-present,',
+      'did you mean duplicate-operation-id, operation-id-collision, operation-id-present?',
     )
     // A schema next to them would be silently ignored: refused instead.
     expect((await audit('--list-rules', CLEAN)).code).toBe(2)

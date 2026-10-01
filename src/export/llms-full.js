@@ -7,6 +7,7 @@
 import { publishedArazzo } from './arazzo.js'
 import { toEndpointMarkdown } from './endpoint-markdown.js'
 import { toScenarioMarkdown } from './scenario-markdown.js'
+import { serverAddress } from '../openapi/servers.js'
 
 // Blank lines around the rule: a `---` stuck to the previous paragraph would
 // be parsed as a setext heading, not as a horizontal rule.
@@ -109,7 +110,7 @@ export function toLlmsFullText(
     head.push('', '## Servers', '')
     for (const server of model.servers) {
       const label = [server.name?.trim(), server.description?.trim()].filter(Boolean).join(': ')
-      head.push(`- ${server.url}${label ? ` — ${label}` : ''}`)
+      head.push(`- ${serverAddress(server)}${label ? ` — ${label}` : ''}`)
     }
   }
   head.push(...authBlock(model))

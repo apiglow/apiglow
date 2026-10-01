@@ -86,3 +86,11 @@ const PLACEHOLDERS = new Set([
   'aucun',
   'vide',
 ])
+
+// A finding's list of names, kept to one line: the first three, then `…`.
+const SHOWN = 3
+
+export function abbreviate(values) {
+  const shown = values.slice(0, SHOWN).join(', ')
+  return values.length > SHOWN ? `${shown}, …` : shown
+}

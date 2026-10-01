@@ -96,7 +96,6 @@ function credentialHeader(scheme) {
 function authHeaders(schemes) {
   const headers = []
   const unsupported = []
-  const carried = []
   for (const scheme of schemes) {
     // A deprecated scheme is not what a new integration should be wired to.
     if (scheme.deprecated) continue
@@ -110,17 +109,8 @@ function authHeaders(schemes) {
     // one. Silently emitting both would produce a config that fails at runtime.
     if (headers.some((h) => h.name.toLowerCase() === header.name.toLowerCase())) continue
     headers.push(header)
-    carried.push(scheme.name)
   }
-  return { headers, unsupported, carried }
-}
-
-// The names of the schemes whose credential the generated config holds: a
-// deprecated scheme, one with no header form and one whose header an earlier
-// scheme already took are not among them. The audit's `bridge-degradation`
-// rule reads this, so what it reports is what this export does.
-export function carriedSchemes(schemes) {
-  return new Set(authHeaders(schemes).carried)
+  return { headers, unsupported }
 }
 
 // → { config, warnings, headers } — `config` null when there is nothing to

@@ -119,7 +119,7 @@ export function profileLines({ profile }) {
 
 export function profileDetail(profile) {
   return t('audit.profile.detail', {
-    rules: new Set([...Object.keys(profile.rules), ...Object.keys(profile.options ?? {})]).size,
+    rules: Object.keys(profile.rules).length,
     overrides: profile.overrides,
   })
 }

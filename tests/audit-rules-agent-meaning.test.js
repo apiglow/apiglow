@@ -48,8 +48,8 @@ describe('enum-values-undescribed', () => {
             },
             union: {
               oneOf: [
-                { const: 'eu', description: 'Stored in Frankfurt' },
-                { const: 'us', title: 'Stored in Virginia' },
+                { const: 'eu1', description: 'Stored in Frankfurt' },
+                { const: 'us1', title: 'Stored in Virginia' },
               ],
             },
           },
@@ -62,12 +62,12 @@ describe('enum-values-undescribed', () => {
   it('passes values the prose names as whole words, whatever the case', () => {
     const own = enumParam({
       type: 'string',
-      enum: ['asc', 'desc'],
-      description: 'ASC sorts oldest first, desc newest first.',
+      enum: ['a1', 'd1'],
+      description: 'A1 sorts oldest first, d1 newest first.',
     })
     const fromParameter = enumParam(
-      { type: 'array', items: { type: 'string', enum: ['open', 'closed'] } },
-      { description: 'Any of `open` or `closed`.' },
+      { type: 'array', items: { type: 'string', enum: ['o1', 'c1'] } },
+      { description: 'Any of `o1` or `c1`.' },
     )
     const fromWrapper = run(
       enumValuesUndescribed,
@@ -76,8 +76,8 @@ describe('enum-values-undescribed', () => {
           type: 'object',
           properties: {
             level: {
-              description: 'low: best effort; high: paged on call.',
-              allOf: [{ type: 'string', enum: ['low', 'high'] }],
+              description: 'l1: best effort; h1: paged on call.',
+              allOf: [{ type: 'string', enum: ['l1', 'h1'] }],
             },
           },
         }),
@@ -91,8 +91,8 @@ describe('enum-values-undescribed', () => {
   it('flags the values nothing explains, and only them', () => {
     const result = enumParam({
       type: 'string',
-      enum: ['reviewed', 'unreviewed', 'malware'],
-      description: 'Only reviewed advisories by default; malware ones on request.',
+      enum: ['R1', 'U1', 'M1'],
+      description: 'Only R1 advisories by default; M1 ones on request.',
     })
     expect(result.findings).toEqual([
       expect.objectContaining({
@@ -101,7 +101,7 @@ describe('enum-values-undescribed', () => {
         category: 'agent',
         opRef: 'post-things',
         dataPath: '/paths/~1things/post/parameters/0/schema',
-        params: { count: 3, missing: 'unreviewed' },
+        params: { count: 3, missing: 'U1' },
       }),
     ])
   })
@@ -109,10 +109,17 @@ describe('enum-values-undescribed', () => {
   it('counts a placeholder or the value read back as no description', () => {
     const result = enumParam({
       type: 'string',
-      enum: ['active', 'gone'],
-      'x-enum-descriptions': ['Active', 'TODO'],
+      enum: ['A1', 'G1'],
+      'x-enum-descriptions': ['A1', 'TODO'],
     })
-    expect(result.findings[0].params).toEqual({ count: 2, missing: 'active, gone' })
+    expect(result.findings[0].params).toEqual({ count: 2, missing: 'A1, G1' })
+  })
+
+  it('asks nothing of plain words, and only the codes of a mixed enum', () => {
+    const words = enumParam({ type: 'string', enum: ['active', 'past_due', 'inProgress', 'ASC'] })
+    expect(words).toMatchObject({ checks: 0, findings: [] })
+    const mixed = enumParam({ type: 'string', enum: ['active', 'x_ok', 'A1', 3] })
+    expect(mixed.findings[0].params).toEqual({ count: 4, missing: 'x_ok, A1, 3' })
   })
 
   it('lists the first three unexplained values and elides the rest', () => {
@@ -169,7 +176,7 @@ describe('enum-values-undescribed', () => {
             post: { ...jsonBody({ type: 'string', enum: ['p', 'q'] }), responses: okResponse },
           },
         },
-        components: { schemas: { Tier: { type: 'string', enum: ['gold', 'silver'] } } },
+        components: { schemas: { Tier: { type: 'string', enum: ['G1', 'S1'] } } },
       }),
     )
     // A component is reported where it is written, once for every operation.

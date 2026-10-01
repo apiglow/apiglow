@@ -13,10 +13,10 @@ import { serverDefaultUrl } from '../security.js'
 //
 // The URL is judged as this documentation sends to it (`serverDefaultUrl`):
 // variables at their defaults — a `{scheme}` variable defaulting to `http`
-// counts — and a relative URL resolved against the document's 3.2 `$self`,
-// so `/v1` under an http `$self` is cleartext. Without `$self` a relative URL
-// takes the scheme of wherever the document is served from, which the audit
-// is not told: no verdict. Loopback (`localhost`, `127.0.0.0/8`, `[::1]`) is
+// counts — and a relative URL resolved against the document's own URI (3.2
+// `$self`, else where the document was read from), so `/v1` in a document
+// served over http is cleartext. With no http(s) base (a file the CLI reads
+// off the disk) a relative URL gives no verdict. Loopback (`localhost`, `127.0.0.0/8`, `[::1]`) is
 // exempt: browsers hold it potentially trustworthy (W3C Secure Contexts) and
 // nothing leaves the machine. An undeclared variable in the host gives no
 // verdict: that is `server-variables`'.

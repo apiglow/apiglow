@@ -248,6 +248,14 @@ describe('multipart-schema-object', () => {
     ).toBe(0)
   })
 
+  it('leaves a form body on a GET to request-body-method, which asks to remove it', () => {
+    const form = { 'application/x-www-form-urlencoded': { schema: { type: 'object' } } }
+    const getForm = doc({
+      paths: { '/things': { get: { requestBody: { content: form }, responses: okResponse } } },
+    })
+    expect(run(multipartSchemaObject, getForm).checks).toBe(0)
+  })
+
   it('flags a form whose schema names no field, or that has no schema', () => {
     for (const schema of [{ type: 'array', items: {} }, { type: 'object' }, { type: 'string' }]) {
       const result = run(

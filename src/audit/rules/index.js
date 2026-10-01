@@ -7,10 +7,8 @@
 
 import { conversionApproximation } from './conversion-approximation.js'
 import { defaultAllowed } from './default-allowed.js'
-import { deprecatedInventory } from './deprecated-inventory.js'
 import { deprecationReplacement } from './deprecation-replacement.js'
 import { discriminatorMapping } from './discriminator-mapping.js'
-import { duplicateInlineSchema } from './duplicate-inline-schema.js'
 import { duplicateOperationId } from './duplicate-operation-id.js'
 import { errorResponsesDocumented } from './error-responses-documented.js'
 import { exampleTypeMismatch } from './example-type-mismatch.js'
@@ -21,7 +19,6 @@ import { infoMetadata } from './info-metadata.js'
 import { linkTarget } from './link-target.js'
 import { oauthFlowUrls } from './oauth-flow-urls.js'
 import { operationDescribed } from './operation-described.js'
-import { operationExamples } from './operation-examples.js'
 import { operationIdPresent } from './operation-id-present.js'
 import { operationTagged } from './operation-tagged.js'
 import { parameterDescribed } from './parameter-described.js'
@@ -39,7 +36,6 @@ import { requiredWithDefault } from './required-with-default.js'
 import { responseExample } from './response-example.js'
 import { responseSubstance } from './response-substance.js'
 import { schemaDialect } from './schema-dialect.js'
-import { schemaExpandWalls } from './schema-expand-walls.js'
 import { securitySchemeDeclared } from './security-scheme-declared.js'
 import { securitySchemeDescribed } from './security-scheme-described.js'
 import { serversDeclared } from './servers-declared.js'
@@ -95,17 +91,10 @@ import { sequentialMedia } from './sequential-media.js'
 import { responsesSuccess } from './responses-success.js'
 import { discriminatorProperty } from './discriminator-property.js'
 import { securityScopes } from './security-scopes.js'
-import { operationIdToolName } from './operation-id-tool-name.js'
-import { summaryLength } from './summary-length.js'
-import { operationsIndistinct } from './operations-indistinct.js'
-import { toolSurfaceSize } from './tool-surface-size.js'
-import { bridgeDegradation } from './bridge-degradation.js'
 import { untypedInput } from './untyped-input.js'
 import { freeFormInput } from './free-form-input.js'
 import { unionAmbiguous } from './union-ambiguous.js'
 import { inputRootShape } from './input-root-shape.js'
-import { recursiveInput } from './recursive-input.js'
-import { inputComplexity } from './input-complexity.js'
 import { enumValuesUndescribed } from './enum-values-undescribed.js'
 import { parameterNameCollision } from './parameter-name-collision.js'
 import { requestExample } from './request-example.js'
@@ -146,7 +135,6 @@ import { tagUnused } from './tag-unused.js'
 import { markdownUnsafe } from './markdown-unsafe.js'
 import { markdownLinks } from './markdown-links.js'
 import { documentHasOperations } from './document-has-operations.js'
-import { exampleSummary } from './example-summary.js'
 import { exampleExternalOnly } from './example-external-only.js'
 import { typeMissing } from './type-missing.js'
 import { forbiddenInBrowser } from './forbidden-in-browser.js'
@@ -262,7 +250,6 @@ export const RULES = [
   methodNotAllowedAllow,
   partialContentRange,
   // §4.3 Deprecation hygiene
-  deprecatedInventory,
   deprecationReplacement,
   deprecationHeaderFormat,
   sunsetBeforeDeprecation,
@@ -271,7 +258,6 @@ export const RULES = [
   parameterNaming,
   propertyNaming,
   pathStyle,
-  duplicateInlineSchema,
   operationIdCollision,
   propertyNameCollision,
   schemaNameCollision,
@@ -281,8 +267,6 @@ export const RULES = [
   serversDeclared,
   securitySchemeDescribed,
   oauthFlowUrls,
-  operationExamples,
-  schemaExpandWalls,
   operationSummaryPresent,
   operationSummaryStyle,
   tagDeclared,
@@ -290,24 +274,16 @@ export const RULES = [
   markdownUnsafe,
   markdownLinks,
   documentHasOperations,
-  exampleSummary,
   exampleExternalOnly,
   typeMissing,
   forbiddenInBrowser,
   serverPlaceholder,
   serverDescribed,
   // §4.7 Agent readiness: what a tool built from the document gets
-  operationIdToolName,
-  summaryLength,
-  operationsIndistinct,
-  toolSurfaceSize,
-  bridgeDegradation,
   untypedInput,
   freeFormInput,
   unionAmbiguous,
   inputRootShape,
-  recursiveInput,
-  inputComplexity,
   enumValuesUndescribed,
   parameterNameCollision,
   requestExample,

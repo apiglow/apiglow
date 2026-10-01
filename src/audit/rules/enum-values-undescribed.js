@@ -1,6 +1,6 @@
 import { enumOf } from '../../openapi/model.js'
 import { placeInput } from '../input-shape.js'
-import { isSubstantive } from '../text.js'
+import { abbreviate, isSubstantive } from '../text.js'
 import { SCHEMA_DEPTH } from '../schema-walk.js'
 import { payloadChildren, toolInputs, toolOperations } from '../tool-inputs.js'
 import { isObject } from '../value-check.js'
@@ -28,7 +28,10 @@ import { isObject } from '../value-check.js'
 // agent behind the least explicit one guesses. Whatever order the operations
 // come in, the verdict is the same.
 //
-// One check per input enum of two values or more, each schema object once —
+// Only the values a reader cannot read: an enum of plain words (`active`,
+// `past_due`) explains itself and is not checked, and in an enum mixing both
+// only the codes are asked for. One check per input enum of two values or
+// more holding a code, each schema object once —
 // a component's at the component, where it is fixed for every operation.
 // `null` is the nullable marker, not a choice to explain, and a boolean enum
 // says all there is to say. Whether the enum has a description at all is
@@ -102,8 +105,10 @@ function unexplained(schema, contexts) {
     .map((value, index) => ({ value, description: read.descriptions?.[index] }))
     .filter(({ value }) => value !== null)
   if (entries.length < 2 || entries.every(({ value }) => typeof value === 'boolean')) return null
+  const codes = entries.filter(({ value }) => !isPlainWords(value))
+  if (!codes.length) return null
   const own = withText([], schema.description)
-  const list = entries
+  const list = codes
     .filter(({ value, description }) => {
       if (isSubstantive(description, { name: spelled(value) })) return false
       if (own.some((text) => namesValue(text, value))) return false
@@ -111,6 +116,15 @@ function unexplained(schema, contexts) {
     })
     .map(({ value }) => spelled(value))
   return { count: entries.length, list }
+}
+
+// A value its spelling explains: words of two letters or more, joined by `_`,
+// `-` or a space, or camelCased — `active`, `past_due`, `inProgress`, `ASC`. A
+// code (`A1`, `3`, `x_ok`, `S`) says nothing on its own.
+const PLAIN_WORDS = /^\p{L}{2,}(?:[ _-]\p{L}{2,})*$/u
+
+function isPlainWords(value) {
+  return typeof value === 'string' && PLAIN_WORDS.test(value)
 }
 
 // Whole word, case-insensitive. Searched rather than matched with a regular
@@ -136,11 +150,4 @@ function isWordChar(char) {
 // as nothing at all — as JSON.
 function spelled(value) {
   return typeof value === 'string' && value ? value : JSON.stringify(value)
-}
-
-const SHOWN = 3
-
-function abbreviate(values) {
-  const shown = values.slice(0, SHOWN).join(', ')
-  return values.length > SHOWN ? `${shown}, …` : shown
 }

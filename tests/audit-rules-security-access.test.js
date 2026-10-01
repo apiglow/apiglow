@@ -286,6 +286,31 @@ describe('secured-op-errors', () => {
     ])
   })
 
+  it('reports a document whose secured operations all stay silent once', () => {
+    const silent = { get: { responses: okResponse } }
+    const document = doc({
+      components: { securitySchemes: schemes },
+      security: [{ key: [] }],
+      paths: { '/a': silent, '/b': silent, '/c': silent },
+    })
+    const result = run(securedOpErrors, document)
+    expect(result.checks).toBe(1)
+    expect(result.findings).toEqual([
+      expect.objectContaining({
+        location: 'paths',
+        dataPath: '/paths',
+        params: { missing: '401 / 403' },
+      }),
+    ])
+    // One that does document a refusal turns the others back into findings
+    // of their own.
+    document.paths['/c'] = { get: { responses: { ...okResponse, 403: { description: 'No' } } } }
+    expect(run(securedOpErrors, document).findings.map((f) => f.location)).toEqual([
+      'GET /a',
+      'GET /b',
+    ])
+  })
+
   it('does not ask an open operation to document a refusal', () => {
     for (const document of [
       doc({ paths: { '/a': { get: op() } } }),

@@ -4,6 +4,8 @@ import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { describe, expect, it } from 'vitest'
 import { buildModel, SchemaLoadError } from '../src/openapi/loader.js'
 import { normalizeSchema, slugify, toSerializable } from '../src/openapi/model.js'
+import { effectiveBaseUrl } from '../src/openapi/request-builder.js'
+import { serverTemplate, serverUrl } from '../src/openapi/servers.js'
 
 const fixture = (name) =>
   JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'))
@@ -841,5 +843,116 @@ describe('path and operation servers', () => {
     expect(aGet.servers[0].url).toBe('https://path.example.com')
     expect(aPost.servers[0].url).toBe('https://op.example.com')
     expect(bGet.servers ?? null).toBeNull()
+  })
+
+  // OpenAPI 3.1+: a relative server is relative to the document, not to the
+  // page showing it — at every level the client calls, and on a Link's server.
+  const relative = {
+    openapi: '3.1.0',
+    info: { title: 't', version: '1' },
+    servers: [{ url: '/root/{v}', variables: { v: { default: 'v1' } } }],
+    paths: {
+      '/a': {
+        servers: [{ url: 'path' }],
+        get: {
+          responses: {
+            200: {
+              description: 'ok',
+              links: { next: { operationId: 'opB', server: { url: '../linked' } } },
+            },
+          },
+        },
+      },
+      '/b': {
+        get: {
+          operationId: 'opB',
+          servers: [{ url: '/op' }],
+          responses: { 200: { description: 'ok' } },
+        },
+      },
+    },
+  }
+
+  it('resolves every relative server against the URL the document was read from', () => {
+    const model = buildModel(relative, {
+      documentUrl: 'https://api.example.com/specs/openapi.json',
+    })
+    const [aGet, bGet] = model.operations
+    expect(model.linkBase).toBe('https://api.example.com/specs/openapi.json')
+    // The URL stays the template as written; the base travels beside it.
+    expect(model.servers[0].url).toBe('/root/{v}')
+    expect(serverUrl(model.servers[0])).toBe('https://api.example.com/root/v1')
+    expect(serverTemplate(model.servers[0])).toBe('https://api.example.com/root/{{v}}')
+    expect(effectiveBaseUrl(aGet, 'https://env.example.com')).toBe(
+      'https://api.example.com/specs/path',
+    )
+    expect(effectiveBaseUrl(bGet, 'https://env.example.com')).toBe('https://api.example.com/op')
+    expect(serverUrl(aGet.responses[0].links[0].server)).toBe('https://api.example.com/linked')
+  })
+
+  it("prefers the document's $self, and keeps a relative server without an http(s) base", () => {
+    const self = buildModel(relative, {
+      baseUri: 'https://mirror.example.com/v2/openapi.json',
+      documentUrl: 'https://api.example.com/specs/openapi.json',
+    })
+    expect(effectiveBaseUrl(self.operations[1])).toBe('https://mirror.example.com/op')
+    const onDisk = buildModel(relative, { documentUrl: 'file:///srv/specs/openapi.json' })
+    expect(onDisk.linkBase).toBeUndefined()
+    expect(effectiveBaseUrl(onDisk.operations[1])).toBe('/op')
+  })
+})
+
+describe('OAuth and OpenID Connect URLs', () => {
+  const doc = {
+    openapi: '3.2.0',
+    info: { title: 't', version: '1' },
+    paths: {},
+    components: {
+      securitySchemes: {
+        oauth: {
+          type: 'oauth2',
+          oauth2MetadataUrl: '/.well-known/oauth-authorization-server',
+          flows: {
+            authorizationCode: {
+              authorizationUrl: 'oauth/authorize',
+              tokenUrl: '/oauth/token',
+              refreshUrl: 'https://auth.example.com/refresh',
+              scopes: {},
+            },
+            deviceAuthorization: {
+              deviceAuthorizationUrl: '/oauth/device',
+              tokenUrl: 'javascript:alert(1)//',
+              scopes: {},
+            },
+          },
+        },
+        oidc: { type: 'openIdConnect', openIdConnectUrl: '/.well-known/openid-configuration' },
+      },
+    },
+  }
+  const scheme = (model, name) => model.securitySchemes.find((s) => s.name === name)
+
+  it('resolves them against the document, not the page, and keeps only http(s)', () => {
+    const model = buildModel(doc, { documentUrl: 'https://api.example.com/specs/openapi.json' })
+    const oauth = scheme(model, 'oauth')
+    expect(oauth.oauth2MetadataUrl).toBe(
+      'https://api.example.com/.well-known/oauth-authorization-server',
+    )
+    expect(oauth.flows[0]).toMatchObject({
+      authorizationUrl: 'https://api.example.com/specs/oauth/authorize',
+      tokenUrl: 'https://api.example.com/oauth/token',
+      refreshUrl: 'https://auth.example.com/refresh',
+    })
+    expect(oauth.flows[1].deviceAuthorizationUrl).toBe('https://api.example.com/oauth/device')
+    // Navigated to or fetched: a script URL is no URL to send a reader to.
+    expect(oauth.flows[1].tokenUrl).toBeUndefined()
+    expect(scheme(model, 'oidc').openIdConnectUrl).toBe(
+      'https://api.example.com/.well-known/openid-configuration',
+    )
+  })
+
+  it('keeps them as written without an http(s) base', () => {
+    const model = buildModel(doc, { documentUrl: 'file:///srv/specs/openapi.json' })
+    expect(scheme(model, 'oauth').flows[0].tokenUrl).toBe('/oauth/token')
   })
 })

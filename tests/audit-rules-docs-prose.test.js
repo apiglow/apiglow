@@ -520,7 +520,7 @@ describe('markdown-links', () => {
       '../y z.md',
       '?page=2',
     ])
-    expect(result.findings[0]).toMatchObject({ severity: 'warning', opRef: 'get-p0' })
+    expect(result.findings[0]).toMatchObject({ severity: 'info', opRef: 'get-p0' })
   })
 
   it('reads a link as its view renders it, and not in plain text', () => {

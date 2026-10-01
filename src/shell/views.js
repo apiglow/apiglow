@@ -14,6 +14,7 @@ import { securitySchemesCard } from '../components/auth-overview.js'
 import { pinnedScenariosCard } from '../components/scenario-pinned.js'
 import { specStats } from '../components/spec-stats.js'
 import { searchTrigger } from '../components/search-palette.js'
+import { serverAddress } from '../openapi/servers.js'
 import { t } from '../i18n/index.js'
 import { homeHash } from '../router.js'
 
@@ -175,7 +176,11 @@ export function welcomeView(
           'div',
           'flex flex-wrap items-center gap-2 py-1',
           server.name ? el('span', 'text-sm font-semibold', text(server.name)) : null,
-          el('code', 'font-mono text-sm bg-base-200 rounded px-2 py-0.5', text(server.url)),
+          el(
+            'code',
+            'font-mono text-sm bg-base-200 rounded px-2 py-0.5',
+            text(serverAddress(server)),
+          ),
           server.description ? el('span', 'text-sm text-subtle', text(server.description)) : null,
         ),
       )

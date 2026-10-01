@@ -1,7 +1,8 @@
 // What the schema says about serialization, once the values are typed:
 // `allowReserved` and `allowEmptyValue`, an `in: cookie` parameter (T3 — it
 // reaches the cURL export and not the network), an XML body, and a urlencoded
-// body whose Encoding Object decides how its fields are spelled on the wire.
+// body whose Encoding Object decides how its fields are spelled on the wire;
+// and where a relative operation server sends it.
 import { expect, test } from '@playwright/test'
 import { editInDoc, expectResponded, gotoOp, mockApi, panelField, send, tryIt } from './helpers.js'
 
@@ -168,4 +169,18 @@ test('a TRACE operation says the browser refuses it, instead of a network failur
   )
   await expect(tryIt(page)).not.toContainText('Request failed at network level')
   expect(calls).toHaveLength(0)
+})
+
+// The fixture declares `$self` on api.e2e.test while the page and the file sit
+// on the test server: a relative operation server resolved against the page
+// would send to the test server instead.
+test("a relative operation server resolves against the document's own URI", async ({ page }) => {
+  const calls = await mockApi(page)
+  await gotoOp(page, PAGE, 'pingLegacy')
+
+  await expect(page.locator('main')).toContainText('https://api.e2e.test/v2/ping')
+  await expect(tryIt(page)).toContainText('https://api.e2e.test/v2/ping')
+  await send(page)
+  await expectResponded(page)
+  expect(calls[0].url).toBe('https://api.e2e.test/v2/ping')
 })

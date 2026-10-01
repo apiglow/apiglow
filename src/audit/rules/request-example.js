@@ -9,9 +9,9 @@ import { SCHEMA_DEPTH } from '../schema-walk.js'
 // from the operation copy the request schema into their input schema whole —
 // `example`, `examples`, `enum`, descriptions included — and ignore the media
 // type's `example` / `examples`. An example written there, which this
-// documentation's try-it prefills and `operation-examples` counts, never
-// reaches the agent: it fills the body from types alone, and a `string` says
-// nothing of the id format, the date layout or the unit the API expects.
+// documentation's try-it prefills, never reaches the agent: it fills the body
+// from types alone, and a `string` says nothing of the id format, the date
+// layout or the unit the API expects.
 //
 // The schema shows an example when its root, or an `allOf` member of it, has
 // `example` / `examples`; or when every value it sends does: each top-level

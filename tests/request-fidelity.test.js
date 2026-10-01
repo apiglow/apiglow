@@ -5,6 +5,7 @@ import { buildModel } from '../src/openapi/loader.js'
 import { encodePair } from '../src/openapi/params.js'
 import { buildRequest } from '../src/openapi/request-builder.js'
 import { isXmlMedia, xmlSample } from '../src/openapi/sample-xml.js'
+import { serverUrl } from '../src/openapi/servers.js'
 
 // Session 4 of docs/openapi-coverage.md: everything that decides what actually
 // leaves the browser once the values are typed — the Encoding Object, the two
@@ -229,7 +230,7 @@ describe('$self (3.2)', () => {
     expect(model.baseUri).toBe('https://api.example.com/specs/request.json')
     // What it is for: a relative server resolves against the document's own
     // URI, not against wherever this copy is served from.
-    expect(new URL(model.servers[0].url, model.baseUri).href).toBe('https://api.example.com/v2')
+    expect(serverUrl(model.servers[0])).toBe('https://api.example.com/v2')
   })
 
   it('is absent when the document declares none', async () => {
