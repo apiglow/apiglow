@@ -85,6 +85,15 @@ import { parameterStyleValid } from './parameter-style-valid.js'
 import { querystringParameter } from './querystring-parameter.js'
 import { additionalOperationMethod } from './additional-operation-method.js'
 import { serverVariables } from './server-variables.js'
+import { refSiblings } from './ref-siblings.js'
+import { refTargetKind } from './ref-target-kind.js'
+import { refResolves } from './ref-resolves.js'
+import { runtimeExpressionSyntax } from './runtime-expression-syntax.js'
+import { encodingValid } from './encoding-valid.js'
+import { sequentialMedia } from './sequential-media.js'
+import { responsesSuccess } from './responses-success.js'
+import { discriminatorProperty } from './discriminator-property.js'
+import { securityScopes } from './security-scopes.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -132,6 +141,15 @@ export const RULES = [
   querystringParameter,
   additionalOperationMethod,
   serverVariables,
+  refSiblings,
+  refTargetKind,
+  refResolves,
+  runtimeExpressionSyntax,
+  encodingValid,
+  sequentialMedia,
+  responsesSuccess,
+  discriminatorProperty,
+  securityScopes,
   // §4.1 schemas: values and keywords
   enumValid,
   nullableEnumNull,

@@ -67,6 +67,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   header name `fetch` refuses, a style the parameter's location does not
   allow, a server URL variable with no definition, the 3.2 `querystring`
   parameter and `additionalOperations` used against their rules.
+  References and the rest: a `$ref` that leads nowhere or to the wrong kind
+  of object, siblings next to a `$ref` other tools ignore, a runtime
+  expression that does not parse, an encoding the payload never uses, an
+  operation with no success response, a discriminator its schemas do not
+  declare, a security requirement asking for a scope no flow offers.
   Schemas are held to their own keywords: an `enum` its type rejects, bounds
   no value satisfies, a `pattern` that is no regular expression, a `format`
   the type cannot carry, a keyword that cannot apply (`maxLength` on an

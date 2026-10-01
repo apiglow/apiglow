@@ -2,10 +2,13 @@
 
 exports[`audit report on the demo petstore > matches the recorded report 1`] = `
 "OpenAPI 3.2.0 — grade A (95/100)
-error 0 · warning 5 · info 63
+error 0 · warning 9 · info 63
 
-## correctness — 100 % over 348 checks
-  (no finding)
+## correctness — 99 % over 352 checks
+  warning responses-success — failForbidden
+  warning responses-success — failRateLimit
+  warning responses-success — failServerError
+  warning responses-success — failUnavailable
 
 ## completeness — 80 % over 236 checks
   warning parameter-described — uploadFile {"name":"additionalMetadata"}

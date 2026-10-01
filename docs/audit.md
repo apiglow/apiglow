@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (80 rules across the five §4
+2. **Curated, doc-oriented ruleset** (89 rules across the five §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -185,7 +185,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-80 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+89 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -432,6 +432,92 @@ graded like `field-without-value`: one check per defect, none otherwise.
   NOT). Every Server Object: root, Path Item, Operation, a Link's `server`.
   The base URL this documentation builds keeps the literal braces. A
   variable declared but unused is not reported.
+- `ref-siblings` (`warning`) — a key next to a `$ref` that the declared
+  version says to ignore (Reference Object, every version: "cannot be
+  extended with additional properties, and any properties added SHALL be
+  ignored"; 3.1/3.2: only `summary` and `description` are kept, and a
+  Schema's `$ref` combines with its sibling keywords as JSON Schema does).
+  So: in 3.0, every sibling, a Schema's included; from 3.1, a non-Schema
+  reference's siblings other than `summary` / `description`. This app lays
+  every sibling over a copy of the target (the loader, rule 19), so the
+  reader sees it and a tool honouring the declared version does not — the
+  finding is that disagreement. `x-` extensions are spared; a Path Item's
+  `$ref` is one of its fields, not a Reference Object. One check per
+  ignored sibling.
+- `ref-target-kind` (`error`) — a `$ref` whose target is another kind of
+  object than its place expects: a Schema where a Parameter belongs, a
+  `components/parameters` entry used as a response Header (which has no
+  `name` nor `in`), a Response as a Path Item. The loader substitutes
+  whatever it reaches, so the doc renders it as the wrong object and
+  validators reject the document. The target's kind is the one the typed
+  walk gave the node at that pointer, wherever it is declared; a target
+  that is itself a `$ref` stands for what it expects; a target the walk did
+  not type (another file, an extension, a payload) gets no verdict.
+- `ref-resolves` (`error`) — a `$ref` that leads nowhere: a missing
+  pointer, a file that cannot be read. The loader leaves it in place
+  instead of failing the document (`openapi-coverage.md` §4.4), so the rule
+  reads the dereferenced document: a `$ref` the typed walk saw whose
+  pointer still holds it there was not resolved. The reader sees nothing
+  where it stands; validators and generators stop on it. Reported once, at
+  the end of a chain (a `$ref` to a `$ref` that misses). A `$ref` inside an
+  example is data and never checked.
+- `runtime-expression-syntax` (`error`) — a runtime expression the OAS ABNF
+  does not produce ("Runtime Expressions", every
+  version): `$request.query` with no name, `$response.headers.X`,
+  `$request.body/id` without its `#`, a JSON pointer with a bare `~`, a
+  header name that is not a token. Read in a Callback's keys (the `{$…}`
+  parts of the URL template, or the whole key when it starts with `$`) and
+  in a Link's `parameters` values and `requestBody` when they are strings
+  (whole when starting with `$`, else the embedded `{$…}` parts; anything
+  else is a constant). Syntax only: whether `$request.path.id` names a
+  declared parameter is not checked — the spec's own examples read headers
+  no parameter can declare (`Accept`).
+- `encoding-valid` (`warning`) — an `encoding` entry no tool applies: its
+  key names no property of the media type's schema (MUST, all versions;
+  3.2 "Encoding By Name": such entries SHALL be ignored), or the media type
+  is not `multipart/*` or `application/x-www-form-urlencoded`, or — before
+  3.2 — it sits on a response rather than a request body (3.0/3.1: "SHALL
+  only apply to Request Body Objects"). The doc still lists it under the
+  media type; the try-it applies an encoding only to the form field
+  carrying its name. Properties are read through `allOf`; a schema open to
+  others (`additionalProperties` not `false`, `oneOf`/`anyOf`,
+  `patternProperties`) gets no verdict. One check per ignored entry.
+- `sequential-media` (`warning`) — 3.2's sequence fields where they cannot
+  apply (3.2 Media Type Object, "Sequential Media Types", "Encoding By
+  Position"): `itemSchema` on a single-document body — JSON, `+json`,
+  XML, `+xml`, form-urlencoded; the spec leaves "sequential" open, so only
+  those certain non-sequences are flagged — and `prefixEncoding` /
+  `itemEncoding` off `multipart/*` (SHALL only apply to multipart), next to
+  an `encoding` map (MUST NOT), or with neither an `itemSchema` nor an
+  array `schema` (MUST). The doc shows the `itemSchema` as "one item of the
+  stream" and lists the positional encodings whatever the media type,
+  describing a body the API does not send. Before 3.2 these fields are
+  `version-construct`'s.
+- `responses-success` (`warning`) — an operation documenting no 2XX or 3XX
+  code or range and no `default`, an empty Responses Object included (every
+  version: it MUST contain at least one response code, and "if only one response code is provided it
+  SHOULD be the response for a successful operation call"). Generators
+  type a method's return value from it; the doc shows only failures.
+  Webhooks and callbacks are out (the integrator's server answers them);
+  an operation with no Responses at all is legal from 3.1, and
+  `required-field-missing`'s in 3.0. The demo petstore's failure showcase
+  (`errors` tag) fires it on purpose.
+- `discriminator-property` (`warning`) — a `discriminator.propertyName` the
+  payload is not bound to carry: declared by neither the schema (through
+  `allOf`) nor every variant (each `oneOf`/`anyOf` member, or each component
+  extending a parent through `allOf`), or declared but not required — 3.0
+  and 3.1: it "SHOULD be required … the behavior when the property is
+  absent is undefined"; 3.2: optional only with a `defaultMapping` (MUST).
+  `warning`, not `error`: before 3.2 it is a SHOULD, and real documents
+  (GitHub's REST description) use optional discriminators. Mapping targets
+  are `discriminator-mapping`'s.
+- `security-scopes` (`error`) — a Security Requirement listing, for an
+  `oauth2` scheme, a scope none of its flows declares — the try-it
+  preselects an operation's scopes among the flow's, so it drops this one
+  and the token lacks it — or, in 3.0, any value for a scheme other than
+  `oauth2` / `openIdConnect` ("the array MUST be empty"; 3.1 allows role
+  names). `openIdConnect` scopes live in the provider's discovery document
+  and get no verdict; an undeclared scheme is `security-scheme-declared`'s.
 
 **Schemas.** The rules below read the dereferenced schemas (`ctx.schemas`,
 each reported once, at its component when it has one), except
