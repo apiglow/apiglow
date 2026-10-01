@@ -1,6 +1,7 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { dereferenceInternal } from './deref.js'
 import { normalizeDocument } from './model.js'
+import { isPayloadPointer } from './payload.js'
 import { applyOverlays } from './overlay.js'
 import { convertSwagger2, isSwagger2 } from './swagger2.js'
 import { readUserOverlay, seedUserOverlay, USER_OVERLAY_TOO_LARGE } from './user-overlay.js'
@@ -264,7 +265,7 @@ export async function loadApiModel(url, options = {}) {
         // Beyond the fast pass (external `$ref`, pointer through a ref, …):
         // the canonical crawler takes over, on a fresh document — `source`
         // may hold half-done substitutions from the aborted pass.
-        dereferenced = await $RefParser.dereference(baseUri ?? url, rebuild(), { resolve })
+        dereferenced = await crawl(baseUri ?? url, rebuild(), rebuild, resolve)
       }
     } else {
       // No text to rebuild from (or not rebuildable synchronously): the parsed
@@ -276,9 +277,7 @@ export async function loadApiModel(url, options = {}) {
       try {
         dereferenced = dereferenceInternal(clone)
       } catch {
-        dereferenced = await $RefParser.dereference(baseUri ?? url, structuredClone(source), {
-          resolve,
-        })
+        dereferenced = await crawl(baseUri ?? url, structuredClone(source), () => source, resolve)
       }
     }
   } catch (err) {
@@ -331,10 +330,7 @@ export async function loadInlineApiModel(source, options = {}) {
     try {
       dereferenced = dereferenceInternal(clone)
     } catch {
-      const fresh = structuredClone(doc)
-      dereferenced = baseUri
-        ? await $RefParser.dereference(baseUri, fresh, { resolve })
-        : await $RefParser.dereference(fresh, { resolve })
+      dereferenced = await crawl(baseUri, structuredClone(doc), () => doc, resolve)
     }
   } catch (err) {
     throw new SchemaLoadError('malformed', { cause: err })
@@ -343,6 +339,49 @@ export async function loadInlineApiModel(source, options = {}) {
   const result = loaded(() => doc, dereferenced, { ...options, baseUri }, overlaidDoc.diagnostics)
   await nextTask()
   return result
+}
+
+// ref-parser, with the two departures of the fast pass (deref.js) so that both
+// paths produce one document: payloads are not dereferenced, and a `$ref` that
+// cannot be resolved — a missing pointer, an unreadable file — stays as written
+// instead of failing the whole load. `original()` → the document before any
+// substitution, where those `$ref` nodes are read back from: ref-parser leaves
+// `null` in their place.
+async function crawl(base, document, original, resolve) {
+  const options = {
+    resolve,
+    continueOnError: true,
+    dereference: { excludedPathMatcher: isPayloadPointer },
+  }
+  try {
+    return base
+      ? await $RefParser.dereference(base, document, options)
+      : await $RefParser.dereference(document, options)
+  } catch (err) {
+    const partial = err?.files?.schema
+    const errors = err?.errors
+    if (!partial || !Array.isArray(errors) || !errors.every((e) => Array.isArray(e.path))) {
+      throw err
+    }
+    const before = original()
+    for (const { path } of errors) {
+      const ref = nodeAt(before, path)
+      if (ref && typeof ref.$ref === 'string' && path.length) {
+        const parent = nodeAt(partial, path.slice(0, -1))
+        if (parent && typeof parent === 'object') parent[path.at(-1)] = structuredClone(ref)
+      }
+    }
+    return partial
+  }
+}
+
+function nodeAt(root, path) {
+  let node = root
+  for (const key of path) {
+    if (node == null || typeof node !== 'object') return undefined
+    node = node[key]
+  }
+  return node
 }
 
 // Any document the app is handed as text, JSON or YAML. Exported for the

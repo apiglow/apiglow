@@ -74,6 +74,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A `$ref` that leads nowhere no longer stops the whole documentation from
+  loading: the rest renders, and the audit names the broken reference.
+- A `$ref` written inside an example (an API about JSON Schemas, say) is
+  shown as written, instead of being replaced by the schema it names.
+- A `description` or `summary` written next to a `$ref` now shows, as
+  OpenAPI 3.1 says: it used to be dropped on most documents and kept on the
+  ones with external references.
 - The audit no longer asks for examples on files: a download or an upload (a
   PDF, an export, an image) has no example to write, and neither
   `operation-examples` nor `response-example` counts one against you anymore.

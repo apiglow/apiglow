@@ -1,6 +1,7 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 import { describe, expect, it } from 'vitest'
 import { DerefBailout, dereferenceInternal } from '../src/openapi/deref.js'
+import { isPayloadPointer } from '../src/openapi/payload.js'
 import circular from './fixtures/circular.json'
 import keywords31 from './fixtures/keywords-3.1.json'
 import petstore30 from './fixtures/petstore-3.0.json'
@@ -67,16 +68,62 @@ describe('dereferenceInternal equivalence with ref-parser', () => {
   })
 })
 
+// The three places the fast pass and the loader's ref-parser options both
+// depart from a plain dereference — and still agree with each other.
+describe('dereferenceInternal on payloads, siblings and broken references', () => {
+  const crawl = (doc) =>
+    $RefParser.dereference(doc, {
+      continueOnError: true,
+      dereference: { excludedPathMatcher: isPayloadPointer },
+    })
+
+  it('leaves a $ref inside an example, a default or an enum as written', async () => {
+    const doc = {
+      components: {
+        schemas: {
+          Ref: { type: 'object', example: { $ref: '#/components/schemas/Ref' } },
+          // A property NAMED example is a schema, not a payload.
+          Holder: { properties: { example: { $ref: '#/components/schemas/Ref' } } },
+        },
+        examples: { Doc: { value: { $ref: '#/components/schemas/Ref' } } },
+      },
+      x: { schema: { default: { $ref: '#/a' }, examples: [{ $ref: '#/b' }] } },
+    }
+    const fast = dereferenceInternal(structuredClone(doc))
+    expect(fast.components.schemas.Ref.example).toEqual({ $ref: '#/components/schemas/Ref' })
+    expect(fast.components.examples.Doc.value).toEqual({ $ref: '#/components/schemas/Ref' })
+    expect(fast.x.schema.default).toEqual({ $ref: '#/a' })
+    expect(fast.x.schema.examples).toEqual([{ $ref: '#/b' }])
+    expect(fast.components.schemas.Holder.properties.example).toBe(fast.components.schemas.Ref)
+    expect(fast).toEqual(await crawl(structuredClone(doc)))
+  })
+
+  it('lays the siblings of a $ref over a copy of its target, as ref-parser does', async () => {
+    const doc = {
+      components: { parameters: { P: { name: 'p', in: 'query', description: 'Shared' } } },
+      a: { $ref: '#/components/parameters/P', description: 'Here' },
+      b: { $ref: '#/components/parameters/P' },
+    }
+    const fast = dereferenceInternal(structuredClone(doc))
+    expect(fast.a).toEqual({ name: 'p', in: 'query', description: 'Here' })
+    expect(fast.b).toBe(fast.components.parameters.P)
+    expect(fast.b.description).toBe('Shared')
+    expect(fast).toEqual(await crawl(structuredClone(doc)))
+  })
+
+  it('leaves a $ref to nothing in place rather than failing', () => {
+    const out = dereferenceInternal({ x: { $ref: '#/nowhere' }, y: { $ref: '#/a/b' }, a: {} })
+    expect(out.x).toEqual({ $ref: '#/nowhere' })
+    expect(out.y).toEqual({ $ref: '#/a/b' })
+  })
+})
+
 describe('dereferenceInternal bailouts', () => {
   const bails = (doc) => expect(() => dereferenceInternal(doc)).toThrow(DerefBailout)
 
   it('declines external references', () => {
     bails({ x: { $ref: 'https://example.com/schema.json#/Pet' } })
     bails({ x: { $ref: 'other.json#/Pet' } })
-  })
-
-  it('declines an unresolvable pointer', () => {
-    bails({ x: { $ref: '#/nowhere' } })
   })
 
   // A pointer routed through another `$ref` depends on walk order: met after

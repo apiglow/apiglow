@@ -107,6 +107,32 @@ describe('loadInlineApiModel', () => {
     expect(model.baseUri).toBe('https://api.example.com/specs/pets.json')
   })
 
+  // A broken reference costs the reader what it points at, not the whole
+  // document — and the audit names it (docs/audit.md, `ref-resolves`).
+  it('loads a document whose $refs lead nowhere, leaving them as written', async () => {
+    const doc = {
+      openapi: '3.1.0',
+      info: { title: 'Broken refs', version: '1' },
+      paths: {
+        '/pets': {
+          get: {
+            parameters: [
+              { $ref: '#/components/parameters/Missing' },
+              { $ref: 'missing-file.yaml#/Limit' },
+            ],
+            responses: { 200: { description: 'OK' } },
+          },
+        },
+      },
+    }
+    const { document, model } = await loadInlineApiModel(doc)
+    expect(document.paths['/pets'].get.parameters).toEqual([
+      { $ref: '#/components/parameters/Missing' },
+      { $ref: 'missing-file.yaml#/Limit' },
+    ])
+    expect(model.operations).toHaveLength(1)
+  })
+
   it('types the errors: unreadable JSON, unusable value, non-OpenAPI schema', async () => {
     // Neither JSON nor YAML: an unclosed flow mapping is malformed in both.
     await expect(loadInlineApiModel('{ nope')).rejects.toMatchObject({ code: 'malformed' })

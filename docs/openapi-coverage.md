@@ -147,7 +147,9 @@ Every combination of the three axes is an accepted input:
 OpenAPI 3.x or Swagger 2.0, serialized as JSON or YAML, by URL or inline
 (`.yml` included, and an extension-less URL — §4.4). `$self` (3.2) sets the
 document base URI: relative external `$ref`s and relative server URLs
-resolve against it when present, not against the fetch URL (§4.4).
+resolve against it when present, not against the fetch URL (§4.4). A
+`$ref` with siblings, a `$ref` inside an example, and a `$ref` that leads
+nowhere each have one defined outcome (§4.4).
 
 ### 2.6 Swagger 2.0
 
@@ -516,6 +518,24 @@ the document wants sent, and `prefillBody` uses it verbatim (§5.1).
   `model.baseUri` (resolved) feeds the shell's relative-server fallback —
   the shell keeps reading only the model, never the raw document
   (rule 10).
+- **`$ref` siblings**: the target is copied and the siblings laid over it,
+  whatever the declared version — the newest version's meaning (§3.2): 3.1
+  lets a Reference Object's `summary` and `description` override the
+  target's, and a Schema's `$ref` combine with its other keywords. 3.0
+  says to ignore siblings; this app shows them, and the audit's
+  `ref-siblings` says where other tools will not.
+- **Payloads are not dereferenced**: a `$ref` inside an `example`, a
+  `default`, a `const`, an `enum`, a Schema's `examples` list, an Example
+  Object's `value` / `dataValue` / `serializedValue` or a Link's
+  `parameters` / `requestBody` is data the API's author wrote — an API
+  about JSON Schemas has examples full of them — and stays as written.
+  Positions are tracked by what leads to a node (`src/openapi/payload.js`),
+  so a property *named* `example` is still a schema.
+- **A `$ref` that leads nowhere** — a missing pointer, an unreadable file —
+  stays in the document as written instead of failing the load: the rest
+  renders, and the audit's `ref-resolves` names it. The fast pass leaves it
+  in place; the library runs with `continueOnError` and the loader puts the
+  `$ref` back where it left `null`.
 
 **Audit**: `version-construct` covers `prefixEncoding`, `itemEncoding`,
 `nodeType`, `$self` (3.2-only constructs); `version-legacy` covers the two

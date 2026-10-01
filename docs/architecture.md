@@ -210,7 +210,10 @@ per spec — the merge rules live in [multi-spec.md §2](multi-spec.md).
   (external or `file:` refs, a pointer through a ref, a pure ref cycle)
   bails out and the library remains the reference implementation. The fast
   pass's output is pinned deep-equal to ref-parser's by unit test, shared
-  target identity and circular references included (§14.20).
+  target identity and circular references included (§14.20). Both paths
+  agree on the three cases a plain dereference gets wrong for OpenAPI —
+  siblings, payloads, broken references ([openapi-coverage.md](openapi-coverage.md)
+  §4.4).
 - The raw `source` the audit and the overlay dry run read is a **lazy
   getter**: for a JSON document the loader dereferences in place and rebuilds
   the pristine document from the fetched text on first access, so a session
