@@ -73,7 +73,12 @@ What it does:
     javascript, python, php, go, ruby, java, csharp — the languages the
     snippet generators emit, plus the ones an API doc writes in fences);
   - `json-p3` — RFC 9535 JSONPath, which Overlay 1.1 makes a MUST for an
-    action's `target`. Weight on `dist/app.js`: +14 kB gzipped, +63 kB raw.
+    action's `target`. Weight on `dist/app.js`: +14 kB gzipped, +63 kB raw;
+  - `js-yaml` — YAML 1.2 parsing with source offsets (`parseEvents`), for
+    the CLI to place an audit finding at its line and column in the file
+    the author edits. Already ref-parser's YAML parser, so it adds nothing
+    to `dist/app.js`; declared and pinned because the CLI imports it
+    directly, and ref-parser's caret range must not move that API under us.
 
   Every package here ships to every reader, so any addition is justified in
   this list with its role and its weight.

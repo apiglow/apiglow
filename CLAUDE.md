@@ -46,7 +46,7 @@ does not use it.
 - Vanilla JS ESM, Web Components in **light DOM**, zero framework, zero
   state-management lib.
 - Runtime dependencies: `@apidevtools/json-schema-ref-parser`, `marked`,
-  `dompurify`, `highlight.js`, `json-p3`, plus what **spec/format work**
+  `dompurify`, `highlight.js`, `json-p3`, `js-yaml`, plus what **spec/format work**
   justifies
   (`docs/architecture.md` §14.2). A new one
   is allowed only if it reads/transforms/queries/emits a document of a
@@ -188,7 +188,7 @@ daisyUI class with hand-written CSS.
 Tags, events, storage names, i18n keys are versioned contracts snapshotted
 in `public-surface.json` (`npm run check:surface`). What a third refactor
 pass finds to "improve" is mostly names — those are product decisions, never
-refactors. Runtime dependencies are exactly the five pinned
+refactors. Runtime dependencies are exactly the six pinned
 (`check:invariants` #20): adding one is a human checkpoint, never an agent
 decision.
 

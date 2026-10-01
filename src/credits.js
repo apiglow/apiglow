@@ -1,4 +1,4 @@
-// Third-party components that TRAVEL IN THE BUNDLE: the five runtime
+// Third-party components that TRAVEL IN THE BUNDLE: the runtime
 // dependencies plus the two CSS libraries compiled into app.css. Build tooling
 // (Vite, Vitest, Playwright, Biome) is deliberately absent — none of it reaches
 // the reader's browser, and listing it would bury the few notices that
@@ -58,6 +58,14 @@ export const BUNDLED_CREDITS = [
     version: '2.2.2',
     license: 'MIT',
     url: 'https://github.com/jg-rp/json-p3',
+  },
+  {
+    id: 'js-yaml',
+    pkg: 'js-yaml',
+    name: 'js-yaml',
+    version: '5.3.0',
+    license: 'MIT',
+    url: 'https://github.com/nodeca/js-yaml',
   },
   {
     id: 'highlight',

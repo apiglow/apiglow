@@ -489,17 +489,18 @@ for (const file of srcFiles) {
   }
 }
 
-// --- invariant 20 — the runtime dependency set is exactly the five pinned ----
+// --- invariant 20 — the runtime dependency set is exactly the pinned one -----
 //
 // §14.2 makes adding a runtime dep a human decision; this makes the decision
 // a two-file commit. Recording the names, not a count, so a swap (drop one,
-// add another) cannot slide through as "still five". Dev dependencies stay
+// add another) cannot slide through as "same count". Dev dependencies stay
 // unconstrained — they ship nothing.
 {
   const PINNED_RUNTIME_DEPS = [
     '@apidevtools/json-schema-ref-parser',
     'dompurify',
     'highlight.js',
+    'js-yaml',
     'json-p3',
     'marked',
   ]
