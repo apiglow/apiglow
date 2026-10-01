@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -320,6 +320,55 @@ describe('apiglow audit', () => {
     expect(json.specs.map((spec) => spec.id)).toEqual(['clean', 'pets'])
   })
 
+  // docs/audit.md §8.1: a monorepo's schemas in one run, each named by its path.
+  it('audits every file a pattern matches, each under its path', async () => {
+    for (const [name, source] of [
+      ['apis/pets', PETSTORE],
+      ['apis/clean', CLEAN],
+      ['node_modules/vendor', PETSTORE],
+    ]) {
+      await mkdir(join(dir, name), { recursive: true })
+      await copyFile(source, join(dir, name, 'openapi.json'))
+    }
+    const id = (name) => relative(process.cwd(), join(dir, name)).replaceAll('\\', '/')
+    const pattern = `${dir}/**/openapi.{yaml,json}`
+    const json = JSON.parse((await audit(pattern, '--format', 'json')).stdout)
+    // Sorted, and never what sits under node_modules.
+    expect(json.specs.map((spec) => spec.id)).toEqual([
+      id('apis/clean/openapi.json'),
+      id('apis/pets/openapi.json'),
+    ])
+
+    const baseline = join(dir, 'audit-baseline.json')
+    await audit(pattern, '--write-baseline', baseline)
+    expect(Object.keys(JSON.parse(await readFile(baseline, 'utf8')).specs)).toEqual([
+      id('apis/clean/openapi.json'),
+      id('apis/pets/openapi.json'),
+    ])
+
+    // Paths a shell expanded: the same ids as the pattern gives.
+    const listed = await audit(
+      join(dir, 'apis/pets/openapi.json'),
+      join(dir, 'apis/clean/openapi.json'),
+    )
+    expect(listed.stdout).toMatch(new RegExp(`^\\[${id('apis/pets/openapi.json')}\\]\n`))
+  })
+
+  it('warns about a pattern that matches nothing, and stops on it when asked', async () => {
+    const unmatched = `${dir}/none/*.yaml`
+    const warned = await audit(CLEAN, unmatched)
+    expect(warned.code).toBe(0)
+    expect(warned.stderr).toMatch(/^warning: no file matches ".*none\/\*\.yaml"$/m)
+
+    const strict = await audit(CLEAN, unmatched, '--fail-on-unmatched-globs')
+    expect(strict.code).toBe(2)
+    expect(strict.stderr).toMatch(/^apiglow audit: no file matches ".*none\/\*\.yaml"$/)
+
+    // Nothing at all to audit is never a pass.
+    const nothing = await audit(unmatched)
+    expect(nothing.code).toBe(2)
+  })
+
   // A leading `/` in a config means the site root, which on disk is the config's
   // own directory (docs/seo.md §4): the declarations below are relative to it.
   it('resolves what a config names against the config file, overlays applied', async () => {
@@ -341,10 +390,9 @@ describe('apiglow audit', () => {
     expect(overlaid.specs[0].report).not.toEqual(plain.specs[0].report)
   })
 
-  it('cannot run without exactly one input, nor on a value it does not know', async () => {
+  it('cannot run without an input, nor on a value it does not know', async () => {
     const cases = [
       [[], /a schema or --config is required/],
-      [[CLEAN, PETSTORE], /one schema per run, got 2/],
       [[CLEAN, '--config', 'x.json'], /a schema or --config, not both/],
       [[CLEAN, '--fail-on', 'fatal'], /--fail-on must be one of error, warning, info, none/],
       [[CLEAN, '--min-grade', 'E'], /--min-grade must be one of A, B, C, D, F/],
@@ -495,7 +543,7 @@ describe('apiglow audit', () => {
 
   it('prints its usage', async () => {
     const { stdout } = await audit('--help')
-    expect(stdout).toMatch(/^Usage: apiglow audit <spec> \[options\]/)
+    expect(stdout).toMatch(/^Usage: apiglow audit <spec>\.\.\. \[options\]/)
     expect(stdout).toContain('Exit status: 0 passed, 1 a check failed, 2 the audit could not run.')
   })
 })

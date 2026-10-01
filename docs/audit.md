@@ -599,6 +599,7 @@ It loads the schema the way the app does (`src/openapi/loader.js`), runs
 
 ```
 npx apiglow audit openapi.yaml
+npx apiglow audit 'apis/**/openapi.{yaml,json}'
 npx apiglow audit --config apidoc.config.json
 ```
 
@@ -609,6 +610,16 @@ npx apiglow audit --config apidoc.config.json
   marked hidden, and every spec of a multi-spec install is audited. What it
   names is read under the config file's own directory, exactly as the bake
   reads it ([`seo.md`](seo.md) §4).
+- **Several schemas** — a monorepo's: several paths, or a pattern, quoted so
+  that the command expands it rather than the shell (`*`, `**`, `?`,
+  `[…]`, `{a,b}`; `node_modules` and `.git` are never walked). Each file
+  is audited as its own spec, its id the path relative to the working
+  directory — the repository root in a CI job — so the reports and the
+  baseline name the file, and adding a schema never shifts the others'
+  ids. A single path keeps the id `default`.
+  - A pattern matching no file is a warning; `--fail-on-unmatched-globs`
+    makes it stop the run (exit status 2). Nothing at all to audit always
+    does: a CI check never passes on nothing.
 - **Rule configuration**: the config's `audit` block (§2.2), or
   `--audit-config <file>` — a JSON file holding the block alone, for a run
   that has no host config or wants to grade differently from the published
@@ -688,8 +699,8 @@ npx apiglow audit --config apidoc.config.json
   each check, the verdict — on stderr. `--format json > report.json` and
   `--format markdown >> "$GITHUB_STEP_SUMMARY"` therefore hold exactly the
   report.
-- **Multi-spec**: one report per spec, in declaration order, each under
-  its spec id (`[id]` in text, `<!-- spec: id -->` in Markdown, `id` in
+- **Multi-spec**: one report per spec, in declaration order (path order
+  for several files), each under its spec id (`[id]` in text, `<!-- spec: id -->` in Markdown, `id` in
   JSON). The run fails when any spec fails.
 
 ### 8.2 Checks and exit status

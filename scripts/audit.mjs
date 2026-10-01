@@ -9,7 +9,7 @@
 // `--format markdown >> "$GITHUB_STEP_SUMMARY"` stay exactly the report.
 
 import { createHash } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { glob, readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -52,16 +52,27 @@ const LISTED = 20
 // a Windows path, not a URL with the scheme `c`.
 const IS_URL = /^[a-z][a-z0-9+.-]*:\/\//i
 
-// Every spec the config declares, audited → { audits: [{ id, source, report }],
-// warnings }. The whole document is audited whatever `features.audit` says:
-// that switch removes the page from the published documentation, and an author
-// running the command asked for the report.
-export async function audit({ config: raw, base = pathToFileURL(`${process.cwd()}/`) } = {}) {
+// What makes an argument a pattern rather than a path.
+const GLOB = /[*?[\]{}]/
+
+// Never what a pattern means to reach, and the slowest trees to walk.
+const SKIPPED_DIRECTORIES = /(^|[\\/])(node_modules|\.git)$/
+
+// Every spec the config declares — or every file of `files`, [{ id, url }] —
+// audited → { audits: [{ id, source, report }], warnings }. The whole document
+// is audited whatever `features.audit` says: that switch removes the page from
+// the published documentation, and an author running the command asked for the
+// report.
+export async function audit({
+  config: raw,
+  base = pathToFileURL(`${process.cwd()}/`),
+  files,
+} = {}) {
   const config = hostConfig(raw)
   const warnings = []
   let specsConfig
   try {
-    specsConfig = normalizeSpecsConfig(config.openapi)
+    specsConfig = files ? filesConfig(files) : normalizeSpecsConfig(config.openapi)
   } catch (err) {
     throw new CliError(err.message)
   }
@@ -78,7 +89,7 @@ export async function audit({ config: raw, base = pathToFileURL(`${process.cwd()
     // one outcome a CI check must never produce.
     const { config: rules, errors } = readAuditConfig(effective.audit)
     if (errors.length) {
-      const prefix = specsConfig.multi ? `spec "${spec.id}": ` : ''
+      const prefix = specsConfig.multi || files ? `spec "${spec.id}": ` : ''
       throw new CliError(errors.map((error) => `${prefix}${error}`).join('\n'))
     }
     // The source as its author wrote it — a path for a file, not a `file:` URL.
@@ -92,6 +103,14 @@ export async function audit({ config: raw, base = pathToFileURL(`${process.cwd()
     })
   }
   return { audits, warnings }
+}
+
+// Each file is the one-spec config the app would boot on, under its own id —
+// a path, which a config's ids could never be, and need not: these ids name
+// nothing but the file, in the reports and the baseline.
+function filesConfig(files) {
+  const specs = files.map(({ id, url }) => ({ ...normalizeSpecsConfig({ url }).specs[0], id }))
+  return { multi: false, specs, warnings: [] }
 }
 
 // Every finding gains `position: { file, line, column }` — where its node sits
@@ -183,10 +202,14 @@ function displayPath(url) {
   return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel : path
 }
 
-const USAGE = `Usage: apiglow audit <spec> [options]
+const USAGE = `Usage: apiglow audit <spec>... [options]
        apiglow audit --config <file> [options]
 
-  <spec>             path or URL of the OpenAPI document (JSON or YAML)
+  <spec>             path or URL of the OpenAPI document (JSON or YAML), or a
+                     quoted pattern ('apis/**/openapi.{yaml,json}'); several
+                     schemas are audited each under its path
+  --fail-on-unmatched-globs
+                     stop when a pattern matches no file (default: a warning)
   --config           the JSON config the host page inlines in #api-doc-config:
                      its overlays, hidden operations, rule configuration
                      (audit) and every spec it declares
@@ -222,12 +245,17 @@ export async function main(args) {
   const options = checkOptions(values, positionals)
   useDictionary(values.language, await catalog(values.language))
 
-  const input = positionals[0] ? fromSpec(positionals[0]) : await fromConfig(values.config)
+  const input = !positionals.length
+    ? await fromConfig(values.config)
+    : positionals.length === 1 && (IS_URL.test(positionals[0]) || !GLOB.test(positionals[0]))
+      ? fromSpec(positionals[0])
+      : await fromFiles(positionals, { strict: values['fail-on-unmatched-globs'] })
   // The rule configuration of a run that has no host config to carry it — or
   // that wants to grade differently from the published page.
   if (values['audit-config'])
     input.config = { ...input.config, audit: await auditConfigFile(values['audit-config']) }
   const { audits, warnings } = await audit(input)
+  warnings.unshift(...(input.warnings ?? []))
   const known = values.baseline ? await baselineFile(values.baseline) : null
 
   const results = audits.map(({ id, source, report: graded }) => {
@@ -305,6 +333,7 @@ function parse(args) {
         'min-severity': { type: 'string' },
         'only-new': { type: 'boolean', default: false },
         language: { type: 'string', default: 'en' },
+        'fail-on-unmatched-globs': { type: 'boolean', default: false },
         help: { type: 'boolean', default: false },
       },
     })
@@ -320,7 +349,6 @@ function checkOptions(values, positionals) {
   const refuse = (message) => {
     throw new CliError(`${message}\n\n${USAGE}`)
   }
-  if (positionals.length > 1) refuse(`one schema per run, got ${positionals.length}`)
   if (!positionals.length && !values.config) refuse('a schema or --config is required')
   if (positionals.length && values.config) refuse('a schema or --config, not both')
   if (values.baseline && values['write-baseline']) {
@@ -401,6 +429,44 @@ function fromSpec(spec) {
   const url = !IS_URL.test(spec) && isAbsolute(spec) ? pathToFileURL(spec).href : spec
   return { config: { openapi: { url } } }
 }
+
+// Several schemas, or a pattern (docs/audit.md §8.1): each file its own spec,
+// its id the path relative to the working directory — the repository root, in
+// a CI job — so that the reports and the baseline name the file, and a file
+// added next to the others never shifts their ids. A path stays as typed, like
+// a lone schema's; a URL is its own id.
+async function fromFiles(patterns, { strict }) {
+  const files = []
+  const ids = new Set()
+  const warnings = []
+  for (const pattern of patterns) {
+    const literal = IS_URL.test(pattern) || !GLOB.test(pattern)
+    const matches = literal ? [pattern] : (await Array.fromAsync(glob(pattern, { exclude }))).sort()
+    if (!matches.length) {
+      if (strict) throw new CliError(`no file matches "${pattern}"`)
+      warnings.push(`no file matches "${pattern}"`)
+    }
+    for (const match of matches) {
+      const url = IS_URL.test(match)
+        ? match
+        : isAbsolute(match)
+          ? pathToFileURL(match).href
+          : match.replaceAll('\\', '/')
+      const id = IS_URL.test(match)
+        ? match
+        : relative(process.cwd(), resolvePath(match)).replaceAll('\\', '/')
+      if (ids.has(id)) continue
+      ids.add(id)
+      files.push({ id, url })
+    }
+  }
+  // Passing on nothing audited is the one outcome a CI check must never produce.
+  if (!files.length)
+    throw new CliError(`no file matches ${patterns.map((p) => `"${p}"`).join(', ')}`)
+  return { config: {}, files, warnings }
+}
+
+const exclude = (name) => SKIPPED_DIRECTORIES.test(name)
 
 // SHA-256 of the finding's identity: fixed length and free of separators, so
 // that a CI surface keying on it (SARIF, GitLab Code Quality) can take it as is.
