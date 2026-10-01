@@ -51,14 +51,16 @@ export const versionConstruct = {
       if (type === 'Schema' || type === 'Reference' || PATTERNED.has(type)) continue
       for (const [key, field] of Object.entries(OBJECTS[type])) {
         if (node[key] === undefined) continue
+        const versioned = field.since ? null : field.values?.find((v) => v.value === node[key])
+        const since = field.since ?? versioned?.since
+        if (!since) continue
         const at = `${dataPath}${pointer(key)}`
-        const target = { ...placeOf(ctx.operations, at), dataPath: at }
-        if (field.since) {
-          report(field.since, fieldSpelling(type, key), target)
-          continue
-        }
-        const versioned = field.values?.find((entry) => entry.value === node[key])
-        if (versioned?.since) report(versioned.since, `${key}: ${node[key]}`, target)
+        // Where it belongs only matters to a finding: looked up for those alone,
+        // a 12 MB document passes tens of thousands of these.
+        const target = covers(since)
+          ? { dataPath: at }
+          : { ...placeOf(ctx.operations, at), dataPath: at }
+        report(since, field.since ? fieldSpelling(type, key) : `${key}: ${node[key]}`, target)
       }
     }
 
