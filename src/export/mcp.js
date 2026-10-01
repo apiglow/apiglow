@@ -72,8 +72,9 @@ function prune(obj) {
 // A bridge talks to the API over plain HTTP requests, so a scheme whose
 // credential does not travel in a header (`apiKey` in a query or a cookie,
 // `mutualTLS`) has nothing to put here — the caller reports it rather than
-// emitting a header the API will ignore.
-function headerFor(scheme) {
+// emitting a header the API will ignore. The audit's `bridge-degradation` rule
+// asks this same function, so what it reports is what this export does.
+export function credentialHeader(scheme) {
   if (scheme.type === 'http') {
     if (scheme.scheme === 'basic')
       return { name: 'Authorization', value: 'Basic BASE64_CREDENTIALS' }
@@ -99,7 +100,7 @@ function authHeaders(schemes) {
   for (const scheme of schemes) {
     // A deprecated scheme is not what a new integration should be wired to.
     if (scheme.deprecated) continue
-    const header = headerFor(scheme)
+    const header = credentialHeader(scheme)
     if (!header) {
       unsupported.push(scheme.name)
       continue

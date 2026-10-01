@@ -97,6 +97,7 @@
       "Widget": {
         "type": "object",
         "description": "One widget.",
+        "examples": [{ "widgetId": "w-2", "displayName": "Second widget" }],
         "required": ["widgetId", "displayName"],
         "properties": {
           "widgetId": {

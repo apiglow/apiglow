@@ -3,7 +3,14 @@
 // category name or on where a grade boundary sits.
 
 // Declaration order = display order of the report.
-export const CATEGORIES = ['correctness', 'completeness', 'deprecation', 'consistency', 'readiness']
+export const CATEGORIES = [
+  'correctness',
+  'completeness',
+  'deprecation',
+  'consistency',
+  'readiness',
+  'agent',
+]
 
 // Severity order, most severe first: sorting inside a category, and the order
 // counts are displayed in.

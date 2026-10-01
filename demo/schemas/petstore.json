@@ -2633,6 +2633,11 @@
               "available",
               "pending",
               "sold"
+            ],
+            "x-enum-descriptions": [
+              "Listed and ready to be ordered",
+              "Ordered, waiting for the adoption to complete",
+              "Adopted — no longer listed"
             ]
           }
         },

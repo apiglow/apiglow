@@ -348,6 +348,7 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Send pipeline, CORS proxy, request building | `send.test.js`, `request-builder.test.js` | `tryit.spec.js` |
 | Operation/path-level `servers` precedence; cancelable send | `request-builder.test.js`, `model.test.js` | `tryit.spec.js` |
 | Schema type → form field (arrays, objects, maps, tuples, enums) | `params.test.js`, `model.test.js`, `coerce.test.js` | `tryit.spec.js` |
+| Enum value descriptions (`x-enum-descriptions`, `x-enumDescriptions`, a `oneOf` of constants) listed with their values | `model.test.js` | `schema-keywords.spec.js` |
 | Parameter serialization (`style`/`explode`, deepObject) | `params.test.js`, `request-builder.test.js` | `tryit.spec.js` |
 | Body kinds (binary/file, multipart, urlencoded) | `body-kind.test.js`, `request-builder.test.js`, `send.test.js` | `bodies.spec.js` |
 | File contents never leave the tab (only name/size/type travel) | `file-containment.test.js` | `bodies.spec.js` |
@@ -378,9 +379,9 @@ logic with no browser surface, or behavior only observable end-to-end).
 | An `allOf` body or sample carries every member's properties | `all-of.test.js` | `bodies.spec.js` |
 | A 3.2 custom method is sent as the document spells it | `model.test.js` | — |
 | Schema audit report as Markdown | `audit-export.test.js` | `audit.spec.js` |
-| `apiglow audit` command line: console report, versioned JSON with fingerprints, SARIF / GitHub annotations / GitLab Code Quality, several reports per run, positions (`file:line:column` through `$ref`s), baseline, checks, exit status, input forms, multi-spec, the packaged bin (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-positions.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
-| Audit rule configuration: rules off / re-graded, path overrides, per-spec merge, validation, the custom profile on the page and in every report (`docs/audit.md` §2.2) | `audit-config.test.js`, `audit-cli.test.js` | `audit.spec.js` |
-| Schema audit strings (one `message` / `why` / `label` per rule, en + fr) | `audit-strings.test.js` | — |
+| `apiglow audit` command line: console report, versioned JSON with fingerprints, SARIF / GitHub annotations / GitLab Code Quality, several reports per run, positions (`file:line:column` through `$ref`s), baseline, checks, exit status, input forms, multi-spec, `--explain` / `--list-rules`, the packaged bin and agent skill (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-positions.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
+| Audit rule configuration: rules off / re-graded, rule options, path overrides, per-spec merge, validation, the custom profile on the page and in every report (`docs/audit.md` §2.2) | `audit-config.test.js`, `audit-cli.test.js` | `audit.spec.js` |
+| Schema audit strings (one `message` / `why` / `fix` / `label` per rule, en + fr) | `audit-strings.test.js` | — |
 | Schema audit page: identity, jumps, help, folding by rule | — | `audit.spec.js`, `perf.spec.js` |
 | Host feature switches (`features.audit`, `features.scenarios`, `features.ci`, `features.onboarding`): every entry point closed | — | `audit-disabled.spec.js`, `scenarios-disabled.spec.js`, `first-touch.spec.js` |
 | Header bar: the four zones, one line from 320 px, the search trigger at every width, what the status badges drop and keep (`docs/architecture.md` §5.16) | — | `header.spec.js`, `reflow.spec.js`, `mobile.spec.js` |

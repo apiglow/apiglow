@@ -65,3 +65,12 @@ test('expands a quoted pattern and writes SARIF from the bundle', async () => {
     'apiglow-audit/tests/e2e/fixtures/e2e-api-clean.json/',
   ])
 })
+
+test('explains its rules from the bundle, in the shipped catalogs too', async () => {
+  const listed = await audit('--list-rules')
+  expect(listed.code).toBe(0)
+  expect(JSON.parse(listed.stdout).rules.length).toBeGreaterThan(90)
+  const explained = await audit('--explain', 'operation-id-present', '--language', 'fr')
+  expect(explained.stdout).toContain('Comment corriger')
+})
+

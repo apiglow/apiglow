@@ -9,18 +9,21 @@ exports[`audit JSON report > declares its format and version, and carries the ru
       "category": "correctness",
       "fix": "Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).",
       "label": "Duplicate operationId",
+      "message": "operationId “{operationId}” is used by more than one operation.",
       "why": "An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.",
     },
     "operation-tagged": {
       "category": "readiness",
       "fix": "Add at least one tag, and declare it with a description in the top-level tags list.",
       "label": "Operation without tag",
+      "message": "This operation carries no tag.",
       "why": "It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.",
     },
     "security-scheme-described": {
       "category": "readiness",
       "fix": "Add a description to the scheme saying where to get the credential and in what form to paste it.",
       "label": "Security scheme without description",
+      "message": "Security scheme “{name}” has no description.",
       "why": "The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.",
     },
   },
@@ -497,5 +500,81 @@ How to fix: Add a description to the scheme saying where to get the credential a
     },
   ],
   "version": "2.1.0",
+}
+`;
+
+exports[`audit rule descriptions > explains one rule: its texts, severity and options 1`] = `
+"operation-id-present — Docs readiness · Warning
+Operation without operationId
+
+Why it matters: That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.
+How to fix: Give the operation a stable, unique operationId — a verb and a noun, in letters, digits and underscores (listPets).
+
+Options:
+  depth = 3 (1–9)
+"
+`;
+
+exports[`audit rule descriptions > lists the rules as a versioned JSON document 1`] = `
+{
+  "categories": [
+    {
+      "id": "correctness",
+      "label": "Correctness",
+    },
+    {
+      "id": "completeness",
+      "label": "Documentation",
+    },
+    {
+      "id": "deprecation",
+      "label": "Deprecation",
+    },
+    {
+      "id": "consistency",
+      "label": "Consistency",
+    },
+    {
+      "id": "readiness",
+      "label": "Docs readiness",
+    },
+    {
+      "id": "agent",
+      "label": "Agent readiness",
+    },
+  ],
+  "format": "apiglow-audit-rules",
+  "rules": [
+    {
+      "category": "readiness",
+      "fix": "Give the operation a stable, unique operationId — a verb and a noun, in letters, digits and underscores (listPets).",
+      "id": "operation-id-present",
+      "label": "Operation without operationId",
+      "message": "No operationId — the deep link falls back to “{fallbackId}”.",
+      "severity": "warning",
+      "why": "That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.",
+    },
+    {
+      "category": "readiness",
+      "fix": "Give the operation a stable, unique operationId — a verb and a noun, in letters, digits and underscores (listPets).",
+      "id": "operation-id-present",
+      "label": "Operation without operationId",
+      "message": "No operationId — the deep link falls back to “{fallbackId}”.",
+      "options": {
+        "depth": {
+          "default": 3,
+          "max": 9,
+          "min": 1,
+        },
+      },
+      "severity": "warning",
+      "why": "That fallback is derived from the method and the path, so every link a reader shares breaks the day the path is renamed.",
+    },
+  ],
+  "tool": {
+    "name": "apiglow",
+    "version": "0.0.0",
+  },
+  "version": 1,
 }
 `;

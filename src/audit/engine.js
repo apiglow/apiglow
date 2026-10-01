@@ -10,7 +10,7 @@
 // and the audit page renders findings, not the schema.
 
 import { listOf, operationKey, pathItemOperations, webhookKey } from '../openapi/model.js'
-import { auditProfile, severityResolver } from './config.js'
+import { auditProfile, optionsResolver, severityResolver } from './config.js'
 import { CATEGORIES, SEVERITIES, SEVERITY_WEIGHT, gradeFor } from './constants.js'
 import { walkObjects } from './openapi-objects.js'
 import { pointer } from './pointer.js'
@@ -42,6 +42,7 @@ export function auditSchema(input, rules = RULES) {
 export function* auditRun(input, rules = RULES) {
   const ctx = createAuditContext(input)
   const severityFor = severityResolver(input.config)
+  const optionsFor = optionsResolver(input.config)
   yield
   // The typed walk of the source is a slice's worth of work on a heavy
   // document: it gets a step of its own rather than landing in the first rule
@@ -56,6 +57,7 @@ export function* auditRun(input, rules = RULES) {
       rules.filter((rule) => rule.category === id),
       ctx,
       severityFor,
+      optionsFor,
     )
     // A category with no applicable check (no rule yet, or nothing in the
     // document to check) is absent from the report rather than scored 0 — an
@@ -141,19 +143,27 @@ function countTags(ctx) {
 // check that does not count. Per check rather than per rule, because a rule's
 // severity can depend on where it applies; the default is the rule's own.
 // `weight` and `passedWeight` are the check weights the category score sums.
-export function runRule(rule, ctx, severityAt = () => rule.severity) {
+// `options`: the values of the options the rule declares (`rule.options`),
+// its defaults unless the configuration set them.
+export function runRule(
+  rule,
+  ctx,
+  severityAt = () => rule.severity,
+  options = optionsResolver()(rule),
+) {
   const findings = []
   let checks = 0
   let weight = 0
   let passedWeight = 0
-  rule.run(ctx, (passed, target = {}) => {
+  const check = (passed, target = {}) => {
     const severity = severityAt(dataPathOf(target))
     if (!severity) return
     checks += 1
     weight += SEVERITY_WEIGHT[severity]
     if (passed) passedWeight += SEVERITY_WEIGHT[severity]
     else findings.push({ ...buildFinding(rule, target), severity })
-  })
+  }
+  rule.run(ctx, check, options)
   return { checks, weight, passedWeight, findings }
 }
 
@@ -182,7 +192,7 @@ export function createAuditContext({ source, document, model }) {
   }
 }
 
-function* runCategory(id, rules, ctx, severityFor) {
+function* runCategory(id, rules, ctx, severityFor, optionsFor) {
   const findings = []
   let checks = 0
   let weighted = 0
@@ -191,7 +201,7 @@ function* runCategory(id, rules, ctx, severityFor) {
     const severityAt = severityFor(rule)
     // Switched off everywhere: not run at all, so it costs nothing either.
     if (!severityAt) continue
-    const result = runRule(rule, ctx, severityAt)
+    const result = runRule(rule, ctx, severityAt, optionsFor(rule))
     checks += result.checks
     weighted += result.weight
     weightedPassed += result.passedWeight

@@ -323,6 +323,7 @@ describe('audit report', () => {
       'completeness',
       'deprecation',
       'readiness',
+      'agent',
     ])
   })
 

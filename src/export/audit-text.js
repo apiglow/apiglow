@@ -101,3 +101,26 @@ function occurrenceLines(finding) {
     ...(where ? [`      ${where}`] : []),
   ]
 }
+
+// One rule, as `apiglow audit --explain <id>` prints it (docs/audit.md §8.1):
+// what a reader or an agent needs before acting on its findings — the
+// rationale and the recipe, the severity it is graded at, and the options the
+// configuration can set. The texts are the templates the findings
+// interpolate: `{name}` stands for each finding's own value.
+export function toAuditRuleText(rule) {
+  const lines = [
+    `${rule.id} — ${t(`audit.category.${rule.category}`)} · ${t(`audit.severity.${rule.severity}`)}`,
+    t(`audit.rule.${rule.id}.label`),
+    '',
+    `${t('audit.why')}: ${t(`audit.rule.${rule.id}.why`)}`,
+    `${t('audit.howToFix')} ${t(`audit.rule.${rule.id}.fix`)}`,
+  ]
+  const options = Object.entries(rule.options ?? {})
+  if (options.length) {
+    lines.push('', `${t('audit.options')}:`)
+    for (const [name, { default: value, min, max }] of options) {
+      lines.push(`  ${name} = ${value} (${min}–${max ?? '∞'})`)
+    }
+  }
+  return `${lines.join('\n')}\n`
+}

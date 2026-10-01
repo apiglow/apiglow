@@ -53,9 +53,9 @@ test('the report grades the schema and scores each category', async ({ page }) =
   await gotoApp(page, '#/audit')
   const header = report(page).locator('[data-audit-summary]')
   await expect(header).toContainText('B')
-  await expect(header).toContainText('85 / 100')
+  await expect(header).toContainText('86 / 100')
   await expect(header).toContainText('12 warning(s)')
-  await expect(header).toContainText('31 note(s)')
+  await expect(header).toContainText('35 note(s)')
   // One bar per scored category, including the one with no finding: a 100 % is
   // exactly what the author wants to see.
   await expect(header).toContainText('Correctness')
@@ -69,12 +69,13 @@ test('the report grades the schema and scores each category', async ({ page }) =
   )
 
   // A category with no finding gets no section: only its bar above. Here
-  // correctness, deprecation and consistency are clean, so two sections remain,
-  // in the report's own category order.
+  // correctness, deprecation and consistency are clean, so three sections
+  // remain after the summary's, in the report's own category order.
   const sections = report(page).locator('section h2')
-  await expect(sections).toHaveCount(3)
+  await expect(sections).toHaveCount(4)
   await expect(sections.nth(1)).toContainText('Documentation')
-  await expect(sections.last()).toContainText('Docs readiness')
+  await expect(sections.nth(2)).toContainText('Docs readiness')
+  await expect(sections.last()).toContainText('Agent readiness')
 })
 
 // A report read out of context — a pasted screenshot, a tab left open — has to
@@ -290,7 +291,7 @@ test('the report is copied as Markdown, findings and rationales included', async
   await report(page).locator('[data-audit-copy]').click()
   const markdown = await clipboardText(page)
   expect(markdown).toContain('# Schema audit — E2E Test API')
-  expect(markdown).toContain('**Grade B** — 85 / 100 · Version 1.0.0 · OpenAPI 3.1.0')
+  expect(markdown).toContain('**Grade B** — 86 / 100 · Version 1.0.0 · OpenAPI 3.1.0')
   // Stamped to the second: a report pasted into a ticket has to say when it was
   // taken, or a reader cannot tell whether it still describes the schema.
   expect(markdown).toMatch(/Generated on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d/)

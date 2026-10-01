@@ -459,6 +459,7 @@ describe('apiglow audit', () => {
     expect(json.specs[0].report.profile).toEqual({
       custom: true,
       rules: { 'parameter-described': 'error' },
+      options: {},
       overrides: 1,
     })
   })
@@ -583,6 +584,24 @@ describe('apiglow audit', () => {
       server.closeAllConnections()
       server.close()
     }
+  })
+
+  it('explains a rule, or lists them all, without auditing anything', async () => {
+    const explained = await audit('--explain', 'operation-id-present', '--language', 'fr')
+    expect(explained.code ?? 0).toBe(0)
+    expect(explained.stdout).toMatch(/^operation-id-present — /)
+    expect(explained.stdout).toContain('Comment corriger')
+
+    const listed = await audit('--list-rules')
+    const { format, rules } = JSON.parse(listed.stdout)
+    expect(format).toBe('apiglow-audit-rules')
+    expect(rules.map((rule) => rule.id)).toContain('operation-id-present')
+
+    const unknown = await audit('--explain', 'operation-id')
+    expect(unknown.code).toBe(2)
+    expect(unknown.stderr).toContain('did you mean duplicate-operation-id, operation-id-present,')
+    // A schema next to them would be silently ignored: refused instead.
+    expect((await audit('--list-rules', CLEAN)).code).toBe(2)
   })
 
   it('prints its usage', async () => {

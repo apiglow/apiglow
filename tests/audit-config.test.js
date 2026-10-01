@@ -8,8 +8,15 @@ import { auditInput, doc, okResponse } from './audit-context.js'
 // The rule configuration (docs/audit.md §2.2, §3): what it accepts, how it
 // re-grades a run, and how the report says it was used.
 
-const IDS = ['a', 'b', 'c']
-const read = (raw) => readAuditConfig(raw, IDS)
+const RULES = [
+  { id: 'a' },
+  { id: 'b' },
+  {
+    id: 'c',
+    options: { maxLength: { default: 64, min: 1 }, depth: { default: 3, min: 1, max: 9 } },
+  },
+]
+const read = (raw) => readAuditConfig(raw, RULES)
 
 // A synthetic rule failing once at each pointer it is given.
 const rule = (id, severity, pointers, category = 'correctness') => ({
@@ -66,7 +73,32 @@ describe('readAuditConfig', () => {
   })
 
   it('has nothing to say about an absent block', () => {
-    expect(read(undefined)).toEqual({ config: { rules: {}, overrides: [] }, errors: [] })
+    expect(read(undefined)).toEqual({
+      config: { rules: {}, options: {}, overrides: [] },
+      errors: [],
+    })
+  })
+
+  it("reads a rule's options next to its severity, and refuses what the rule does not take", () => {
+    const { config, errors } = read({
+      rules: {
+        c: { severity: 'warning', maxLength: 128, depth: 10 },
+        a: { maxLength: 3 },
+        b: { severity: 'loud' },
+      },
+      overrides: [{ paths: ['/x'], rules: { c: { maxLength: 9 } } }],
+    })
+    expect(errors).toEqual([
+      'audit.rules.c.depth: expected an integer, 1 to 9',
+      'audit.rules.a.maxLength: unknown option — this rule takes none',
+      'audit.rules.b.severity: "loud" is not one of error, warning, info, off',
+      'audit.overrides[0].rules.c: options are set under audit.rules, for the whole document',
+    ])
+    expect(config.rules).toEqual({ c: 'warning' })
+    expect(config.options).toEqual({ c: { maxLength: 128 } })
+    expect(read({ rules: { c: { maxLength: 0 } } }).errors).toEqual([
+      'audit.rules.c.maxLength: expected an integer, 1 or more',
+    ])
   })
 
   it('checks rule ids against the shipped registry by default', () => {
@@ -158,13 +190,40 @@ describe('a configured run', () => {
     expect(run({}, [rule('a', 'info', ['/x'])]).profile).toEqual({
       custom: false,
       rules: {},
+      options: {},
       overrides: 0,
     })
     expect(
       run({ rules: { a: 'error' }, overrides: [{ paths: ['/x'], rules: { b: 'off' } }] }, [
         rule('a', 'info', ['/x']),
       ]).profile,
-    ).toEqual({ custom: true, rules: { a: 'error' }, overrides: 1 })
+    ).toEqual({ custom: true, rules: { a: 'error' }, options: {}, overrides: 1 })
+    // An option alone moves the yardstick as much as a severity does.
+    expect(run({ rules: { c: { maxLength: 9 } } }, [rule('a', 'info', [])]).profile).toEqual({
+      custom: true,
+      rules: {},
+      options: { c: { maxLength: 9 } },
+      overrides: 0,
+    })
+  })
+
+  it('hands a rule its options: the configured ones over its defaults', () => {
+    const seen = []
+    const spy = {
+      ...RULES[2],
+      category: 'correctness',
+      severity: 'info',
+      run: (_ctx, check, options) => {
+        seen.push(options)
+        check(true, {})
+      },
+    }
+    run({}, [spy])
+    run({ rules: { c: { depth: 5 } } }, [spy])
+    expect(seen).toEqual([
+      { maxLength: 64, depth: 3 },
+      { maxLength: 64, depth: 5 },
+    ])
   })
 
   it('leaves nothing to grade when every rule is off, rather than inventing a grade', () => {
@@ -175,7 +234,12 @@ describe('a configured run', () => {
 
 describe('auditProfile', () => {
   it('is the default profile without a configuration', () => {
-    expect(auditProfile(undefined)).toEqual({ custom: false, rules: {}, overrides: 0 })
+    expect(auditProfile(undefined)).toEqual({
+      custom: false,
+      rules: {},
+      options: {},
+      overrides: 0,
+    })
   })
 })
 

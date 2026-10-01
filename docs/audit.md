@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (89 rules across the five §4
+2. **Curated, doc-oriented ruleset** (104 rules across the six §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -62,6 +62,14 @@ drifting.
      them.
    - A check where its rule is off does not count at all — neither as a
      finding nor in the score; a rule off everywhere is not even run.
+   - A rule that takes options is configured with an object — its options
+     next to an optional `severity`, Redocly's shape:
+     `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
+     Options apply to the whole document: an override changes severities
+     only, since a threshold that moved from one path to the next would
+     grade one document by two yardsticks. Each value is checked against
+     what the rule declares; `apiglow audit --explain <id>` lists a rule's
+     options with their defaults and bounds.
    - Per spec: rules merge by id (the spec's last), overrides accumulate,
      root first.
    - `reason` is free text for the next reader of the config — JSON has no
@@ -112,7 +120,7 @@ A finding:
 
 - `severity`: `error` (almost certainly a schema bug) / `warning`
   (probably hurts consumers or the docs) / `info` (worth knowing).
-- `category`: one of the five §4 categories.
+- `category`: one of the six §4 categories.
 - `opRef`: the operation route target when the finding maps to a rendered
   operation — the UI links it. A finding on a **callback** carries its
   parent operation's `opRef`: the callback is rendered inside that page and
@@ -151,9 +159,9 @@ The report also carries its own identity and perimeter:
   carrying it). No
   "callbacks" figure: the scope counts the same units as the home page,
   and nothing in the app counts callbacks.
-- `report.profile`: `{ custom, rules, overrides }` — whether the run used a
-  rule configuration (§2.2), the rules it reconfigured, and how many path
-  overrides it declared. `custom: false` is the default grade. A
+- `report.profile`: `{ custom, rules, options, overrides }` — whether the
+  run used a rule configuration (§2.2), the severities and the options it
+  set, by rule, and how many path overrides it declared. `custom: false` is the default grade. A
   configuration that switches every applicable rule off leaves nothing to
   grade: `score` and `grade` are then `null`, and the page shows a dash
   rather than inventing a letter.
@@ -185,7 +193,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-89 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+104 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -804,6 +812,175 @@ PASSES in a 3.0 document instead of being punished for it.
   style (`tsv` anywhere, `ssv`/`pipes`/`multi` outside a query
   parameter).
 
+### 4.7 Agent readiness
+
+What an AI agent gets when it calls the API through a tool built from the
+document — an OpenAPI→MCP bridge (the two this documentation's MCP export
+offers, `@ivotoby/openapi-mcp-server` and `@tyk-technologies/api-to-mcp`),
+a GPT Action, Semantic Kernel's OpenAPI plugin. Mostly `info`. Each
+message names the concrete degradation — a platform that refuses, a bridge
+that renames, drops or overwrites, a model left to guess — and a vendor's
+limit is stated in the message rather than turned into a vendor profile.
+The tools are the document's paths operations, hidden ones included: hiding
+lives in this documentation, and a bridge reading the file serves them all
+the same. Webhooks and callbacks are requests the API sends, never tools.
+An operation's inputs are its parameters and its non-file request bodies
+(`src/audit/tool-inputs.js`); `readOnly` properties are never sent.
+
+- `operation-id-tool-name` (`info`) — an `operationId` outside
+  `^[A-Za-z_][A-Za-z0-9_-]{0,maxLength-1}$`, the names every platform
+  accepts as a tool name: OpenAI and AWS Bedrock take letters, digits, `_`
+  and `-` up to 64 characters, Vertex AI wants a letter or `_` first,
+  Anthropic and MCP stop at 128. OpenAI validates the tool list as a whole,
+  so one invalid name fails every call; `@ivotoby/openapi-mcp-server`
+  rewrites it to lowercase, abbreviated and hashed. Option `maxLength`
+  (default 64, 1 to 128) for a team serving only Anthropic or MCP clients.
+  One check per tool operation that has an operationId — a missing one is
+  `operation-id-present`'s, a duplicate `duplicate-operation-id`'s. On the
+  demo GitHub schema: all 1220 (`meta/root`).
+- `summary-length` (`info`) — an operation `summary` over the 300 characters
+  GPT Actions allows per endpoint, counted in characters, not UTF-16 units.
+  The summary is the line a tool list shows, and the tool's description when
+  the operation has none. The description is not graded: long prose belongs
+  there.
+- `operations-indistinct` (`info`) — two tool operations whose tools carry
+  the same description: the operation's `description`, else its `summary`,
+  as both MCP bridges and Semantic Kernel build it — compared trimmed,
+  whitespace collapsed, without case. Identity only, never similarity: the
+  parallel summaries of a CRUD API are not a defect. One finding on each
+  operation after the first, naming it. On the demo petstore: the three user
+  operations sharing "This can only be done by the logged in user."; on the
+  GitHub schema, 41 (64 if summaries alone were compared).
+- `tool-surface-size` (`info`) — more than 30 tool operations: GPT Actions
+  takes 30 per action; past 128, the OpenAI API refuses the tool list and
+  VS Code / GitHub Copilot enable no more at a time, and the message names
+  that limit instead. Hidden
+  operations count — a bridge reading the file serves them. One document
+  check, at `/paths`; none on a document with no operation.
+- `bridge-degradation` (`info`) — an operation the MCP server this
+  documentation exports cannot call as written: a cookie parameter (neither
+  bridge sends cookies), or an effective security (the operation's, else the
+  document's) with no alternative whose schemes all travel in a header — an
+  `apiKey` in a query or a cookie, `mutualTLS`. The verdict is the export's
+  own (`credentialHeader`, `src/export/mcp.js`), so the rule and the
+  generated config cannot disagree, and a deprecated scheme counts as not
+  carried — the export leaves it out; an empty alternative (`{}`) is
+  anonymous access and passes. An undeclared scheme gives no verdict:
+  `security-scheme-declared`'s.
+- `untyped-input` (`warning`) — an input schema that says nothing about
+  its value: no `type`, no `enum`/`const`, no structure, no composition —
+  `{}`, `true`, or annotations only (`description`, `example`, `format`) —
+  at the root of a parameter or of a JSON body, or at a property, array
+  item or tuple item below; a JSON body declared with no schema is flagged
+  at its media type. Bridges copy the schema into the tool as it is, so the
+  agent guesses the type. In this app the schema view shows `any`, the
+  try-it offers a bare text box and sends what is typed as a string
+  (`coerceValue` has no type to convert to), and the generated sample is
+  `null`. Left to other rules: a composition member (it describes the value
+  with its siblings), an `additionalProperties` value (`free-form-input`),
+  the root of a form body (`multipart-schema-object`), a parameter with
+  neither `schema` nor `content` (`parameter-schema-or-content`); a text
+  body's media type already says text, and `format: binary` is a file. An
+  unresolved `$ref` is `ref-resolves`'. A schema shared through
+  `components.schemas` is graded once, at the component.
+- `free-form-input` (`info`) — an input object with no shape: `type:
+  object` (or an object by its keywords) with no `properties`, no
+  `patternProperties`, no `propertyNames`, no composition, and
+  `additionalProperties` absent, `true` or saying nothing. The agent has
+  every key to invent; OpenAI's strict mode requires declared properties
+  and `additionalProperties: false`. A typed map (`additionalProperties: {
+  type: string }`) has a shape, and `additionalProperties: false` alone is
+  a closed, empty object. A composition member is not judged on its own,
+  nor the root of a form body (`multipart-schema-object`'s).
+- `union-ambiguous` (`info`) — an input `oneOf`/`anyOf` of two or more
+  branches, with no `discriminator`, where two branches take the same JSON
+  type (`integer` and `number` are one) and neither has a `title` or a
+  `description` the other lacks — text both inherit from a shared `allOf`
+  base names neither. Bridges inline the union, component names gone, and
+  the agent picks a branch blind. Not ambiguous: two object branches that
+  each require a key the other does not declare (the key is an implicit
+  discriminator), two arrays whose items differ in type, a single-constant
+  branch. A union made only of constants is an enum
+  (`enum-values-undescribed`). OpenAI's strict mode and Gemini do not
+  support `oneOf` at all — stated, not graded.
+- `input-root-shape` (`info`) — a JSON request body whose root is an
+  array, a scalar, or a `oneOf`/`anyOf` (even of objects). GPT Actions
+  skips the operation; `@ivotoby/openapi-mcp-server` wraps an array or a
+  scalar under a `body` property and makes a union the tool's root;
+  Anthropic's API types `input_schema.type` as `"object"` and OpenAI's
+  strict mode requires an object root. An `allOf` of objects is an object;
+  a root that says nothing gets no verdict (`untyped-input`'s). One check
+  per JSON request media type; when the API cannot change, the finding is
+  one to accept in the configuration.
+- `recursive-input` (`info`) — a request input that reaches itself: a
+  schema met again among its own ancestors on the walk of what an agent
+  sends (`readOnly` properties are not sent, so a cycle through one alone
+  does not count). One check per tool operation with inputs; the finding
+  sits where the input reaches back, named after the `components.schemas`
+  entry it re-enters. `@ivotoby/openapi-mcp-server` cuts the cycle into
+  `{}`; Anthropic's strict mode and Gemini refuse recursion; OpenAI's
+  strict mode supports it. Info: the data model is legitimate, the finding
+  says what agents receive.
+- `input-complexity` (`info`) — a request body past the limits tool
+  schemas live under: more than 10 levels of object nesting (Semantic
+  Kernel's OpenAPI plugin skips the operation; OpenAI's strict mode
+  refuses it), more than 5000 object properties or more than 1000 enum
+  values (OpenAI's strict mode). The body object is level 1, each property
+  holding an object — directly or as array items — one more; properties
+  and enum values are counted over the body's schemas, each once. One
+  check per tool operation with a non-file request body; a cycle stops the
+  depth where it closes (`recursive-input`'s).
+- `enum-values-undescribed` (`info`) — an input enum of two values or more
+  (`enum`, or a `oneOf` / `anyOf` of constants) with a value nothing
+  explains → an agent filling the tool guesses which value the user's
+  request means. A value is explained by a description of its own, read the
+  way this documentation reads it (`enumOf`, `src/openapi/model.js` — the
+  reading the schema view renders as a list of value and meaning):
+  `x-enum-descriptions` / `x-enumDescriptions` (list or map), or the
+  `description` / `title` of its constant branch — a placeholder or the
+  value read back counts as none (`isSubstantive`). Or by prose naming it as
+  a whole word, case-insensitive: the schema's `description`, and through
+  `items` and composition the one of the array, wrapper or parameter holding
+  it. The message names the first three unexplained values. The fix leads
+  with the description, which travels to every tool: OpenAI strict mode keeps
+  standard keywords only and drops the `x-` extensions. `null` and boolean
+  enums are skipped; one check per input enum, each schema object once, a
+  component's at the component.
+  Whether the enum is described at all is `property-described`'s and
+  `parameter-described`'s.
+- `parameter-name-collision` (`warning`) — two inputs of one tool operation
+  with one name, case aside: a parameter in two locations (path `id` + query
+  `id`, or `id` and `ID` in the query), or a parameter and a top-level
+  property of a JSON or form body (`allOf` members included, read-only ones
+  excepted) → Semantic Kernel's OpenAPI plugin leaves the operation out
+  (logged, no error to the caller); both MCP bridges key parameters by name
+  and the last one silently wins, ivotoby renaming a clashing body property
+  `body_<name>`. One check per tool operation with two inputs or more; a
+  finding per colliding name, on the later input, naming both locations.
+  The same name at the same location is `parameters-unique`'s; two headers
+  differing by case are one header.
+- `request-example` (`info`) — a non-file request body whose schema shows no
+  example → the tool's input schema, copied whole from it, gives the agent
+  types only. The media type's `example` / `examples` do not count: bridges
+  drop them — that is the difference with `operation-examples`, which counts
+  them because the try-it prefills from them. The schema shows an example
+  when its root (or an `allOf` member) has `example` / `examples`, or when
+  every value it sends does: each top-level property carries `example`,
+  `examples`, `enum` or `const`, an object through its properties, an array
+  through its items, a wrapper or union through a member; a file part of a
+  form has nothing to show. One check per distinct schema among an
+  operation's non-file request media types: the same payload as JSON, form
+  and XML is one example to write.
+- `error-machine-readable` (`info`) — an error response (`4XX` / `5XX` codes
+  and ranges, `default`) whose content is all prose: `text/*` or HTML only,
+  or JSON / XML with no schema, or one with no shape (a bare `string`, an
+  empty schema) → an agent whose call fails reads a sentence and cannot
+  branch on the error (which field, retry or not). One structured media type
+  among several is enough. One check per error response declaring content,
+  tool operations only; a response with no content leaves the status as the
+  signal and is not checked. Documenting error responses at all is
+  `error-responses-documented`'s.
+
 ## 5. Architecture
 
 - Core module **`src/audit/`**: `engine.js` (walk + rule dispatch +
@@ -1035,7 +1212,7 @@ npx apiglow audit --config apidoc.config.json
                 "newFindings": 2,
                 "report": { …, "categories": [{ …, "findings": [{ …, "fingerprint": "9f3c…" }] }] } }],
     "rules": { "parameter-described": { "category": "completeness",
-               "label": "…", "why": "…", "fix": "…" } } }
+               "label": "…", "message": "…", "why": "…", "fix": "…" } } }
   ```
 
   - `format` and `version` name the shape; a change of shape bumps
@@ -1046,9 +1223,9 @@ npx apiglow audit --config apidoc.config.json
     while the document around the finding changes, which is what a CI
     surface or an agent tracking a finding keys on.
   - `rules` carries, once, the texts of every rule that fired, in the
-    report's language: `label`, `why`, `fix`. They are templates whose
-    `{placeholders}` are each finding's `params` — a consumer explaining a
-    finding needs nothing but the file.
+    report's language: `label`, `message`, `why`, `fix`. They are templates
+    whose `{placeholders}` are each finding's `params` — a consumer
+    explaining a finding needs nothing but the file.
   - `newFindings` is present only with `--baseline`, and so is
     `known: true` on the findings the baseline lists.
   - `omitted` is present only with `--min-severity` or `--only-new`.
@@ -1093,6 +1270,14 @@ npx apiglow audit --config apidoc.config.json
   refuses every fetch and stops the run (exit status 2), even one the
   loader would otherwise skip with a warning, like an overlay: a job asked
   to stay off the network never passes on a different document.
+- **The rules themselves**, without a schema: `--explain <rule>` prints one
+  — category, default severity, label, why it matters, how to fix it, the
+  options it takes with their defaults and bounds; `--list-rules` prints
+  every rule as JSON (`format: "apiglow-audit-rules"`, `version: 1`), with
+  the same texts the report's `rules` carries plus each rule's default
+  severity and options. Both honor `--language` and refuse anything else on
+  the line: a run that looked like an audit and printed a rule would mislead
+  whoever reads its exit status.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).
   The command's own lines on stderr stay English, like the bake's.
@@ -1299,11 +1484,12 @@ versions, next to the audit:
 ```
 
 **An agent fixing the schema.** Pipe it the JSON report (§8.1): every
-finding placed at `file:line:column`, its rule's `why` and `fix` in
-`rules`, and a fingerprint that survives the edit around it. The loop is
+finding placed at `file:line:column`, its rule's `message`, `why` and `fix`
+in `rules`, and a fingerprint that survives the edit around it. The loop is
 audit, fix, audit again until every check passes; with a baseline,
 `--only-new` keeps its attention on what a change introduced.
 
 ```
 npx apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
 ```
+

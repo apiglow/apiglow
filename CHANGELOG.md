@@ -88,6 +88,24 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   written, not followed), raw bytes in a JSON body, a form body with no
   properties to build a form from, required fields in a merge patch, a
   problem+json `status` that contradicts its response code.
+- A sixth audit category, agent readiness: what an AI agent gets when it
+  calls your API through a tool — an MCP bridge, a GPT Action, Semantic
+  Kernel. Fifteen rules, each naming what concretely goes wrong: an
+  `operationId` OpenAI refuses as a tool name, two operations whose tools
+  say the same thing, more operations than a platform takes as tools,
+  inputs with no type or no shape, unions an agent cannot tell apart, a body
+  that is not an object, recursion a bridge cuts, enum values nothing
+  explains, a parameter and a body property sharing a name (Semantic Kernel
+  drops the operation, bridges overwrite one), request examples written
+  where no tool sees them, errors returned as prose, and what this
+  documentation's own MCP export cannot carry (cookies, credentials outside
+  a header).
+- `apiglow audit --explain <rule>` prints one rule — why it matters, how to
+  fix it, its severity and options — and `--list-rules` prints them all as
+  JSON. The JSON report now carries each rule's message template next to
+  its rationale and fix.
+- An audit rule can take options, set next to its severity:
+  `"operation-id-tool-name": { "severity": "warning", "maxLength": 128 }`.
 - Every audit rule now says how to fix what it found, next to why it matters:
   on the page, in the Markdown report and in the CLI's console output.
 - The audit's rules are configurable: switch one off, or change its severity,

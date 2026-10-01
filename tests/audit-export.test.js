@@ -8,9 +8,10 @@ import {
   toAuditCodeQuality,
   toAuditSarif,
 } from '../src/export/audit-ci.js'
-import { toAuditJson } from '../src/export/audit-json.js'
+import { toAuditJson, toAuditRulesJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
-import { toAuditText } from '../src/export/audit-text.js'
+import { toAuditRuleText, toAuditText } from '../src/export/audit-text.js'
+import { operationIdPresent } from '../src/audit/rules/operation-id-present.js'
 import { loadInlineApiModel } from '../src/openapi/loader.js'
 
 // Markdown export of the audit report (docs/audit.md §5). The synthetic report
@@ -249,6 +250,27 @@ describe('audit JSON report', () => {
   it('counts new findings only when a baseline was applied', () => {
     expect(json(REPORT).specs[0]).not.toHaveProperty('newFindings')
     expect(json(REPORT, { baseline: true }).specs[0].newFindings).toBe(0)
+  })
+})
+
+// The rule set itself, before any run (`--explain`, `--list-rules`): a rule
+// declaring an option, to pin how one is printed.
+describe('audit rule descriptions', () => {
+  const withOption = { ...operationIdPresent, options: { depth: { default: 3, min: 1, max: 9 } } }
+
+  it('explains one rule: its texts, severity and options', () => {
+    expect(toAuditRuleText(withOption)).toMatchSnapshot()
+    expect(toAuditRuleText(operationIdPresent)).not.toContain('Options')
+  })
+
+  it('lists the rules as a versioned JSON document', () => {
+    const list = JSON.parse(
+      toAuditRulesJson([operationIdPresent, withOption], {
+        tool: { name: 'apiglow', version: '0.0.0' },
+      }),
+    )
+    expect(list).toMatchObject({ format: 'apiglow-audit-rules', version: 1 })
+    expect(list).toMatchSnapshot()
   })
 })
 

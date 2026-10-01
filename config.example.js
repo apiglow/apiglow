@@ -410,8 +410,10 @@ window.API_DOC_CONFIG = {
 
   // The schema audit's rule configuration — read by the #/audit page and by
   // `apiglow audit` alike, so the published grade and the CI one agree.
-  // `rules`: rule id → 'error' | 'warning' | 'info' | 'off'. `overrides`: the
-  // same, under JSON pointer patterns (`*` within one segment, `**` any depth;
+  // `rules`: rule id → 'error' | 'warning' | 'info' | 'off', or for a rule that
+  // takes options, an object holding them and an optional `severity`
+  // ({ severity: 'warning', maxLength: 128 }). `overrides`: severities only,
+  // under JSON pointer patterns (`*` within one segment, `**` any depth;
   // a pattern covers everything below it), the last match winning. Rule ids are
   // listed in docs/audit.md §4. A grade computed with any of this is labelled
   // "custom rule set" wherever it is shown. Overridable per spec: rules merge

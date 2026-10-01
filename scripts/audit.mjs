@@ -34,9 +34,10 @@ import {
   toAuditCodeQuality,
   toAuditSarif,
 } from '../src/export/audit-ci.js'
-import { toAuditJson } from '../src/export/audit-json.js'
+import { RULES } from '../src/audit/rules/index.js'
+import { toAuditJson, toAuditRulesJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
-import { toAuditText } from '../src/export/audit-text.js'
+import { toAuditRuleText, toAuditText } from '../src/export/audit-text.js'
 import { useDictionary } from '../src/i18n/index.js'
 import { normalizeSpecsConfig } from '../src/specs.js'
 import { CliError, catalog, loadSpecModel, refUrl } from './cli-support.mjs'
@@ -209,6 +210,7 @@ function displayPath(url) {
 
 const USAGE = `Usage: apiglow audit <spec>... [options]
        apiglow audit --config <file> [options]
+       apiglow audit --explain <rule> | --list-rules [--language <code>]
 
   <spec>             path or URL of the OpenAPI document (JSON or YAML), or a
                      quoted pattern ('apis/**/openapi.{yaml,json}'); several
@@ -244,12 +246,17 @@ const USAGE = `Usage: apiglow audit <spec>... [options]
   --offline          never fetch: a schema, a $ref or an overlay behind a URL
                      stops the run
   --fetch-timeout    seconds to wait for each fetched document (default: ${FETCH_TIMEOUT})
+  --explain          print one rule — why it matters, how to fix it, its
+                     severity and options — and audit nothing
+  --list-rules       print every rule as JSON (format apiglow-audit-rules) and
+                     audit nothing
 
 Exit status: 0 passed, 1 a check failed, 2 the audit could not run.`
 
 export async function main(args) {
   const { values, positionals } = parse(args)
   if (values.help) return { stdout: USAGE }
+  if (values.explain !== undefined || values['list-rules']) return describeRules(values, args)
   const options = checkOptions(values, positionals)
   useDictionary(values.language, await catalog(values.language))
 
@@ -344,12 +351,44 @@ function parse(args) {
         'fail-on-unmatched-globs': { type: 'boolean', default: false },
         offline: { type: 'boolean', default: false },
         'fetch-timeout': { type: 'string' },
+        explain: { type: 'string' },
+        'list-rules': { type: 'boolean', default: false },
         help: { type: 'boolean', default: false },
       },
     })
   } catch (err) {
     throw new CliError(`${err.message}\n\n${USAGE}`)
   }
+}
+
+// `--explain` and `--list-rules`: the rule set itself, read before any run —
+// what an agent consults to know a rule, or the whole list, without a schema.
+// Anything else on the line is refused rather than ignored: a run that seems to
+// have audited a schema and printed a rule instead would mislead whoever reads
+// its exit status.
+async function describeRules(values, args) {
+  const refuse = (message) => {
+    throw new CliError(`${message}\n\n${USAGE}`)
+  }
+  if (values.explain !== undefined && values['list-rules']) {
+    refuse('--explain and --list-rules do not combine')
+  }
+  const own = new Set(['--explain', '--list-rules', '--language', values.explain, values.language])
+  const other = args.find((arg) => !own.has(arg) && !/^--(explain|language)=/.test(arg))
+  if (other !== undefined) refuse(`${other}: --explain and --list-rules audit nothing`)
+  useDictionary(values.language, await catalog(values.language))
+  if (values['list-rules']) {
+    const { version } = await toolManifest()
+    return { stdout: toAuditRulesJson(RULES, { tool: { name: 'apiglow', version } }).trimEnd() }
+  }
+  const rule = RULES.find((entry) => entry.id === values.explain)
+  if (!rule) {
+    const near = RULES.map((entry) => entry.id).filter((id) => id.includes(values.explain))
+    refuse(
+      `no rule "${values.explain}"${near.length ? ` — did you mean ${near.slice(0, 5).join(', ')}?` : ''} (--list-rules lists them all)`,
+    )
+  }
+  return { stdout: toAuditRuleText(rule).trimEnd() }
 }
 
 // Every value checked before anything is loaded: a typo in a threshold must

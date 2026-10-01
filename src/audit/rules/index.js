@@ -94,6 +94,21 @@ import { sequentialMedia } from './sequential-media.js'
 import { responsesSuccess } from './responses-success.js'
 import { discriminatorProperty } from './discriminator-property.js'
 import { securityScopes } from './security-scopes.js'
+import { operationIdToolName } from './operation-id-tool-name.js'
+import { summaryLength } from './summary-length.js'
+import { operationsIndistinct } from './operations-indistinct.js'
+import { toolSurfaceSize } from './tool-surface-size.js'
+import { bridgeDegradation } from './bridge-degradation.js'
+import { untypedInput } from './untyped-input.js'
+import { freeFormInput } from './free-form-input.js'
+import { unionAmbiguous } from './union-ambiguous.js'
+import { inputRootShape } from './input-root-shape.js'
+import { recursiveInput } from './recursive-input.js'
+import { inputComplexity } from './input-complexity.js'
+import { enumValuesUndescribed } from './enum-values-undescribed.js'
+import { parameterNameCollision } from './parameter-name-collision.js'
+import { requestExample } from './request-example.js'
+import { errorMachineReadable } from './error-machine-readable.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -193,4 +208,20 @@ export const RULES = [
   oauthFlowUrls,
   operationExamples,
   schemaExpandWalls,
+  // §4.7 Agent readiness: what a tool built from the document gets
+  operationIdToolName,
+  summaryLength,
+  operationsIndistinct,
+  toolSurfaceSize,
+  bridgeDegradation,
+  untypedInput,
+  freeFormInput,
+  unionAmbiguous,
+  inputRootShape,
+  recursiveInput,
+  inputComplexity,
+  enumValuesUndescribed,
+  parameterNameCollision,
+  requestExample,
+  errorMachineReadable,
 ]
