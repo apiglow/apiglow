@@ -9,14 +9,16 @@
 
 import { realpathSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
+import { main as audit } from './audit.mjs'
 import { main as bake } from './bake.mjs'
 import { CliError } from './cli-support.mjs'
 
-const COMMANDS = { bake }
+const COMMANDS = { audit, bake }
 
 const USAGE = `Usage: apiglow <command> [options]
 
 Commands:
+  audit   grade an OpenAPI schema and fail a CI job on what it finds
   bake    write the documentation to disk as static files (sitemap, llms.txt, snapshots)
 
 Run \`apiglow <command> --help\` for the options of a command.`

@@ -14,8 +14,7 @@ export const GRADE_ORDER = [...GRADES.map(([grade]) => grade), LOWEST_GRADE]
 export function gateResults(report, { findings, failOn = 'error', minGrade, minScore }) {
   const results = []
   if (failOn !== 'none') {
-    const rank = SEVERITIES.indexOf(failOn)
-    const count = findings.filter((f) => SEVERITIES.indexOf(f.severity) <= rank).length
+    const count = atOrAbove(findings, failOn).length
     results.push({ gate: 'fail-on', threshold: failOn, actual: count, passed: count === 0 })
   }
   // A report with no scored category has nothing to grade, which is not a bad
@@ -35,4 +34,10 @@ export function gateResults(report, { findings, failOn = 'error', minGrade, minS
     })
   }
   return results
+}
+
+// The findings `--fail-on {severity}` counts.
+export function atOrAbove(findings, severity) {
+  const rank = SEVERITIES.indexOf(severity)
+  return findings.filter((finding) => SEVERITIES.indexOf(finding.severity) <= rank)
 }

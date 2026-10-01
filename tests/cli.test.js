@@ -8,6 +8,7 @@ describe('apiglow', () => {
     const { stdout, code } = await run(['--help'])
     expect(code).toBeUndefined()
     expect(stdout).toMatch(/^Usage: apiglow <command>/)
+    expect(stdout).toMatch(/^ {2}audit /m)
     expect(stdout).toMatch(/^ {2}bake /m)
     expect(await run([])).toEqual({ stdout })
   })

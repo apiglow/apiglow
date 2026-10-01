@@ -1,0 +1,50 @@
+// `apiglow audit` as it is actually shipped (docs/audit.md §8): the built
+// `dist/cli.js` run the way a CI job runs it. tests/audit-cli.test.js covers
+// the command from the sources; only here does the bundle resolve its runtime
+// dependencies from node_modules and its catalogs from dist/i18n/, and only
+// here is the exit status a real process's.
+import { execFile } from 'node:child_process'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
+import { expect, test } from '@playwright/test'
+
+const exec = promisify(execFile)
+const repo = fileURLToPath(new URL('../../', import.meta.url))
+const CLI = join(repo, 'dist/cli.js')
+
+// → { stdout, stderr, code }, whatever the exit status: a failing check is an
+// outcome under test here, not an error.
+async function audit(...args) {
+  try {
+    const { stdout, stderr } = await exec('node', [CLI, 'audit', ...args], { cwd: repo })
+    return { stdout, stderr, code: 0 }
+  } catch (err) {
+    return { stdout: err.stdout, stderr: err.stderr, code: err.code }
+  }
+}
+
+test('passes a clean schema with exit status 0', async () => {
+  const { stdout, stderr, code } = await audit('tests/e2e/fixtures/e2e-api-clean.json')
+  expect(code).toBe(0)
+  expect(stdout).toContain('No findings. Every applicable check passes on this schema.')
+  expect(stderr).toMatch(/Audit passed\n$/)
+})
+
+test('fails a CI job with exit status 1 when a check fails', async () => {
+  const { stderr, code } = await audit('tests/e2e/fixtures/e2e-api.json', '--fail-on', 'warning')
+  expect(code).toBe(1)
+  expect(stderr).toMatch(/^FAIL {2}--fail-on warning/)
+})
+
+test('exits 2 when it cannot run', async () => {
+  const { stderr, code } = await audit('tests/e2e/fixtures/missing.json')
+  expect(code).toBe(2)
+  expect(stderr).toMatch(/^apiglow audit: spec "default" could not be loaded/)
+})
+
+test('reports in French from the catalog shipped next to it', async () => {
+  const { stdout, code } = await audit('tests/e2e/fixtures/e2e-api-clean.json', '--language', 'fr')
+  expect(code).toBe(0)
+  expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
+})

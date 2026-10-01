@@ -1,0 +1,229 @@
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useDictionary } from '../src/i18n/index.js'
+import { run } from '../scripts/cli.mjs'
+
+// `apiglow audit` (docs/audit.md §8) end to end from the sources: a schema in,
+// a report and an exit status out. The engine, the generators, the baseline
+// and the checks are tested on their own; what only this file sees is the
+// command wired around them — the input forms, the streams, the status a CI
+// job reads.
+
+const fixture = (name) => fileURLToPath(new URL(`e2e/fixtures/${name}`, import.meta.url))
+const CLEAN = fixture('e2e-api-clean.json')
+const PETSTORE = fixture('e2e-api.json')
+
+const audit = (...args) => run(['audit', ...args])
+
+let dir = ''
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'apiglow-audit-'))
+  // `--language` switches the process-wide dictionary: each test starts from
+  // the bundled English, whatever the previous one asked for.
+  useDictionary('en', null)
+})
+
+describe('apiglow audit', () => {
+  it('passes a schema with no finding, the report on stdout and the verdict on stderr', async () => {
+    const { stdout, stderr, code } = await audit(CLEAN)
+    expect(code).toBe(0)
+    expect(stdout).toMatch(/^Schema audit — Clean E2E API\n/)
+    expect(stdout).toContain('No findings. Every applicable check passes on this schema.')
+    expect(stderr).toBe(
+      'PASS  --fail-on error: 0 finding(s) at this severity or above\nAudit passed',
+    )
+  })
+
+  it('fails on the threshold and lists what made it fail', async () => {
+    const { stderr, code } = await audit(PETSTORE, '--fail-on', 'warning')
+    expect(code).toBe(1)
+    expect(stderr).toMatch(/^FAIL {2}--fail-on warning: \d+ finding\(s\)/)
+    expect(stderr).toContain(
+      '  warning parameter-described — GET /pets · /paths/~1pets/get/parameters/0',
+    )
+    expect(stderr).toMatch(/\nAudit failed$/)
+  })
+
+  it('reports every check it was given, each on its own', async () => {
+    const { stderr, code } = await audit(
+      CLEAN,
+      '--fail-on',
+      'none',
+      '--min-grade',
+      'A',
+      '--min-score',
+      '100',
+    )
+    expect(code).toBe(0)
+    expect(stderr.split('\n')).toEqual([
+      'PASS  --min-grade A: grade A',
+      'PASS  --min-score 100: score 100',
+      'Audit passed',
+    ])
+    const failed = await audit(PETSTORE, '--fail-on', 'none', '--min-score', '100')
+    expect(failed.code).toBe(1)
+    expect(failed.stderr).toMatch(/^FAIL {2}--min-score 100: score \d+$/m)
+  })
+
+  it('reads YAML, the format most schemas are written in', async () => {
+    const yaml = join(dir, 'openapi.yaml')
+    await writeFile(
+      yaml,
+      'openapi: 3.1.0\ninfo:\n  title: YAML API\n  version: 1.0.0\npaths: {}\n',
+      'utf8',
+    )
+    const { stdout, code } = await audit(yaml)
+    expect(code).toBe(0)
+    expect(stdout).toMatch(/^Schema audit — YAML API\n/)
+  })
+
+  it('accepts a baseline, then fails only on what it does not list', async () => {
+    const baseline = join(dir, 'audit-baseline.json')
+    const written = await audit(PETSTORE, '--fail-on', 'info', '--write-baseline', baseline)
+    // Writing records the findings; it is not a check.
+    expect(written.code).toBe(0)
+    expect(written.stderr).toMatch(/^Baseline of \d+ finding\(s\) written to /)
+    expect(JSON.parse(await readFile(baseline, 'utf8')).specs.default).toHaveProperty(
+      'parameter-described',
+    )
+
+    const known = await audit(PETSTORE, '--fail-on', 'info', '--baseline', baseline)
+    expect(known.code).toBe(0)
+    expect(known.stderr).toMatch(/^PASS {2}--fail-on info: 0 new finding\(s\)/)
+
+    // The same API with one more undocumented parameter: that one is new.
+    const changed = JSON.parse(await readFile(PETSTORE, 'utf8'))
+    changed.paths['/pets'].get.parameters.push({
+      name: 'sort',
+      in: 'query',
+      schema: { type: 'string' },
+    })
+    const next = join(dir, 'next.json')
+    await writeFile(next, JSON.stringify(changed), 'utf8')
+    const regressed = await audit(next, '--fail-on', 'info', '--baseline', baseline)
+    expect(regressed.code).toBe(1)
+    expect(regressed.stderr).toMatch(/^FAIL {2}--fail-on info: 1 new finding\(s\)/)
+    expect(regressed.stderr).toContain('  warning parameter-described — GET /pets · ')
+  })
+
+  it('marks the known findings in the JSON report', async () => {
+    const baseline = join(dir, 'audit-baseline.json')
+    await audit(PETSTORE, '--write-baseline', baseline)
+    const { stdout } = await audit(PETSTORE, '--format', 'json', '--baseline', baseline)
+    const [spec] = JSON.parse(stdout).specs
+    expect(spec.newFindings).toBe(0)
+    const findings = spec.report.categories.flatMap((category) => category.findings)
+    expect(findings.length).toBeGreaterThan(0)
+    expect(findings.every((finding) => finding.known)).toBe(true)
+  })
+
+  it('writes JSON a script can read: verdict, checks and the report', async () => {
+    const { stdout, code } = await audit(PETSTORE, '--format', 'json', '--min-grade', 'A')
+    const json = JSON.parse(stdout)
+    expect(json.passed).toBe(code === 0)
+    expect(json.specs).toHaveLength(1)
+    expect(json.specs[0]).toMatchObject({ id: 'default', source: PETSTORE })
+    expect(json.specs[0].gates.map((gate) => gate.gate)).toEqual(['fail-on', 'min-grade'])
+    expect(json.specs[0].report.api.title).toBe('E2E Test API')
+    // No baseline, no count of new findings: there is nothing they would be new to.
+    expect(json.specs[0]).not.toHaveProperty('newFindings')
+  })
+
+  it('writes the report to --output, leaving stdout empty', async () => {
+    const output = join(dir, 'audit.md')
+    const { stdout, code } = await audit(CLEAN, '--format', 'markdown', '--output', output)
+    expect(code).toBe(0)
+    expect(stdout).toBe('')
+    expect(await readFile(output, 'utf8')).toMatch(/^# Schema audit — Clean E2E API\n/)
+  })
+
+  it('reports in the language it is asked for', async () => {
+    const { stdout } = await audit(CLEAN, '--language', 'fr')
+    expect(stdout).toMatch(/^Audit du schéma — Clean E2E API\n/)
+  })
+
+  it('audits every spec a multi-spec config declares, each under its id', async () => {
+    const config = join(dir, 'apidoc.config.json')
+    await writeFile(
+      config,
+      JSON.stringify({
+        openapi: {
+          specs: [
+            { id: 'clean', url: relative(dir, CLEAN) },
+            { id: 'pets', url: relative(dir, PETSTORE) },
+          ],
+        },
+      }),
+      'utf8',
+    )
+    const { stdout, stderr, code } = await audit('--config', config, '--fail-on', 'warning')
+    expect(code).toBe(1)
+    expect(stdout).toMatch(/^\[clean\]\nSchema audit — Clean E2E API\n/)
+    expect(stdout).toContain('\n[pets]\nSchema audit — E2E Test API\n')
+    expect(stderr).toMatch(/^\[clean\] PASS {2}--fail-on warning/)
+    expect(stderr).toMatch(/^\[pets\] FAIL {2}--fail-on warning/m)
+
+    const json = JSON.parse((await audit('--config', config, '--format', 'json')).stdout)
+    expect(json.specs.map((spec) => spec.id)).toEqual(['clean', 'pets'])
+  })
+
+  // A leading `/` in a config means the site root, which on disk is the config's
+  // own directory (docs/seo.md §4): the declarations below are relative to it.
+  it('resolves what a config names against the config file, overlays applied', async () => {
+    const config = join(dir, 'apidoc.config.json')
+    await writeFile(
+      config,
+      JSON.stringify({
+        openapi: {
+          url: relative(dir, fixture('e2e-api-overlay.json')),
+          overlays: [relative(dir, fixture('e2e-overlay.yaml'))],
+        },
+      }),
+      'utf8',
+    )
+    const plain = JSON.parse(
+      (await audit(fixture('e2e-api-overlay.json'), '--format', 'json')).stdout,
+    )
+    const overlaid = JSON.parse((await audit('--config', config, '--format', 'json')).stdout)
+    expect(overlaid.specs[0].report).not.toEqual(plain.specs[0].report)
+  })
+
+  it('cannot run without exactly one input, nor on a value it does not know', async () => {
+    const cases = [
+      [[], /a schema or --config is required/],
+      [[CLEAN, PETSTORE], /one schema per run, got 2/],
+      [[CLEAN, '--config', 'x.json'], /a schema or --config, not both/],
+      [[CLEAN, '--fail-on', 'fatal'], /--fail-on must be one of error, warning, info, none/],
+      [[CLEAN, '--min-grade', 'E'], /--min-grade must be one of A, B, C, D, F/],
+      [[CLEAN, '--min-score', '80%'], /--min-score must be an integer from 0 to 100/],
+      [[CLEAN, '--format', 'sarif'], /--format must be one of text, json, markdown/],
+      [[CLEAN, '--baseline', 'a', '--write-baseline', 'b'], /do not combine/],
+      [[join(dir, 'missing.json')], /spec "default" could not be loaded/],
+      [['--config', join(dir, 'missing.json')], /--config .* could not be read/],
+      [[CLEAN, '--language', 'xx'], /unknown --language "xx"/],
+    ]
+    for (const [args, message] of cases) {
+      const { stderr, code } = await audit(...args)
+      expect(code, args.join(' ')).toBe(2)
+      expect(stderr).toMatch(/^apiglow audit: /)
+      expect(stderr).toMatch(message)
+    }
+  })
+
+  it('refuses a baseline file it cannot trust rather than reading it as empty', async () => {
+    const baseline = join(dir, 'audit-baseline.json')
+    await writeFile(baseline, '{"specs": {}}', 'utf8')
+    const { stderr, code } = await audit(CLEAN, '--baseline', baseline)
+    expect(code).toBe(2)
+    expect(stderr).toMatch(/--baseline .* could not be read: not an audit baseline/)
+  })
+
+  it('prints its usage', async () => {
+    const { stdout } = await audit('--help')
+    expect(stdout).toMatch(/^Usage: apiglow audit <spec> \[options\]/)
+    expect(stdout).toContain('Exit status: 0 passed, 1 a check failed, 2 the audit could not run.')
+  })
+})
