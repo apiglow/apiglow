@@ -579,6 +579,11 @@ export function chipsLine(node, { onEnumPick, xml = false } = {}) {
 
   if (node.enum) {
     const hidden = []
+    // Described values read as a list — value, then what it means — the
+    // descriptions being the reason a reader looks at them at all. The list
+    // takes the chip row's full width; the other chips follow on their own.
+    const list = node.enumDescriptions ? el('ul', 'basis-full flex flex-col gap-1') : null
+    if (list) chips.push(list)
     for (const [index, value] of node.enum.entries()) {
       let element
       if (onEnumPick) {
@@ -593,11 +598,21 @@ export function chipsLine(node, { onEnumPick, xml = false } = {}) {
       } else {
         element = el('span', 'badge badge-ghost badge-sm font-mono', text(JSON.stringify(value)))
       }
+      if (list) {
+        const description = markdownInline(node.enumDescriptions[index])
+        element = el(
+          'li',
+          'flex items-baseline gap-2',
+          element,
+          description ? el('span', 'text-sm', description) : null,
+        )
+      }
       if (node.enum.length > ENUM_COLLAPSE_THRESHOLD && index >= ENUM_COLLAPSE_THRESHOLD) {
         element.classList.add('hidden')
         hidden.push(element)
       }
-      chips.push(element)
+      if (list) list.append(element)
+      else chips.push(element)
     }
     if (hidden.length) {
       // Placed after the hidden chips: collapsed, it naturally follows the
@@ -617,7 +632,8 @@ export function chipsLine(node, { onEnumPick, xml = false } = {}) {
         toggle.setAttribute('aria-expanded', String(!expanded))
         toggle.textContent = expanded ? more : t('schema.enumShowLess')
       })
-      chips.push(toggle)
+      if (list) list.append(el('li', '', toggle))
+      else chips.push(toggle)
     }
   }
   if (node.default !== undefined)

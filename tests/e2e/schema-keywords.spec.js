@@ -2,7 +2,7 @@
 // items must reach the page — and must leave the try-it's structured editor
 // alone, which only ever walks the base shape.
 import { expect, test } from '@playwright/test'
-import { clickNavOp, gotoFixture, mockApi, send } from './helpers.js'
+import { clickInDoc, clickNavOp, gotoFixture, mockApi, send, tryIt } from './helpers.js'
 
 const PAGE = '/tests/e2e/fixtures/app-keywords.html'
 
@@ -82,4 +82,25 @@ test('a tuple in a response documents each of its positions', async ({ page }) =
   await expect(span).toContainText('Fixed [start, end] instants')
   await expect(span.locator('.api-row', { hasText: '0' }).first()).toContainText('date-time')
   await expect(span.locator('.api-row', { hasText: '1' }).first()).toContainText('integer')
+})
+
+// An enum whose values carry descriptions — through `x-enum-descriptions`, or
+// written as a `oneOf` of constants — lists each value with what it means, and
+// the values stay what the plain chips are: a click fills the field (rule 20).
+test('described enum values read as a list, and still fill the field', async ({ page }) => {
+  await goto(page)
+  const body = page.locator('main #body')
+  const method = body.locator('li', { has: page.getByRole('button', { name: '"transfer"' }) })
+  await expect(method).toContainText('Sent by bank transfer')
+
+  // The constants are an enum, not variants to choose between.
+  const priority = body.locator('.api-row', { has: page.locator('code:text-is("priority")') })
+  await expect(priority).not.toContainText('One of')
+  await expect(priority.locator('li', { hasText: 'instant' })).toContainText(
+    'Settled within seconds, for a fee',
+  )
+
+  await clickInDoc(page, priority.getByRole('button', { name: '"instant"' }))
+  await expect(page.locator('main [aria-label="Try-it value for priority"]')).toHaveValue('instant')
+  await expect(tryIt(page).locator('textarea')).toHaveValue(/"priority": "instant"/)
 })

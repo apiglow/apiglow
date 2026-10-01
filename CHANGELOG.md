@@ -18,6 +18,12 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   they are Markdown syntax, and a renderer that does not know them (GitHub,
   your editor) simply shows the prose inside. Full Markdown in every child:
   fences, callouts, tables, `{{variables}}`.
+- Enum values carry their meaning: when a schema describes each value — with
+  `x-enum-descriptions` (a list next to `enum`), `x-enumDescriptions` (a map
+  from value to text), or as a `oneOf` of constants each with its own
+  `description` — the documentation lists every value with what it means.
+  A `oneOf` of constants now reads as the enum it is: a select in the try-it,
+  not a choice between variants.
 - `[Pagination](apidoc:page/pagination)` links one docs page to another by
   slug. Like the operation references it joins, the link is built through the
   router, so it keeps working under a multi-spec install where a hand-written

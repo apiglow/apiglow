@@ -498,8 +498,9 @@ load, a revision we do not know. An overlay never breaks a load.
   (sanitized Markdown), then the parameters — path/query/header/cookie — as
   **stacked rows** (`.api-param-row`), one per parameter: name, type and
   `required` inline, description and constraint chips (enum, min/max,
-  pattern, default) underneath, and the mirror-editable field in the row
-  itself. Rows rather than a three-column table because the field needs the
+  pattern, default) underneath — an enum whose values are described becomes
+  a list, each value next to its meaning, still clickable — and the
+  mirror-editable field in the row itself. Rows rather than a three-column table because the field needs the
   width, and because the same information then stays readable at any
   viewport.
 - Schema rendering: the conditional keywords (`if`/`then`/`else`, `not`,

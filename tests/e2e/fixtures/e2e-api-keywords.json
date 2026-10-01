@@ -86,7 +86,24 @@
               "card",
               "transfer"
             ],
-            "description": "How the payment is made"
+            "description": "How the payment is made",
+            "x-enum-descriptions": [
+              "Charged to the card on file",
+              "Sent by bank transfer"
+            ]
+          },
+          "priority": {
+            "description": "How fast the payment is processed",
+            "oneOf": [
+              {
+                "const": "standard",
+                "description": "Settled the next business day"
+              },
+              {
+                "const": "instant",
+                "description": "Settled within seconds, for a fee"
+              }
+            ]
           },
           "currency": {
             "$ref": "#/components/schemas/Payment/$defs/Currency"

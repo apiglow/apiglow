@@ -925,7 +925,12 @@ function buildSchemaNode(node, raw, ctx) {
   if (mainTypes.length > 1) node.types = mainTypes
 
   // --- composition ---------------------------------------------------------
+  // A union of constants is an enum written so that each value can carry its
+  // own description — read as the enum it means, not as variants to choose.
+  const constants = constantUnion(raw)
+  if (constants && !node.type) node.type = valueType(constants.values)
   for (const keyword of ['allOf', 'oneOf', 'anyOf']) {
+    if (constants) break
     if (Array.isArray(raw[keyword]) && raw[keyword].length) {
       // allOf is deliberately not merged: rendered as composite, correct
       // merging (conflicts, nesting, cycles) is beyond the MVP's display
@@ -957,8 +962,11 @@ function buildSchemaNode(node, raw, ctx) {
   // 3.1: `const` ≡ single-value enum — unified into `enum`.
   // A non-array `enum` (seen in the wild: PHP FQCN as a string) is ignored — letting
   // it through would make rendering iterate the string character by character.
-  if (Array.isArray(raw.enum)) node.enum = raw.enum
+  if (constants) node.enum = constants.values
+  else if (Array.isArray(raw.enum)) node.enum = raw.enum
   else if (raw.const !== undefined) node.enum = [raw.const]
+  const enumDescriptions = constants?.descriptions ?? extensionEnumDescriptions(raw, node.enum)
+  if (enumDescriptions) node.enumDescriptions = enumDescriptions
 
   // 3.0: `example` (single value); 3.1: `examples` (JSON Schema array).
   const examples = Array.isArray(raw.examples)
@@ -1196,6 +1204,72 @@ export function defaultVariant(node) {
       : discriminator.mapping.find((entry) => entry.variantIndex === discriminator.defaultIndex)
   const entry = byDefault ?? discriminator.mapping.find((entry) => entry.variantIndex !== null)
   return entry ? { index: entry.variantIndex, key: entry.key } : null
+}
+
+// What a branch of a constant union may say besides its value. Anything else —
+// a `format`, a bound — constrains the value beyond being that constant, and
+// the union stays a composite rather than lose it.
+const CONSTANT_BRANCH_KEYS = new Set([
+  'const',
+  'enum',
+  'title',
+  'description',
+  'type',
+  'deprecated',
+  '$comment',
+])
+
+// `oneOf`/`anyOf` whose every branch is a single constant (`const`, or a
+// one-value `enum`) → { values, descriptions }, or null. Distinct values only:
+// two branches holding one value make a `oneOf` that value can never satisfy,
+// which is not an enum.
+function constantUnion(raw) {
+  if (Array.isArray(raw.enum) || raw.const !== undefined) return null
+  const branches = Array.isArray(raw.oneOf) ? raw.oneOf : raw.anyOf
+  if (!Array.isArray(branches) || !branches.length || raw.allOf) return null
+  const values = []
+  const descriptions = []
+  const seen = new Set()
+  for (const branch of branches) {
+    if (!branch || typeof branch !== 'object' || Array.isArray(branch)) return null
+    if (Object.keys(branch).some((key) => !CONSTANT_BRANCH_KEYS.has(key) && !key.startsWith('x-')))
+      return null
+    const value =
+      branch.const !== undefined
+        ? branch.const
+        : Array.isArray(branch.enum) && branch.enum.length === 1 && branch.const === undefined
+          ? branch.enum[0]
+          : undefined
+    if (value === undefined) return null
+    const key = JSON.stringify(value)
+    if (seen.has(key)) return null
+    seen.add(key)
+    values.push(value)
+    descriptions.push(textOrUndefined(branch.description) ?? textOrUndefined(branch.title) ?? null)
+  }
+  return { values, descriptions: descriptions.some(Boolean) ? descriptions : undefined }
+}
+
+function valueType(values) {
+  const sample = values.find((value) => value !== null)
+  if (sample === undefined) return undefined
+  return Array.isArray(sample) ? 'array' : typeof sample
+}
+
+// The vendor extensions describing an enum's values one by one: openapi-generator's
+// `x-enum-descriptions` (a list parallel to `enum`) and Redocly's
+// `x-enumDescriptions` (a map from value to text). Either spelling is read in
+// either shape — documents mix them. → a list parallel to `values`, `null`
+// where a value has none, or undefined when none has one.
+function extensionEnumDescriptions(raw, values) {
+  if (!values?.length) return undefined
+  const source = raw['x-enum-descriptions'] ?? raw['x-enumDescriptions']
+  if (!source || typeof source !== 'object') return undefined
+  const descriptions = values.map(
+    (value, index) =>
+      textOrUndefined(Array.isArray(source) ? source[index] : source[String(value)]) ?? null,
+  )
+  return descriptions.some(Boolean) ? descriptions : undefined
 }
 
 // Many real-world schemas omit `type`: it's inferred from the structure.

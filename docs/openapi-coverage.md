@@ -52,6 +52,15 @@ Normalized and rendered:
   flow, `oauth2MetadataUrl`, security-scheme `deprecated`,
   `in: querystring`, response `summary`, `$self`, `prefixEncoding` /
   `itemEncoding`, XML `nodeType`.
+- **Enum value descriptions**: `x-enum-descriptions` (openapi-generator's
+  list parallel to `enum`) and `x-enumDescriptions` (Redocly's map from value
+  to text), either read in either shape, and the JSON Schema idiom — a
+  `oneOf`/`anyOf` whose every branch is one distinct constant carrying at
+  most a `title`, a `description`, a `type` — normalized into
+  `node.enum` + `node.enumDescriptions` (a list parallel to the values,
+  `null` where a value has none). The union is an enum, so it is modeled as
+  one: a select in the try-it, a list of described values in the doc. A
+  branch that says more (a `format`, a bound) keeps the composite.
 - **JSON Schema 2020-12** keywords (§2.1, §4.1) and `$defs` naming;
   `discriminator` resolved into a dispatch table, parent-side `allOf` idiom
   included (§4.2); the whole `info` block, `externalDocs` at four levels and

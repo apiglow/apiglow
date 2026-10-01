@@ -656,6 +656,44 @@ describe('schema micro-cases', () => {
     expect(node.type).toBe('string')
   })
 
+  it('reads a union of constants as the enum it means, each value described', () => {
+    const node = normalizeSchema({
+      oneOf: [
+        { const: 'low', description: 'Handled within a week' },
+        { enum: ['high'], title: 'Same day' },
+        { const: 'none' },
+      ],
+    })
+    expect(node.kind).toBe('primitive')
+    expect(node.type).toBe('string')
+    expect(node.composite).toBeUndefined()
+    expect(node.enum).toEqual(['low', 'high', 'none'])
+    expect(node.enumDescriptions).toEqual(['Handled within a week', 'Same day', null])
+  })
+
+  it('keeps a union a composite when a branch says more than its constant', () => {
+    expect(normalizeSchema({ anyOf: [{ const: 'a' }, { type: 'string' }] }).kind).toBe('composite')
+    expect(normalizeSchema({ oneOf: [{ const: 'a', minLength: 1 }] }).kind).toBe('composite')
+    // One value twice: a `oneOf` it can never satisfy, not an enum.
+    expect(normalizeSchema({ oneOf: [{ const: 'a' }, { const: 'a' }] }).kind).toBe('composite')
+  })
+
+  it('reads enum value descriptions from either vendor extension, list or map', () => {
+    const list = normalizeSchema({
+      enum: [1, 2],
+      'x-enum-descriptions': ['One', ''],
+    })
+    expect(list.enumDescriptions).toEqual(['One', null])
+    const map = normalizeSchema({
+      enum: ['asc', 'desc'],
+      'x-enumDescriptions': { desc: 'Newest first' },
+    })
+    expect(map.enumDescriptions).toEqual([null, 'Newest first'])
+    expect(normalizeSchema({ enum: ['a'], 'x-enum-descriptions': [''] }).enumDescriptions).toBe(
+      undefined,
+    )
+  })
+
   it('keeps minimum when 3.0 exclusiveMinimum is false', () => {
     const node = normalizeSchema({ type: 'integer', minimum: 1, exclusiveMinimum: false })
     expect(node.minimum).toBe(1)
