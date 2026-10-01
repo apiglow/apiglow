@@ -22,6 +22,23 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   slug. Like the operation references it joins, the link is built through the
   router, so it keeps working under a multi-spec install where a hand-written
   `#/page/…` would not.
+- `apiglow audit`: the schema audit from the command line, for CI.
+  `npx apiglow audit openapi.yaml` grades the schema with the same rules as
+  the `#/audit` page and exits non-zero when a check fails — findings of a
+  given severity (`--fail-on`, errors by default), a minimum grade or score.
+  A committed baseline (`--write-baseline`, then `--baseline`) lets an
+  existing API adopt the check and fail only on new findings. Reports as
+  console text, Markdown (for a pull request or a GitHub job summary) or JSON;
+  `--config` audits what your documentation shows, overlays and multi-spec
+  included.
+
+### Fixed
+
+- `npx apiglow bake`, and the `apiglow` bin npm installs, now run the command:
+  they used to exit at once without doing anything.
+- The bake reads the overlays a config names from the config's own
+  directory, like everything else it names, and warns when one cannot be
+  read or applied instead of skipping it silently.
 
 ## [0.2.0] — 2026-08-16
 
