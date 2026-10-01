@@ -336,6 +336,7 @@
   "oauth.missingClientSecret": "Client secret is required.",
   "oauth.tokenSaved": "Access token saved in environment “{env}”.",
   "oauth.error.network": "Token request failed at network level (CORS or connectivity on the token endpoint).",
+  "oauth.error.mixedContent": "Token request blocked as mixed content: this page is served over https and the token endpoint is http. Ask for an https token URL, or paste a token by hand.",
   "oauth.error.exchange": "Token request rejected: {message}",
   "oauth.error.denied": "Authorization refused: {message}",
   "oauth.error.state": "Authorization response ignored: unexpected state (possible replay or stale redirect).",

@@ -991,9 +991,10 @@ server does; it is the contract every client is built from, and what it
 says is what generated clients, gateways and this documentation do.
 Operation-level rules read the document's paths operations, hidden ones
 included — a webhook or a callback is a request the API sends, and its
-security is the receiver's. An operation's effective security, its servers
-and what counts as cleartext come from one place, `src/audit/security.js`:
-`http:` to any host but the machine itself (`localhost`, `127.0.0.0/8`,
+security is the receiver's. An operation's effective security and its
+servers come from `src/audit/security.js`; what counts as cleartext from
+`src/openapi/mixed-content.js`, which the try-it's mixed-content diagnosis
+and the OAuth block share — `http:` to any host but the machine itself (`localhost`, `127.0.0.0/8`,
 `[::1]`, which W3C Secure Contexts holds potentially trustworthy). Three rules
 grade their checks at more than one severity — `auth-scheme-weak`,
 `operation-unsecured`, `oauth-legacy-flows` (§2.2: a configured severity

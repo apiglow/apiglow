@@ -437,6 +437,13 @@ describe('failure diagnosis', () => {
     ).toBe('cors')
   })
 
+  // Loopback is potentially trustworthy: an https page may call it, so a
+  // failure there is not mixed content.
+  it('does not call a loopback target mixed content', async () => {
+    for (const url of ['http://localhost:8080/v1', 'http://127.0.0.1:3000/v1'])
+      expect((await diagnose({ url })).verdict, url).not.toBe('mixed-content')
+  })
+
   it('suspects CORS when the probe reaches the server', async () => {
     let probedUrl = null
     const result = await diagnose({

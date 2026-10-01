@@ -12,6 +12,7 @@ import { KEY_SVG } from './icons.js'
 
 const ERROR_KEY = {
   network: 'oauth.error.network',
+  'mixed-content': 'oauth.error.mixedContent',
   token: 'oauth.error.exchange',
   denied: 'oauth.error.denied',
   state: 'oauth.error.state',

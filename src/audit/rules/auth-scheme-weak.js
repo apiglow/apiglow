@@ -1,4 +1,5 @@
-import { effectiveSecurity, isCleartext, operationServerUrls, schemeNamed } from '../security.js'
+import { isCleartext } from '../../openapi/mixed-content.js'
+import { effectiveSecurity, operationServerUrls, schemeNamed } from '../security.js'
 import { toolOperations } from '../tool-inputs.js'
 
 // A credential that needs TLS, sent to a plain http server. The security that

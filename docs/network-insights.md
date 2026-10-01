@@ -87,7 +87,7 @@ proxy is what's unreachable, and the verdict must say so).
 | # | Check | Verdict | Actionable hint |
 |---|---|---|---|
 | 1 | `navigator.onLine === false` | `offline` | Check your connection; nothing is wrong with the API. |
-| 2 | Page is `https:` and `target` is `http:` | `mixed-content` | The browser blocks insecure requests from a secure page — use an `https` server URL or the proxy. |
+| 2 | Page is `https:` and `target` is `http:` to a host other than the machine itself (`localhost`, `127.0.0.0/8` and `[::1]` are potentially trustworthy, W3C Secure Contexts; `src/openapi/mixed-content.js`) | `mixed-content` | The browser blocks insecure requests from a secure page — use an `https` server URL or the proxy. |
 | 3 | Probe `fetch(target, { mode: 'no-cors' })` resolves | `cors` | The server is reachable but doesn't allow this origin — enable the proxy (when configured) or add CORS headers server-side. |
 | 4 | Probe rejects or times out | `unreachable` | DNS, TLS or the server itself — the URL may be wrong or the server down. |
 

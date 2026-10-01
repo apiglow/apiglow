@@ -5,7 +5,6 @@ import { authSchemeWeak } from '../src/audit/rules/auth-scheme-weak.js'
 import { httpSchemeRegistered } from '../src/audit/rules/http-scheme-registered.js'
 import { oauthUrlTls } from '../src/audit/rules/oauth-url-tls.js'
 import { serverHttps } from '../src/audit/rules/server-https.js'
-import { isCleartext } from '../src/audit/security.js'
 import { auditContext, doc, okResponse } from './audit-context.js'
 
 // The security rules of docs/audit.md §4.8 on transport and credentials.
@@ -13,29 +12,6 @@ import { auditContext, doc, okResponse } from './audit-context.js'
 const run = (rule, document) => runRule(rule, auditContext(document))
 const op = (extra = {}) => ({ responses: okResponse, ...extra })
 const schemes = (securitySchemes, extra = {}) => doc({ components: { securitySchemes }, ...extra })
-
-describe('isCleartext', () => {
-  it('judges http to a remote host only', () => {
-    expect(isCleartext('http://api.example.com')).toBe(true)
-    expect(isCleartext('HTTP://api.example.com')).toBe(true)
-    for (const url of [
-      'https://api.example.com',
-      '/v1',
-      '//api.example.com',
-      'http://localhost:8080',
-      'http://localhost./',
-      'http://dev.localhost',
-      'http://127.0.0.1:3000',
-      'http://[::1]/',
-    ])
-      expect(isCleartext(url), url).toBe(false)
-  })
-
-  it('gives no verdict on a host still holding an undeclared variable', () => {
-    expect(isCleartext('http://{host}/v1')).toBe(false)
-    expect(isCleartext('http://{env}.example.com')).toBe(false)
-  })
-})
 
 describe('server-https', () => {
   it('passes https, relative and loopback servers', () => {

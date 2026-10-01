@@ -1,6 +1,6 @@
 import { placeOf } from '../locate.js'
 import { pointer } from '../pointer.js'
-import { isCleartext } from '../security.js'
+import { isCleartext } from '../../openapi/mixed-content.js'
 
 // An OAuth or OpenID Connect endpoint over plain http. TLS is not advice
 // there, it is the protocol: RFC 6749 requires it on the authorization

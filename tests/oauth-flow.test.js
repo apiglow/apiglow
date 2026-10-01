@@ -261,6 +261,26 @@ describe('fetchClientCredentialsToken', () => {
     ).rejects.toMatchObject({ code: 'token', detail: 'invalid_response' })
   })
 
+  // An https page cannot reach an http token endpoint at all: the error says
+  // so instead of sending the reader after CORS.
+  it('names a token request the browser blocked as mixed content', async () => {
+    vi.stubGlobal('location', { protocol: 'https:', href: 'https://docs.example/api/' })
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch')
+    })
+    const request = (tokenUrl) =>
+      fetchClientCredentialsToken({
+        flow: { tokenUrl },
+        clientId: 'c',
+        clientSecret: '',
+        scopes: [],
+      })
+    await expect(request('http://auth.example/token')).rejects.toMatchObject({
+      code: 'mixed-content',
+    })
+    await expect(request('http://localhost:9000/token')).rejects.toMatchObject({ code: 'network' })
+  })
+
   it('falls back to the HTTP status when the error body is not JSON', async () => {
     vi.stubGlobal('fetch', async () => ({
       ok: false,

@@ -144,6 +144,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- A token request the browser blocks as mixed content (an `http://` token
+  URL from a docs page served over https) now says so, instead of the
+  generic "CORS or connectivity" error.
+- The try-it no longer calls a failed request to `http://localhost` or
+  `127.0.0.1` "mixed content": browsers allow those from an https page.
 - A secret sent in the URL is masked even when URL encoding changes it: an
   API key with `+`, `/` or `=` (any base64 key) used to stay readable in the
   history and in every export of the request (cURL, HAR, Postman, snippets),

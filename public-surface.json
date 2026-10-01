@@ -957,6 +957,7 @@
     "oauth.clientSecret",
     "oauth.error.denied",
     "oauth.error.exchange",
+    "oauth.error.mixedContent",
     "oauth.error.network",
     "oauth.error.state",
     "oauth.flow.authorizationCode",

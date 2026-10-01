@@ -1,5 +1,6 @@
 import { placeOf } from '../locate.js'
-import { isCleartext, serverDefaultUrl } from '../security.js'
+import { isCleartext } from '../../openapi/mixed-content.js'
+import { serverDefaultUrl } from '../security.js'
 
 // A server reached over plain http. Everything sent to it crosses the network
 // in clear — the credentials of every security scheme, and every payload — so

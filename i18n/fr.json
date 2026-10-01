@@ -336,6 +336,7 @@
   "oauth.missingClientSecret": "Le secret client est requis.",
   "oauth.tokenSaved": "Token d'accès enregistré dans l'environnement « {env} ».",
   "oauth.error.network": "La requête de token a échoué au niveau réseau (CORS ou connectivité sur le token endpoint).",
+  "oauth.error.mixedContent": "Requête de token bloquée comme contenu mixte : cette page est servie en https et le token endpoint en http. Demandez une URL de token en https, ou collez un token à la main.",
   "oauth.error.exchange": "Requête de token refusée : {message}",
   "oauth.error.denied": "Autorisation refusée : {message}",
   "oauth.error.state": "Réponse d'autorisation ignorée : state inattendu (rejeu possible ou redirection périmée).",

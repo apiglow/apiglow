@@ -9,6 +9,8 @@
 // what lets header insights be recomputed at render time instead of stored
 // (spec decision 3).
 
+import { isBlockedAsMixedContent } from './mixed-content.js'
+
 // ---------------------------------------------------------------------------
 // §4.1 Response header registry
 // ---------------------------------------------------------------------------
@@ -322,7 +324,7 @@ export async function diagnoseFailure({
   const verdict = (name) => ({ verdict: name, proxied: !!proxied })
 
   if (!online) return verdict('offline')
-  if (pageProtocol === 'https:' && schemeOf(url) === 'http:') return verdict('mixed-content')
+  if (isBlockedAsMixedContent(url, pageProtocol)) return verdict('mixed-content')
   return verdict((await isReachable(url, probe, timeoutMs)) ? 'cors' : 'unreachable')
 }
 
@@ -363,12 +365,4 @@ function noCorsProbe(url, { signal }) {
     redirect: 'follow',
     signal,
   })
-}
-
-function schemeOf(url) {
-  try {
-    return new URL(url).protocol
-  } catch {
-    return null
-  }
 }

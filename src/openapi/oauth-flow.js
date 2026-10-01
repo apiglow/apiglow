@@ -9,6 +9,7 @@ import {
   stripCallbackParams,
 } from './oauth.js'
 import { parseHash } from '../router.js'
+import { isBlockedAsMixedContent } from './mixed-content.js'
 import { OAUTH_PENDING_KEY as PENDING_KEY } from '../storage/maintenance.js'
 
 // Effectful orchestration of the OAuth flows. The authorization server's return
@@ -28,7 +29,7 @@ function redirectUri() {
 export class OAuthError extends Error {
   constructor(code, detail = '') {
     super(detail || code)
-    this.code = code // network | token | denied | state
+    this.code = code // network | mixed-content | token | denied | state
     this.detail = detail
   }
 }
@@ -42,7 +43,9 @@ async function postToken(tokenUrl, body) {
       body,
     })
   } catch {
-    throw new OAuthError('network')
+    // An https page cannot fetch an http token endpoint at all: saying so
+    // beats the generic network failure, which sends the reader after CORS.
+    throw new OAuthError(isBlockedAsMixedContent(tokenUrl) ? 'mixed-content' : 'network')
   }
   let data = null
   try {
