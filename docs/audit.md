@@ -267,15 +267,18 @@ that contradicts the declared version is a correctness finding.
 
 **Structure.** The rules below hold the document to what the specification
 says each object is (OAS 3.0.4 / 3.1.1 / 3.2.0 §4.8, "Schema"): its fixed
-fields, which are required, what kind of value each takes. They read one
+fields, which are required, what kind of value each takes, and the
+constraints each object puts on them. They read one
 table (`src/audit/openapi-objects.js`) — every object's fields, version by
 version — and one typed walk of the **source** document built from it
 (`ctx.objects`): every OpenAPI object in document order, a `$ref` standing
 where an object may stand typed as a Reference to it. Each object is seen
 once, at its declaration; a `$ref` into another file is followed through
 what the loader read there and reported under the `$ref`'s own pointer,
-which the CLI's positions follow into that file. All three are spec MUSTs,
-graded like `field-without-value`: one check per defect, none otherwise.
+which the CLI's positions follow into that file. Every rule from here to
+the end of §4.1 is graded like `field-without-value`: one check per defect,
+none otherwise — a document is not graded on the thousands of fields it got
+right, and a clean one keeps its score.
 
 - `unknown-field` (`error`) — a field the object does not have in the
   declared version: `descripton`, `requried`, a 3.0 `allowEmptyValue` left
@@ -299,8 +302,8 @@ graded like `field-without-value`: one check per defect, none otherwise.
   Requirement's scope list. The app reads such a field as absent — a
   parameter with no location, a scheme with no type — and never fails on
   it: `tests/malformed-documents.test.js` swaps every field of two real
-  documents for a value of another kind, and the model and the audit both
-  come through. `null` is `field-without-value`'s; a value only a later
+  documents for a value of another kind, then for `null`, and the model and
+  the audit both come through. `null` is `field-without-value`'s; a value only a later
   version allows (`in: querystring` in 3.1) is `version-construct`'s.
 - `parameter-schema-or-content` (`error`) — a Parameter or Header Object
   without exactly one of `schema` and `content`, or whose `content` map holds

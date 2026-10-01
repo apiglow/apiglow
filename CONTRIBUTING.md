@@ -372,6 +372,8 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Schema changelog (diff) + snapshot store | `diff.test.js`, `schema-snapshot.test.js` | `schema-changelog.spec.js` |
 | Hiding operations (`x-apiglow-hide`, `openapi.hide`) | `hide.test.js` | — |
 | Schema audit engine, rules, scoring (`docs/audit.md`) | `audit-engine.test.js`, `audit-rules-*.test.js`, `audit-petstore.test.js` | `audit.spec.js` |
+| A malformed document — a field of the wrong kind, an empty list item, a broken `$ref` — renders and audits instead of failing | `malformed-documents.test.js`, `loader-inline.test.js`, `deref.test.js` | — |
+| The audit loads on demand, from `dist/audit.js` (`docs/architecture.md` §14.8) | `i18n.test.js` | `audit.spec.js` |
 | Schema audit report as Markdown | `audit-export.test.js` | `audit.spec.js` |
 | `apiglow audit` command line: console report, versioned JSON with fingerprints, SARIF / GitHub annotations / GitLab Code Quality, several reports per run, positions (`file:line:column` through `$ref`s), baseline, checks, exit status, input forms, multi-spec, the packaged bin (`docs/audit.md` §8) | `audit-export.test.js`, `audit-baseline.test.js`, `audit-positions.test.js`, `audit-cli.test.js` | `audit-cli.spec.js` |
 | Audit rule configuration: rules off / re-graded, path overrides, per-spec merge, validation, the custom profile on the page and in every report (`docs/audit.md` §2.2) | `audit-config.test.js`, `audit-cli.test.js` | `audit.spec.js` |
