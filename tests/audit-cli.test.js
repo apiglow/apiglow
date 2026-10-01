@@ -1,4 +1,5 @@
 import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -404,6 +405,7 @@ describe('apiglow audit', () => {
       [[CLEAN, '--only-new'], /--only-new needs a --baseline/],
       [[CLEAN, '--prune-baseline', 'x.json'], /--prune-baseline needs a --baseline/],
       [[CLEAN, '--allow-stale-baseline'], /--allow-stale-baseline needs a --baseline/],
+      [[CLEAN, '--fetch-timeout', '0'], /--fetch-timeout must be a number of seconds above 0/],
       [
         [CLEAN, '--fail-on', 'info', '--min-severity', 'warning'],
         /--fail-on info would fail on findings/,
@@ -539,6 +541,48 @@ describe('apiglow audit', () => {
     expect(findings.every((f) => f.position?.file === 'tests/e2e/fixtures/e2e-api.json')).toBe(true)
     const parameter = findings.find((f) => f.dataPath === '/paths/~1pets/get/parameters/0')
     expect(parameter.position).toMatchObject({ line: 22, column: 11 })
+  })
+
+  // docs/audit.md §8.1: a job that must stay off the network, and one that
+  // must not hang on a host that never answers.
+  it('never fetches with --offline, even what it could do without', async () => {
+    const positional = await audit('https://api.example.test/openapi.json', '--offline')
+    expect(positional.code).toBe(2)
+    expect(positional.stderr).toMatch(
+      /^apiglow audit: --offline: https:\/\/api\.example\.test\/openapi\.json is a URL/,
+    )
+
+    // An overlay the loader would skip with a warning still stops the run.
+    const config = join(dir, 'apidoc.config.json')
+    await writeFile(
+      config,
+      JSON.stringify({
+        openapi: { url: relative(dir, CLEAN), overlays: ['https://api.example.test/overlay.yaml'] },
+      }),
+      'utf8',
+    )
+    const overlay = await audit('--config', config, '--offline')
+    expect(overlay.code).toBe(2)
+    expect(overlay.stderr).toBe(
+      'apiglow audit: --offline: https://api.example.test/overlay.yaml would be fetched',
+    )
+    expect(globalThis.fetch.name).toBe('fetch')
+  })
+
+  it('gives up on a document that does not arrive within --fetch-timeout', async () => {
+    const server = createServer(() => {})
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const url = `http://127.0.0.1:${server.address().port}/openapi.json`
+    try {
+      const { stderr, code } = await audit(url, '--fetch-timeout', '0.2')
+      expect(code).toBe(2)
+      expect(stderr).toBe(
+        `apiglow audit: spec "default" could not be loaded: network — no answer from ${url} within 0.2 s (--fetch-timeout)`,
+      )
+    } finally {
+      server.closeAllConnections()
+      server.close()
+    }
   })
 
   it('prints its usage', async () => {

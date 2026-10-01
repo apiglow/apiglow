@@ -692,6 +692,13 @@ npx apiglow audit --config apidoc.config.json
     whatever the run lists.
   - `--fail-on` less severe than `--min-severity` is refused: a job would
     fail on findings its report does not show.
+- **Network**: a schema, an external `$ref` or an overlay behind a URL is
+  fetched, each with `--fetch-timeout <seconds>` to arrive (default 30) —
+  a host that accepts the connection and never answers fails the job in
+  its first minute, not at the CI platform's own timeout. `--offline`
+  refuses every fetch and stops the run (exit status 2), even one the
+  loader would otherwise skip with a warning, like an overlay: a job asked
+  to stay off the network never passes on a different document.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).
   The command's own lines on stderr stay English, like the bake's.

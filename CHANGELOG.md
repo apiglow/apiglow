@@ -41,7 +41,8 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   `$ref`s into other files too;
   `--config` audits what your documentation shows, overlays and multi-spec
   included; a quoted pattern (`'apis/**/openapi.yaml'`) audits every schema
-  of a monorepo, each under its path.
+  of a monorepo, each under its path. `--offline` keeps a run off the network,
+  `--fetch-timeout` bounds the wait for a remote schema.
 - A 39th audit rule, `field-without-value`, catches a field declared with no
   value. Its usual cause is a YAML flow mapping cut by an unquoted comma:
   `{ description: The signed mandate, as uploaded by the client }` is the

@@ -52,6 +52,11 @@ const LISTED = 20
 // a Windows path, not a URL with the scheme `c`.
 const IS_URL = /^[a-z][a-z0-9+.-]*:\/\//i
 
+// Long enough for a 12 MB schema on a slow runner, short enough that a host
+// that accepts the connection and never answers fails the job in its first
+// minute rather than at the CI platform's own timeout, hours later.
+const FETCH_TIMEOUT = 30
+
 // What makes an argument a pattern rather than a path.
 const GLOB = /[*?[\]{}]/
 
@@ -236,6 +241,9 @@ const USAGE = `Usage: apiglow audit <spec>... [options]
                      or worse, in every report (default: info)
   --only-new         with --baseline: list only the findings it does not know
   --language         en | fr: language of the report (default: en)
+  --offline          never fetch: a schema, a $ref or an overlay behind a URL
+                     stops the run
+  --fetch-timeout    seconds to wait for each fetched document (default: ${FETCH_TIMEOUT})
 
 Exit status: 0 passed, 1 a check failed, 2 the audit could not run.`
 
@@ -254,7 +262,7 @@ export async function main(args) {
   // that wants to grade differently from the published page.
   if (values['audit-config'])
     input.config = { ...input.config, audit: await auditConfigFile(values['audit-config']) }
-  const { audits, warnings } = await audit(input)
+  const { audits, warnings } = await fetching(options.fetch, () => audit(input))
   warnings.unshift(...(input.warnings ?? []))
   const known = values.baseline ? await baselineFile(values.baseline) : null
 
@@ -334,6 +342,8 @@ function parse(args) {
         'only-new': { type: 'boolean', default: false },
         language: { type: 'string', default: 'en' },
         'fail-on-unmatched-globs': { type: 'boolean', default: false },
+        offline: { type: 'boolean', default: false },
+        'fetch-timeout': { type: 'string' },
         help: { type: 'boolean', default: false },
       },
     })
@@ -386,7 +396,23 @@ function checkOptions(values, positionals) {
       refuse(`--min-score must be an integer from 0 to 100, got "${values['min-score']}"`)
     }
   }
+  let timeout = FETCH_TIMEOUT
+  if (values['fetch-timeout'] !== undefined) {
+    timeout = Number(values['fetch-timeout'])
+    if (!/^\d+(\.\d+)?$/.test(values['fetch-timeout']) || timeout <= 0) {
+      refuse(
+        `--fetch-timeout must be a number of seconds above 0, got "${values['fetch-timeout']}"`,
+      )
+    }
+  }
+  if (values.offline) {
+    const remote = positionals.find(
+      (positional) => IS_URL.test(positional) && !/^file:/i.test(positional),
+    )
+    if (remote) refuse(`--offline: ${remote} is a URL`)
+  }
   return {
+    fetch: { offline: values.offline, timeout },
     failOn,
     minGrade: values['min-grade'],
     minScore,
@@ -428,6 +454,45 @@ function reportTargets(values, refuse) {
 function fromSpec(spec) {
   const url = !IS_URL.test(spec) && isAbsolute(spec) ? pathToFileURL(spec).href : spec
   return { config: { openapi: { url } } }
+}
+
+// Every request the run makes — a schema, an external `$ref`, an overlay — goes
+// through the platform's `fetch`, swapped for the run's own policy and put back
+// after it. `--offline` refuses each one and stops the run, even where the
+// loader would carry on with a warning (an overlay it could not read): a job
+// asked to stay off the network must not pass on a different document.
+async function fetching({ offline, timeout }, run) {
+  const platform = globalThis.fetch
+  let refused = null
+  globalThis.fetch = (input, init = {}) => {
+    const url = String(input?.url ?? input)
+    if (offline) {
+      refused ??= url
+      return Promise.reject(new Error(`--offline: ${url} would be fetched`))
+    }
+    // The reason travels to whatever is waiting, the body's read included: the
+    // error a run stops on names the URL and the option.
+    const controller = new AbortController()
+    setTimeout(
+      () =>
+        controller.abort(new Error(`no answer from ${url} within ${timeout} s (--fetch-timeout)`)),
+      timeout * 1000,
+    ).unref()
+    const signal = init.signal
+      ? AbortSignal.any([init.signal, controller.signal])
+      : controller.signal
+    return platform(input, { ...init, signal })
+  }
+  try {
+    const result = await run()
+    if (refused) throw new CliError(`--offline: ${refused} would be fetched`)
+    return result
+  } catch (err) {
+    if (refused) throw new CliError(`--offline: ${refused} would be fetched`)
+    throw err
+  } finally {
+    globalThis.fetch = platform
+  }
 }
 
 // Several schemas, or a pattern (docs/audit.md §8.1): each file its own spec,
