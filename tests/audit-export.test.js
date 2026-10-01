@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { auditSchema } from '../src/audit/engine.js'
+import { REPORT_FORMAT, REPORT_VERSION, toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
 import { loadInlineApiModel } from '../src/openapi/loader.js'
@@ -184,5 +185,55 @@ describe('audit console report', () => {
   it('resolves every rule string the demo petstore produces', async () => {
     const input = await loadInlineApiModel(JSON.parse(readFileSync(PETSTORE, 'utf8')))
     expect(toAuditText(auditSchema(input))).not.toMatch(/audit\.(rule|category|severity)\./)
+  })
+})
+
+// The JSON contract of `apiglow audit` (docs/audit.md §8.1), from the same
+// synthetic report. The fingerprint hash is injected: a readable stand-in here
+// shows exactly what identity each finding was given.
+describe('audit JSON report', () => {
+  const fingerprintOf = (identity) => identity.replaceAll('\u0000', '|')
+  const json = (report, options = {}) =>
+    JSON.parse(
+      toAuditJson(
+        [{ id: 'default', source: 'openapi.yaml', passed: true, gates: [], report, fresh: [] }],
+        {
+          passed: true,
+          baseline: false,
+          tool: { name: 'apiglow', version: '0.0.0' },
+          fingerprintOf,
+          ...options,
+        },
+      ),
+    )
+
+  it('declares its format and version, and carries the rule texts once', () => {
+    const report = json(REPORT)
+    expect(report).toMatchObject({ format: REPORT_FORMAT, version: REPORT_VERSION, passed: true })
+    expect(report).toMatchSnapshot()
+  })
+
+  it('fingerprints a finding by spec, rule, pointer and occurrence', () => {
+    const twice = {
+      ...REPORT,
+      categories: [
+        {
+          ...REPORT.categories[0],
+          findings: [REPORT.categories[0].findings[0], REPORT.categories[0].findings[0]],
+        },
+      ],
+    }
+    const fingerprints = json(twice).specs[0].report.categories[0].findings.map(
+      (f) => f.fingerprint,
+    )
+    expect(fingerprints).toEqual([
+      'default|duplicate-operation-id|/paths/~1pet~1{petId}/get|0',
+      'default|duplicate-operation-id|/paths/~1pet~1{petId}/get|1',
+    ])
+  })
+
+  it('counts new findings only when a baseline was applied', () => {
+    expect(json(REPORT).specs[0]).not.toHaveProperty('newFindings')
+    expect(json(REPORT, { baseline: true }).specs[0].newFindings).toBe(0)
   })
 })

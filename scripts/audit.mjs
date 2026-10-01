@@ -8,6 +8,7 @@
 // — warnings, the checks, the verdict — to stderr, so `--format json > x` and
 // `--format markdown >> "$GITHUB_STEP_SUMMARY"` stay exactly the report.
 
+import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -17,6 +18,7 @@ import { readAuditConfig } from '../src/audit/config.js'
 import { auditSchema } from '../src/audit/engine.js'
 import { FAIL_ON, GRADE_ORDER, atOrAbove, gateResults } from '../src/audit/gate.js'
 import { hostConfig } from '../src/config.js'
+import { toAuditJson } from '../src/export/audit-json.js'
 import { toAuditMarkdown } from '../src/export/audit-markdown.js'
 import { toAuditText } from '../src/export/audit-text.js'
 import { useDictionary } from '../src/i18n/index.js'
@@ -117,7 +119,12 @@ export async function main(args) {
   })
   const passed = results.every((result) => result.passed)
 
-  const output = render(results, { format: values.format, passed, baseline: Boolean(known) })
+  const output = render(results, {
+    format: values.format,
+    passed,
+    baseline: Boolean(known),
+    tool: { name: 'apiglow', version: await toolVersion() },
+  })
   if (values.output) await write(values.output, output)
   const notes = warnings.map((warning) => `warning: ${warning}`)
   if (values['write-baseline']) {
@@ -200,6 +207,22 @@ function fromSpec(spec) {
   return { config: { openapi: { url } } }
 }
 
+// SHA-256 of the finding's identity: fixed length and free of separators, so
+// that a CI surface keying on it (SARIF, GitLab Code Quality) can take it as is.
+function fingerprintOf(identity) {
+  return createHash('sha256').update(identity).digest('hex')
+}
+
+// The package's own manifest, one directory up from this file in the repo
+// (scripts/) and in the published package (dist/) alike.
+async function toolVersion() {
+  try {
+    return JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
+  } catch {
+    return ''
+  }
+}
+
 async function auditConfigFile(path) {
   try {
     return JSON.parse(await readFile(resolvePath(path), 'utf8'))
@@ -236,17 +259,9 @@ async function write(path, content) {
   }
 }
 
-function render(results, { format, passed, baseline }) {
+function render(results, { format, passed, baseline, tool }) {
   if (format === 'json') {
-    const specs = results.map(({ id, source, report, fresh, gates, passed }) => ({
-      id,
-      source,
-      passed,
-      gates,
-      ...(baseline ? { newFindings: fresh.length } : {}),
-      report,
-    }))
-    return `${JSON.stringify({ passed, specs }, null, 2)}\n`
+    return toAuditJson(results, { passed, baseline, tool, fingerprintOf })
   }
   const multi = results.length > 1
   return results

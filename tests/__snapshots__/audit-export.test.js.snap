@@ -1,5 +1,147 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`audit JSON report > declares its format and version, and carries the rule texts once 1`] = `
+{
+  "format": "apiglow-audit-report",
+  "passed": true,
+  "rules": {
+    "duplicate-operation-id": {
+      "category": "correctness",
+      "fix": "Rename one of the operationIds so that each value is unique in the document — a verb and a noun reads best (listPets, getPet).",
+      "label": "Duplicate operationId",
+      "why": "An operationId must be unique in the document, and this documentation turns it into the operation's deep link: one of the two links lands on the other operation.",
+    },
+    "operation-tagged": {
+      "category": "readiness",
+      "fix": "Add at least one tag, and declare it with a description in the top-level tags list.",
+      "label": "Operation without tag",
+      "why": "It lands in the navigation's catch-all group along with every other untagged operation, and the reader cannot tell which family it belongs to.",
+    },
+    "security-scheme-described": {
+      "category": "readiness",
+      "fix": "Add a description to the scheme saying where to get the credential and in what form to paste it.",
+      "label": "Security scheme without description",
+      "why": "The credentials block shows that description to explain what to paste and where to get it. Without one, the reader faces a bare field labelled with the scheme's key.",
+    },
+  },
+  "specs": [
+    {
+      "gates": [],
+      "id": "default",
+      "passed": true,
+      "report": {
+        "api": {
+          "contact": {
+            "email": "api@petstore.test",
+            "name": "API team",
+          },
+          "license": {
+            "name": "Apache 2.0",
+            "url": "https://apache.org/licenses/LICENSE-2.0",
+          },
+          "title": "Swagger Petstore",
+          "version": "1.0.11",
+        },
+        "categories": [
+          {
+            "checks": 5,
+            "counts": {
+              "error": 1,
+              "info": 0,
+              "warning": 0,
+            },
+            "findings": [
+              {
+                "category": "correctness",
+                "dataPath": "/paths/~1pet~1{petId}/get",
+                "fingerprint": "default|duplicate-operation-id|/paths/~1pet~1{petId}/get|0",
+                "location": "GET /pet/{petId}",
+                "opRef": "getPet",
+                "params": {
+                  "operationId": "getPet",
+                },
+                "ruleId": "duplicate-operation-id",
+                "severity": "error",
+              },
+            ],
+            "id": "correctness",
+            "score": 60,
+          },
+          {
+            "checks": 3,
+            "counts": {
+              "error": 0,
+              "info": 0,
+              "warning": 0,
+            },
+            "findings": [],
+            "id": "completeness",
+            "score": 100,
+          },
+          {
+            "checks": 9,
+            "counts": {
+              "error": 0,
+              "info": 1,
+              "warning": 1,
+            },
+            "findings": [
+              {
+                "category": "readiness",
+                "dataPath": "/components/securitySchemes/apiKey",
+                "fingerprint": "default|security-scheme-described|/components/securitySchemes/apiKey|0",
+                "location": "components.securitySchemes.apiKey",
+                "opRef": null,
+                "params": {
+                  "name": "apiKey",
+                },
+                "ruleId": "security-scheme-described",
+                "severity": "warning",
+              },
+              {
+                "category": "readiness",
+                "dataPath": "/paths/~1admin~1reset/delete",
+                "fingerprint": "default|operation-tagged|/paths/~1admin~1reset/delete|0",
+                "hidden": true,
+                "location": "DELETE /admin/reset",
+                "opRef": null,
+                "params": {},
+                "ruleId": "operation-tagged",
+                "severity": "info",
+              },
+            ],
+            "id": "readiness",
+            "score": 74,
+          },
+        ],
+        "counts": {
+          "error": 1,
+          "info": 1,
+          "total": 3,
+          "warning": 1,
+        },
+        "grade": "C",
+        "openapi": "3.1.0",
+        "scope": {
+          "groups": 3,
+          "operations": 19,
+          "schemas": 64,
+          "securitySchemes": 2,
+          "webhooks": 2,
+        },
+        "score": 78,
+      },
+      "source": "openapi.yaml",
+    },
+  ],
+  "tool": {
+    "name": "apiglow",
+    "version": "0.0.0",
+  },
+  "version": 1,
+}
+`;
+
 exports[`audit Markdown export > renders grade, scores and findings 1`] = `
 "# Schema audit — Swagger Petstore
 

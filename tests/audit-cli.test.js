@@ -120,6 +120,25 @@ describe('apiglow audit', () => {
     expect(findings.every((finding) => finding.known)).toBe(true)
   })
 
+  it('fingerprints every finding the same way from one run to the next', async () => {
+    const run = async () => JSON.parse((await audit(PETSTORE, '--format', 'json')).stdout)
+    const [first, second] = [await run(), await run()]
+    const prints = (json) =>
+      json.specs[0].report.categories.flatMap((category) =>
+        category.findings.map((f) => f.fingerprint),
+      )
+    expect(prints(first).length).toBeGreaterThan(0)
+    expect(prints(first).every((print) => /^[0-9a-f]{64}$/.test(print))).toBe(true)
+    expect(new Set(prints(first)).size).toBe(prints(first).length)
+    expect(prints(second)).toEqual(prints(first))
+    expect(first).toMatchObject({
+      format: 'apiglow-audit-report',
+      version: 1,
+      tool: { name: 'apiglow' },
+    })
+    expect(first.rules['parameter-described'].fix).toMatch(/^Add a description/)
+  })
+
   it('writes JSON a script can read: verdict, checks and the report', async () => {
     const { stdout, code } = await audit(PETSTORE, '--format', 'json', '--min-grade', 'A')
     const json = JSON.parse(stdout)

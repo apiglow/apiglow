@@ -615,18 +615,34 @@ npx apiglow audit --config apidoc.config.json
 - **`--format`**: `text` (default) — the console report, folded by rule like
   the page, the rationale printed once per rule; `markdown` — the export of
   §5, the shape a pull-request comment or a GitHub job summary takes;
-  `json` — the engine's report as it is (§3), wrapped with the checks:
+  `json` — the engine's report as it is (§3), wrapped with the checks, in a
+  versioned contract (`src/export/audit-json.js`):
 
   ```
-  { "passed": false,
+  { "format": "apiglow-audit-report", "version": 1,
+    "tool": { "name": "apiglow", "version": "0.3.0" },
+    "passed": false,
     "specs": [{ "id": "default", "source": "openapi.yaml", "passed": false,
                 "gates": [{ "gate": "fail-on", "threshold": "error", "actual": 2, "passed": false }],
                 "newFindings": 2,
-                "report": { … } }] }
+                "report": { …, "categories": [{ …, "findings": [{ …, "fingerprint": "9f3c…" }] }] } }],
+    "rules": { "parameter-described": { "category": "completeness",
+               "label": "…", "why": "…", "fix": "…" } } }
   ```
 
-  `newFindings` is present only with `--baseline`, and so is `known: true`
-  on the findings the baseline lists.
+  - `format` and `version` name the shape; a change of shape bumps
+    `version`, so a consumer can refuse what it does not know.
+  - Every finding carries a `fingerprint`: SHA-256 of the baseline's
+    identity — spec, rule, JSON pointer, and the occurrence among findings
+    sharing those three (§8.3). It stays the same from one run to the next
+    while the document around the finding changes, which is what a CI
+    surface or an agent tracking a finding keys on.
+  - `rules` carries, once, the texts of every rule that fired, in the
+    report's language: `label`, `why`, `fix`. They are templates whose
+    `{placeholders}` are each finding's `params` — a consumer explaining a
+    finding needs nothing but the file.
+  - `newFindings` is present only with `--baseline`, and so is
+    `known: true` on the findings the baseline lists.
 - **`--output <file>`** writes the report to a file instead of stdout.
 - **`--language`**: `en` (default) or any shipped catalog (`fr`), for the
   report's messages and rationales — they exist only as i18n strings (§3).
