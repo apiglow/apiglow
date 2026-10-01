@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interpolate, referencedVariables } from '../src/env/interpolate.js'
+import { interpolate, publishableUrl, referencedVariables } from '../src/env/interpolate.js'
 
 const vars = {
   host: { value: 'api.example.com', sensitive: false },
@@ -46,5 +46,17 @@ describe('{{var}} interpolation', () => {
       'a',
       'auth.bearerAuth',
     ])
+  })
+})
+
+describe('publishableUrl', () => {
+  it('fills the variables in, and refuses a URL that would need a secret or an unset one', () => {
+    const variables = { region: { value: 'eu' }, tenant: { value: 'acme', sensitive: true } }
+    expect(publishableUrl('https://{{region}}.api.test/v1', variables)).toBe(
+      'https://eu.api.test/v1',
+    )
+    expect(publishableUrl('https://api.test', variables)).toBe('https://api.test')
+    expect(publishableUrl('https://{{tenant}}.api.test', variables)).toBeNull()
+    expect(publishableUrl('https://{{zone}}.api.test', variables)).toBeNull()
   })
 })

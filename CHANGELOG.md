@@ -133,6 +133,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Fixed
 
+- The MCP config, `llms.txt`, `llms-full.txt`, a copied page and the baked
+  files no longer hand out a base URL holding `{{variables}}` (an environment
+  created from a server like `https://{region}.api.example.com`): the
+  environment's values are filled in, and a URL that would need a secret or
+  an unset variable gives way to the document's own server.
 - Server URL variables are filled in: `https://{region}.api.example.com`
   now sends to the variable's default instead of the literal `{region}`, and
   an environment created from that server keeps `{{region}}` as one of its

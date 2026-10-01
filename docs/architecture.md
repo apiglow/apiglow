@@ -1512,7 +1512,13 @@ is the document, and the config never narrows to one endpoint. Its base URL
 follows the selected environment, never an operation-level `servers` override
 — the endpoint doc re-renders on every change, and a prose page, which does
 not, rebuilds its menu instead (`src/components/copy-page-menu.js` takes the
-MCP context as a provider for exactly that reason).
+MCP context as a provider for exactly that reason). Every URL handed out of
+the app — this config, `llms.txt`, `llms-full.txt`, a copied page, a baked
+file — carries the environment's `{{variables}}` filled in
+(`publishableUrl`, `src/env/interpolate.js`): nothing out there knows them.
+One that would need a sensitive value, or a variable nobody set, gives way
+to the document's own server, never to a file carrying a secret or a literal
+`{{name}}`. The page itself keeps showing the template.
 
 One menu, two subjects: what changes between them is only the string being
 handed over — `toEndpointMarkdown` for an operation, `toDocsPageMarkdown` for

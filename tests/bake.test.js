@@ -80,6 +80,28 @@ describe('bake', () => {
     expect(paths(files)).toMatchSnapshot()
   })
 
+  // A baked file is read where nobody knows the environment's variables.
+  it('fills the declared environment variables into the base URL it publishes', async () => {
+    const regional = {
+      ...PETSTORE,
+      environments: [
+        { name: 'e2e', baseUrl: 'https://{{region}}.e2e.test/v1', variables: { region: 'api' } },
+      ],
+    }
+    const { files } = await run(regional)
+    expect(files.get('llms.txt')).toContain('Base URL: https://api.e2e.test/v1')
+    // One it cannot publish — a secret, or unset — gives way to the document's server.
+    const secret = {
+      ...regional,
+      environments: [
+        { ...regional.environments[0], variables: { region: { value: 'api', sensitive: true } } },
+      ],
+    }
+    const { files: fallback } = await run(secret)
+    expect(fallback.get('llms.txt')).not.toContain('{{region}}')
+    expect(fallback.get('llms.txt')).toContain('Base URL: https://api.e2e.test/v1')
+  })
+
   it('emits a snapshot, a mirror and a sitemap entry per route', async () => {
     const { files } = await run(PETSTORE)
     expect(files.get('sitemap.xml')).toMatchSnapshot()

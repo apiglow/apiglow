@@ -489,21 +489,22 @@ function appLayout(
   // Resolved at call time, not at build time: the selected environment can
   // change between the moment an export button appears and the moment it is
   // pressed.
-  const { llmsFullExport, llmsTextExport, mcpContext, specDownload } = createSpecExports({
-    model,
-    pages,
-    outline: docsOutline,
-    scenarios: configScenarios,
-    ops: scenarioOps,
-    fetchText: fetchTextCached,
-    envStore,
-    fallbackBaseUrl,
-    activeSpec,
-    schemaUrl,
-    pageUrl,
-    overlays: loaded.overlays,
-    specOverlays: config.openapi.overlays ?? [],
-  })
+  const { llmsFullExport, llmsTextExport, mcpContext, specDownload, exportBaseUrl } =
+    createSpecExports({
+      model,
+      pages,
+      outline: docsOutline,
+      scenarios: configScenarios,
+      ops: scenarioOps,
+      fetchText: fetchTextCached,
+      envStore,
+      fallbackBaseUrl,
+      activeSpec,
+      schemaUrl,
+      pageUrl,
+      overlays: loaded.overlays,
+      specOverlays: config.openapi.overlays ?? [],
+    })
   doc.llmsFullExport = llmsFullExport
   doc.mcp = mcpContext
 
@@ -525,7 +526,10 @@ function appLayout(
 
   // Full URL displayed at the top of the doc: base of the selected env, otherwise
   // falls back to servers — follows environment changes.
+  // The page's Markdown leaves the app: it gets the URL the exports get, its
+  // `{{variables}}` filled in. Set first — `baseUrl` renders.
   const syncDocBaseUrl = () => {
+    doc.exportBaseUrl = exportBaseUrl()
     doc.baseUrl = envStore.selected()?.baseUrl || fallbackBaseUrl
   }
   syncDocBaseUrl()

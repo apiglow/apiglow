@@ -7,6 +7,7 @@
 // Separate from `exports.js`, which stays free of any DOM import so it can be
 // tested in the node environment: the download descriptors come from `views.js`,
 // and that module reaches the custom elements.
+import { publishableUrl } from '../env/interpolate.js'
 import { llmsFullExporter, llmsTextExporter } from './exports.js'
 import { specDownloadNotes, specSourceDownload } from './views.js'
 
@@ -25,7 +26,14 @@ export function createSpecExports({
   overlays,
   specOverlays = [],
 }) {
-  const exportBaseUrl = () => envStore.selected()?.baseUrl || fallbackBaseUrl
+  // What the exports hand out leaves the app, where nobody knows the
+  // environment's `{{variables}}`: filled in, or the document's own server.
+  const exportBaseUrl = () => {
+    const env = envStore.selected()
+    return (
+      (env?.baseUrl && publishableUrl(env.baseUrl, envStore.variablesOf(env))) || fallbackBaseUrl
+    )
+  }
 
   // A schema given inline has no URL to hand out: neither the llms.txt
   // "Reference" section nor an MCP bridge can point at a document that only
@@ -99,5 +107,5 @@ export function createSpecExports({
     notes: specDownloadNotes(model, overlays),
   }
 
-  return { llmsFullExport, llmsTextExport, mcpContext, specDownload }
+  return { llmsFullExport, llmsTextExport, mcpContext, specDownload, exportBaseUrl }
 }

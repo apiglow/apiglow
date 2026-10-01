@@ -118,6 +118,14 @@ class ApiEndpointDoc extends HTMLElement {
     this.#scheduleRender()
   }
 
+  // The same base with the environment's variables filled in, for the
+  // Markdown handed out of the app (provided by the shell, set before
+  // `baseUrl`, whose render picks it up).
+  #exportBaseUrl = ''
+  set exportBaseUrl(url) {
+    this.#exportBaseUrl = url ?? ''
+  }
+
   // Base URL of the selected environment (provided by the shell), to
   // display the full URL as a reminder in front of the path.
   set baseUrl(url) {
@@ -321,6 +329,7 @@ class ApiEndpointDoc extends HTMLElement {
     // replaceChildren converts null into a "null" text node: filtering required.
     const sections = [
       headerSection(op, this.#baseUrl, {
+        exportBaseUrl: this.#exportBaseUrl,
         llmsFullExport: this.#llmsFullExport,
         mcp: this.#mcp,
         changeStatus: this.#changes?.status,
@@ -446,7 +455,11 @@ function configuredBadge(configured, extra = '') {
 // is only a dimmed reminder, the path stays the highlighted information.
 // Webhook: no base URL (the call goes out to the integrator's server) —
 // event name, dedicated badge and direction note.
-function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeStatus = null }) {
+function headerSection(
+  op,
+  baseUrl,
+  { exportBaseUrl = '', llmsFullExport = null, mcp = null, changeStatus = null },
+) {
   const isWebhook = op.kind === 'webhook'
   const base = isWebhook ? '' : String(effectiveBaseUrl(op, baseUrl)).replace(/\/+$/, '')
   // One derivation of the page's name, for the h1 and for the hand-off menu
@@ -489,7 +502,14 @@ function headerSection(op, baseUrl, { llmsFullExport = null, mcp = null, changeS
       // operation-level server override belongs to that operation, and what is
       // being registered is the API.
       copyPageMenu({
-        markdown: () => toEndpointMarkdown(op, { baseUrl: base }),
+        // Outside the app nobody knows the environment's `{{variables}}`: the
+        // Markdown gets the base with them filled in, the page shows them.
+        markdown: () =>
+          toEndpointMarkdown(op, {
+            baseUrl: isWebhook
+              ? ''
+              : String(effectiveBaseUrl(op, exportBaseUrl || baseUrl)).replace(/\/+$/, ''),
+          }),
         title: heading,
         filename: `${op.id}.md`,
         promptKey: 'doc.llmPrompt',

@@ -43,6 +43,17 @@ export function interpolate(template, variables = {}) {
   }
 }
 
+// A URL fit to leave the app — a file someone downloads, a config another tool
+// runs, a page handed to a model: the environment's `{{variables}}` filled in,
+// since nothing out there knows them. A URL that would carry a sensitive value
+// — a file people share must not — or still holds a variable nobody set is no
+// URL to hand out: null, and the caller falls back to the document's server.
+export function publishableUrl(template, variables = {}) {
+  const { value, missing, used } = interpolate(template, variables)
+  if (missing.length || used.some((variable) => variable.sensitive)) return null
+  return value
+}
+
 // The same grammar, cut up instead of substituted: a consumer that has to
 // render each reference as its own thing — the docs pages turn an unresolvable
 // one into a chip, a sensitive one into a mask — needs the pieces, not a

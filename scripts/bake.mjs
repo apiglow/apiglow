@@ -26,6 +26,7 @@ import { dirname, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { hostConfig } from '../src/config.js'
+import { publishableUrl } from '../src/env/interpolate.js'
 import {
   dedentDocsContent,
   docsPageFormat,
@@ -144,7 +145,11 @@ async function bakedScenarios(entries, { ops, base, specId, specUrl, siteUrl, wa
 }
 
 function firstBaseUrl(model, environments, { specUrl, siteUrl }) {
-  const declared = environments.find((env) => env?.baseUrl)?.baseUrl
+  // A baked file is read where nobody knows the environment's `{{variables}}`:
+  // filled in from the config, or the document's server when one is unset or
+  // sensitive (`publishableUrl`).
+  const env = environments.find((entry) => entry?.baseUrl)
+  const declared = env ? publishableUrl(env.baseUrl, configVariables(env.variables)) : null
   if (declared) return declared
   const server = model.servers?.[0]
   if (!server?.url) return ''
@@ -152,6 +157,19 @@ function firstBaseUrl(model, environments, { specUrl, siteUrl }) {
   // served from — a relative `/api/v3` is meaningless without one, and an
   // inline schema is served from the host page like everything else it carries.
   return serverUrl(server, model.baseUri || specUrl || siteBase(siteUrl))
+}
+
+// A config environment's `variables` ({ name: value | { value, sensitive } })
+// as interpolation reads them.
+function configVariables(raw) {
+  return Object.fromEntries(
+    Object.entries(raw && typeof raw === 'object' ? raw : {}).map(([name, entry]) => [
+      name,
+      entry && typeof entry === 'object'
+        ? { value: entry.value, sensitive: entry.sensitive === true }
+        : { value: entry },
+    ]),
+  )
 }
 
 // One spec, everything the emitters need: the model, the pages with their

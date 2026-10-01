@@ -5,6 +5,7 @@ import {
   activeEnvName,
   clickNavOp,
   closeEnvManager,
+  closeMobilePanels,
   envOptions,
   envTrigger,
   gotoApp,
@@ -173,6 +174,34 @@ test('a server seeded with variables keeps them as environment variables', async
   await send(page)
   await expect.poll(() => calls.length).toBe(1)
   expect(calls[0].url).toBe('https://api.e2e.test/v1/pets')
+})
+
+// What leaves the app — the MCP config, llms.txt, a copied page — is read
+// where nobody knows the environment's variables: they are filled in.
+test('an export carries the seeded URL with its variables filled in', async ({ page }) => {
+  await gotoApp(page)
+  await openEnvManager(page)
+  const seed = page.locator('env-manager fieldset', { hasText: 'Create from schema servers' })
+  await seed
+    .locator('div', { hasText: 'Regional' })
+    .getByRole('button', { name: 'Create', exact: true })
+    .click()
+  await closeEnvManager(page)
+
+  await gotoApp(page)
+  const card = page.locator('details', { hasText: 'Use this API from an AI agent' })
+  await card.locator('summary').click()
+  await expect(card.locator('pre')).toContainText('"API_BASE_URL": "https://api.e2e.test/v1"')
+  await expect(card.locator('pre')).not.toContainText('{{region}}')
+
+  // The page shows the template; the Markdown it hands out does not.
+  await gotoApp(page, '#/op/listPets')
+  await closeMobilePanels(page)
+  await page.locator('main details.dropdown > summary', { hasText: 'Copy page' }).click()
+  await page.getByRole('button', { name: 'View as Markdown' }).click()
+  const source = page.locator('dialog[data-markdown-source] pre')
+  await expect(source).toContainText('https://api.e2e.test/v1/pets')
+  await expect(source).not.toContainText('{{region}}')
 })
 
 test('duplicate and delete environments, delete asks for confirmation', async ({ page }) => {
