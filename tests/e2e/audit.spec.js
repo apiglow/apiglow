@@ -52,16 +52,16 @@ test('the audit is its own file, fetched on the first visit to #/audit only', as
 test('the report grades the schema and scores each category', async ({ page }) => {
   await gotoApp(page, '#/audit')
   const header = report(page).locator('[data-audit-summary]')
-  await expect(header).toContainText('B')
-  await expect(header).toContainText('86 / 100')
+  await expect(header).toContainText('A')
+  await expect(header).toContainText('90 / 100')
   await expect(header).toContainText('12 warning(s)')
-  await expect(header).toContainText('42 note(s)')
+  await expect(header).toContainText('43 note(s)')
   // One bar per scored category, including the one with no finding: a 100 % is
   // exactly what the author wants to see.
   await expect(header).toContainText('Correctness')
   await expect(header).toContainText('100 %')
   await expect(header).toContainText('Docs readiness')
-  await expect(header).toContainText('79 %')
+  await expect(header).toContainText('89 %')
   // Score bars are not left to color alone.
   await expect(header.locator('progress').first()).toHaveAttribute(
     'aria-label',
@@ -182,9 +182,9 @@ test('each category section carries its own counts', async ({ page }) => {
   await gotoApp(page, '#/audit')
   const heading = report(page).locator('[data-audit-category="readiness"] h2')
   await expect(heading).toContainText('Docs readiness')
-  await expect(heading).toContainText('79 %')
+  await expect(heading).toContainText('89 %')
   await expect(heading).toContainText('2 warning(s)')
-  await expect(heading).toContainText('7 note(s)')
+  await expect(heading).toContainText('8 note(s)')
   // A severity with nothing in it is left out: "0 error(s)" reads as a finding.
   await expect(heading).not.toContainText('error(s)')
 })
@@ -292,15 +292,15 @@ test('the report is copied as Markdown, findings and rationales included', async
   await report(page).locator('[data-audit-copy]').click()
   const markdown = await clipboardText(page)
   expect(markdown).toContain('# Schema audit — E2E Test API')
-  expect(markdown).toContain('**Grade B** — 86 / 100 · Version 1.0.0 · OpenAPI 3.1.0')
+  expect(markdown).toContain('**Grade A** — 90 / 100 · Version 1.0.0 · OpenAPI 3.1.0')
   // Stamped to the second: a report pasted into a ticket has to say when it was
   // taken, or a reader cannot tell whether it still describes the schema.
   expect(markdown).toMatch(/Generated on \d{4}-\d\d-\d\d \d\d:\d\d:\d\d/)
   // The whole perimeter travels with it, same units as the page's stats.
   expect(markdown).toContain('Operations: 6 · Groups: 2 · Webhooks: 2 · Security schemes: 4')
   // Counts per category, not only for the report as a whole.
-  expect(markdown).toContain('- Docs readiness: 79 % — 2 warning(s) · 7 note(s)')
-  expect(markdown).toContain('## Docs readiness — 79 % · 2 warning(s) · 7 note(s)')
+  expect(markdown).toContain('- Docs readiness: 89 % — 2 warning(s) · 8 note(s)')
+  expect(markdown).toContain('## Docs readiness — 89 % · 2 warning(s) · 8 note(s)')
   // A finding travels with where it applies and why it matters.
   expect(markdown).toContain(
     '**Note** — This operation carries no example anywhere, or only placeholders.',

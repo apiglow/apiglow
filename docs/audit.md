@@ -38,7 +38,7 @@ drifting.
    and any computation entirely. Discreet-by-placement avoids publicly
    grading an API in its own docs while keeping the tool one click away
    for authors.
-2. **Curated, doc-oriented ruleset** (115 rules across the seven §4
+2. **Curated, doc-oriented ruleset** (146 rules across the seven §4
    categories), each rule a pure, individually tested function — and
    **configurable**, because a real API has deliberate, permanent
    exceptions the baseline (§8.3) cannot cover on new code. The `audit`
@@ -195,7 +195,7 @@ the registry, in both languages.
 
 ## 4. Rule catalog
 
-115 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
+146 rules, one file per rule under `src/audit/rules/`, `rules/index.js` the
 only registry. Rules whose scope must be narrowed to stay truthful say so
 below: a finding that names a degradation which cannot happen is a false
 positive, not caution.
@@ -705,6 +705,77 @@ not.
   `status` the code generated for this occurrence. Ranges and `default` pin
   nothing and are skipped.
 
+**HTTP semantics.** The rules below hold the document to what RFC 9110 and
+the RFCs it builds on say a message can carry.
+
+- `request-body-method` (`error`, per check) — a `requestBody` on
+  an operation whose method gives content no meaning. RFC 9110 says content
+  in a GET, HEAD or DELETE request "has no generally defined semantics" and
+  might get the request rejected as a smuggling attempt (§9.3.1, §9.3.2,
+  §9.3.5, SHOULD NOT), and forbids it in a TRACE request (§9.3.8, MUST NOT);
+  OpenAPI 3.0 makes consumers ignore such a `requestBody` (SHALL), 3.1 and
+  3.2 permit it and say to avoid it. Graded by method: GET and HEAD are a
+  `warning` — the Fetch standard throws on a body with either, so the
+  try-it sends the request without it, says so, and keeps the body in the
+  cURL command (`canHaveBody`, `src/openapi/methods.js`); DELETE is an
+  `info` — real APIs read a DELETE body on purpose, and the try-it sends it;
+  TRACE is an `error`. One check per operation with one of these methods,
+  webhooks and callbacks included; the finding at `requestBody`, params
+  `{ method }`. A browser's refusal of TRACE itself is
+  `forbidden-in-browser`'s.
+- `bodyless-status` (`error`) — `content` on a response that cannot
+  carry any: a `1XX` range or 1xx code, 204, 304 (RFC 9110 §6.4.1, "do not
+  include content"), 205 (§15.3.6, MUST NOT), and every response of a HEAD
+  operation, whatever its status (§9.3.2, MUST NOT). The schema describes a
+  body no client receives: a generated client types its result from it and
+  parses an empty stream, and this documentation shows the body and its
+  sample under the status. One check per such response, all operation
+  kinds; an empty `content` map passes. A `components.responses` entry used
+  under one of these codes is checked once, at the component; a HEAD
+  response is checked where the operation lists it, since it usually
+  reuses its GET's response, whose content is right for GET.
+- `http-date-headers` (`warning`) — a `Retry-After`,
+  `Last-Modified` (RFC 9110 §10.2.3, §8.8.2), `Expires` (RFC 9111 §5.3) or
+  `Sunset` (RFC 8594 §3) response header declared as something other than
+  an HTTP-date, which a sender MUST write as IMF-fixdate (RFC 9110 §5.6.7:
+  `Sun, 06 Nov 1994 08:49:37 GMT`). Fails on the first of: `format:
+  date-time` or `date` (RFC 3339, which HTTP date parsers are not required
+  to read); a numeric `type` (`Retry-After` excepted: its delay-seconds is
+  an integer); an example — the Header's `example`/`examples`, the schema's
+  `example`/`examples` — that is a string but no IMF-fixdate (nor, for
+  `Retry-After`, digits), or a number other than a `Retry-After` delay. A
+  client generated from the declaration parses every real response wrong.
+  One check per Header Object with a schema, header names compared without
+  case; a `components.headers` entry once, named by the key a response uses
+  it under (or its own key). Multipart part headers are out. Other kinds of
+  example are `example-type-mismatch`'s; `Deprecation`, a Structured Field
+  date, is `deprecation-header-format`'s.
+- `query-method-body` (`warning`) — a 3.2 QUERY operation with no
+  request body, or one with no `content`. QUERY carries its query in the
+  content — "The content of the request and its media type define the
+  query", and servers "MUST fail the request" without a matching
+  Content-Type (RFC 10008 §2, the method OpenAPI 3.2's `query` field
+  defines) — so the operation describes a request every conforming server
+  refuses, and the try-it has no body to edit. One check per QUERY
+  operation, all kinds; nothing before 3.2. An `additionalOperations` key
+  spelled QUERY is dropped by the model and is
+  `additional-operation-method`'s.
+- `problem-details-shape` (`warning`) — an `application/problem+json`
+  response schema that contradicts RFC 9457: a root that is no object (a
+  declared `type` without `object`, or `items` — §3: "a JSON object"), or a
+  standard member typed against §3.1 — `type`, `title`, `detail`,
+  `instance` without `string`, `status` without `number` or `integer`. A
+  client MUST ignore a member of the wrong type, so a `status` declared as a
+  string is dropped by every conforming reader, and a generated client
+  expects what no problem-aware library hands over. Read from the schema
+  and its `allOf` members; an undeclared type contradicts nothing. One
+  check per problem+json media type of a response (every operation kind,
+  `components.responses` included) with a schema; a schema shared under
+  `components.schemas` is checked once, there. Params `{ member }`: `$` for
+  the root, `$.status` for a member. The value of `status` against the
+  response code is `problem-status-mismatch`'s; prose-only error bodies,
+  `error-machine-readable`'s.
+
 ### 4.2 Documentation completeness
 
 What the document leaves unsaid — mostly `warning`.
@@ -746,6 +817,78 @@ that merely mentions its name ("User id of the account owner") is substance.
   document, and the only ones that answer "can I build on this, and who do
   I talk to". Whether the email, URL or identifier is well formed is
   `uri-form`'s and `license-identifier-spdx`'s.
+- `redirect-location` (`info`) — a 301, 302, 303, 307 or 308 response
+  that declares no `Location` header (compared without case). RFC 9110
+  says the server SHOULD send it with the new URI in a 301 and 308 and with
+  the other URI in a 302 and 307 (§15.4.2, §15.4.3, §15.4.8, §15.4.9); a 303
+  states no requirement because it is defined by the URI in its Location
+  header (§15.4.4). Without it, a client author learns the answer is
+  elsewhere and nothing about how to follow it. A 300's SHOULD is
+  conditional and out, a 201's Location is no requirement, a `3XX` range
+  names no single semantics. One check per such response of a tool
+  operation; one under `components.responses` is checked once, at the
+  component.
+- `method-not-allowed-allow` (`info`) — a 405 response that declares
+  no `Allow` header. RFC 9110 §15.5.6: the origin server MUST send one,
+  listing the methods the resource supports — what a client told "not this
+  method" reads to find the right one. The server's side is a MUST; the
+  document's gap is what it leaves unsaid, hence `info`. One check per 405 of
+  a tool operation; one under `components.responses` is checked once, at
+  the component.
+- `partial-content-range` (`info`) — a 206 response with neither a
+  `Content-Range` header nor a `multipart/byteranges` media type. RFC 9110
+  §15.3.7: a single-part 206 MUST carry Content-Range, a multipart one MUST
+  be `multipart/byteranges` (each part with its own Content-Range, none at
+  the top). A client resuming a download needs one or the other to place
+  the bytes it got. One check per 206 of a tool operation; one under
+  `components.responses` is checked once, at the component.
+- `placeholder-text` (`warning`) — a display label holding a placeholder:
+  `info.title`, `info.summary`, a 3.2 Tag `summary` or Response `summary`
+  reading `Title`, `TODO`, `string`, `lorem ipsum`… (`isSubstantive`, with no
+  name to read back: a label has none). These fields are display text and
+  nothing else — the title heads every page and the browser tab, a summary
+  names what it sits on wherever it is shown — so the placeholder is printed
+  as the name. Read whatever the version, as the documentation reads them (a
+  field the version lacks is `unknown-field`'s). One check per such field
+  holding text. Operation summaries are `operation-summary-present`'s and
+  `operation-summary-style`'s; descriptions are the `*-described` rules'.
+- `tag-described` (`info`) — a top-level tag whose description is absent,
+  a placeholder, or its name read back (`pets: "Pets"`). A tag is a chapter,
+  its description the chapter's introduction: other renderers print it at
+  the head of the group, this documentation shows it as the navigation
+  group's tooltip. 3.2 tags whose `kind` is not navigational count too —
+  they are still documented, as badges. One check per declared tag.
+- `response-content-schema` (`warning`) — a response media type with
+  a structure to describe — the JSON family (as `body-kind.js` recognizes
+  it), XML (`application/xml`, `text/xml`, `+xml`), forms — and neither
+  `schema` nor 3.2 `itemSchema`. The format is named, the payload is not: a
+  generated client gets no type for it, and this app shows the body
+  as `any`, with `null` as its generated example (none at all for XML). A
+  file or plain text (`image/png`, `text/plain`) is its own description,
+  and a media range (`*/*`) names no format. Every operation, webhooks' and
+  callbacks' included; a `components.responses` entry is checked once, at
+  the component, with the status of its first use. A request body with no
+  schema is `untyped-input`'s; a response saying nothing at all,
+  `response-substance`'s — the two fire together on `{ "application/json":
+  {} }` with no description, one asking for the description, the other for
+  the schema.
+- `example-placeholder` (`info`) — an example that is a placeholder
+  rather than a value: a string whose normalized text (the normalization of
+  `isSubstantive`) is a JSON type name, `todo`, `tbd`, `fixme`, `xxx`,
+  `placeholder`, or starts with `lorem ipsum`; an object or array whose
+  string leaves are all such words (one at least) and whose other leaves
+  are `0`, `false`, `true` or `""` — Swagger Editor's generated `{ "id": 0,
+  "name": "string" }`. Never a value the schema's `enum`/`const` allows (at
+  the root, and at a leaf through `properties`/`items`): `"string"` is a fine
+  example of a field whose values are type names. No other heuristic: a
+  dull but plausible value is an example. One check per example value
+  written — a schema's `example` and each `examples` item, a Parameter's,
+  Header's or Media Type's `example`, an Example Object's `value` and
+  `dataValue` — read on the source, a shared example once at its component.
+  The reader takes an example as the API's word, and the try-it prefills it
+  as the value to send; `operation-examples` and `response-example` do not
+  count a placeholder. A value contradicting its schema is
+  `example-type-mismatch`'s.
 
 ### 4.3 Deprecation hygiene
 
@@ -766,6 +909,44 @@ that merely mentions its name ("User id of the account owner") is substance.
   `Sunset` or `Deprecation` header, or a `Link` header whose description or
   examples name the `successor-version`, `latest-version` (RFC 5829),
   `deprecation` (RFC 9745) or `sunset` (RFC 8594) relation.
+- `deprecation-header-format` (`warning`) — a `Deprecation` response header
+  (name without case) declared against RFC 9745 §2.1, whose value "MUST be
+  a Date as per Section 3.3.7 of [RFC9651]": `@` and seconds since the
+  epoch (`@1688169599`). Fails on a schema `type` that admits a boolean or
+  excludes a string, a `date-time`, `date` or `http-date` format, or an
+  example that is no Structured Field Date (`true`, an HTTP-date, an ISO
+  date, a decimal) — the early drafts' `IMF-fixdate / "true"`. Examples are
+  read everywhere a Header writes one: its `example` / `examples`, its
+  `content` entry's, its schema's `example` / `examples`. A client written
+  from the document parses a value the API never sends once it follows the
+  RFC; this documentation prints the declared type next to the header's
+  name. One check per such header with a schema or an example, on every
+  Response (webhooks and callbacks included); a `components.headers` entry
+  once, at the component. The date's relation to `Sunset` is
+  `sunset-before-deprecation`'s; the other HTTP-date headers are
+  `http-date-headers`'.
+- `sunset-before-deprecation` (`error`) — a Response declaring both
+  `Deprecation` and `Sunset` whose examples put the removal before the
+  deprecation. RFC 9745 §4: "The timestamp given in the Sunset HTTP header
+  field MUST NOT be earlier than the one given in the Deprecation header
+  field" — graded by that MUST NOT. Only what parses is compared: the first
+  `Deprecation` example that is a Structured Field Date, the first `Sunset`
+  example that is an IMF-fixdate (RFC 8594 §3, RFC 9110 §5.6.7); a pair
+  equal to the second passes. One check per such Response, a
+  `components.responses` entry once; the finding on its `Sunset` header.
+- `deprecated-but-required` (`warning`) — a request input both deprecated
+  and required: a parameter with `required: true` (a path parameter is
+  skipped — it cannot be optional, its deprecation is the operation's), or
+  a writable property of a request body schema listed in its own schema's
+  `required`. A deprecated parameter "SHOULD be transitioned out of usage"
+  (OpenAPI), a deprecated property tells applications they "SHOULD refrain
+  from usage" (JSON Schema 2020-12 §9.3); required says the request fails
+  without it — one of the two flags is stale. Paths operations only (a
+  webhook or callback request is sent by the API); a response property is
+  fine, the server keeps sending it until removal. One check per deprecated
+  request input, a shared parameter or schema at its component. On the
+  demo GitHub schema: `contexts` of the branch protection update, required
+  and "closing down".
 
 ### 4.4 Consistency
 
@@ -792,6 +973,34 @@ kebab-case at once.
   component is collapsed to its name before comparing — dereferencing
   would otherwise turn an array-of-`$ref` written at six endpoints into
   six "copies".
+- `operation-id-collision` (`warning`) — two different operationIds that
+  generate one name: `getUser`, `get_user`, `GetUser`, `get-user`. The key
+  drops case and the separators openapi-generator's `sanitizeName` turns
+  into `_` (`.`, `-`, `:`, `|`, space, `/`, `\`, brackets, parentheses);
+  other symbols stay, since generators spell them out (`+1` → `plus1`).
+  openapi-generator camelizes an operationId into its method name and,
+  when two land on one name within a tag, renames the later `getUser_0`
+  with a warning: the method name depends on declaration order. Compared
+  over the whole document (the space the spec makes unique), webhooks and
+  callbacks included. One check per operation with an operationId; the
+  finding on each one after the first of its key, naming an earlier one
+  spelled otherwise. Identical strings are `duplicate-operation-id`'s.
+- `property-name-collision` (`warning`) — two properties of one schema
+  whose names differ and share the key: `user_id` and `userId` both
+  generate openapi-generator's `userId` field and `getUserId()`, a Java
+  model that does not compile (issues #8291, #20484; the answer is a
+  per-name mapping option). Own `properties` only, each schema once, a
+  component's at the component. One check per schema with two properties
+  or more; a finding per colliding name, on the later property. GitHub's
+  reaction counts `+1` and `-1` do not collide.
+- `schema-name-collision` (`warning`) — two `components.schemas` names
+  sharing the key (`Pet.Status`, `pet_status`, `PetStatus`): openapi-generator
+  writes one `PetStatus` class, the last schema silently winning, and every
+  operation typed with a lost schema returns another's shape; names
+  differing by case alone are two files a case-insensitive file system
+  holds as one. One check per schema component; the finding on each one
+  after the first of its key. (The roadmap's
+  `name-collision-after-sanitizing`.)
 
 ### 4.5 Docs readiness (ApiGlow-specific — the differentiator)
 
@@ -832,6 +1041,143 @@ Each message states the concrete degradation *in this app*:
   `MAX_AUTO_DEPTH` from `src/components/schema-view.js` as a local
   constant: the core must not import a component, and the two move
   together.
+- `operation-summary-present` (`info`) — an operation or a webhook with a
+  substantive description and no substantive summary → its navigation
+  entry and page heading show the path (a webhook's name), its tab title the
+  method and path, the pager a bare "Next"; a placeholder summary is shown as the name
+  just the same. Callbacks are exempt: no navigation entry, no page. With
+  neither summary nor description the operation is `operation-described`'s
+  (§4.2), and has no check here.
+- `operation-summary-style` (`info`) — a summary carrying Markdown or HTML
+  (`**`, `__`, a backtick, `[…](…)`, a tag) or a line break → printed as
+  typed: OpenAPI's summary is plain text, and the documentation shows it as
+  plain text everywhere — navigation, page heading, tab title (one line,
+  breaks collapsed), a callback's line, the pager. Operations, webhooks and
+  callbacks, one check per non-blank summary. No length or wording test:
+  length is `summary-length`'s (§4.7).
+- `tag-declared` (`info`) — a tag operations carry that the top-level `tags`
+  list does not declare → its navigation group has no description, no
+  external docs, and comes after every declared group, in order of first
+  use. Operations under `paths` only: webhooks are listed flat, never by
+  tag. One check per distinct tag name carried; the finding sits on the
+  first operation carrying it.
+- `tag-unused` (`info`) — a declared tag no operation, webhook or callback
+  carries, and that is no (3.2) `parent` of a carried tag → hidden from the
+  navigation, description and external docs included. Usually a leftover
+  from a removed endpoint, or a spelling the operations do not use (the
+  other half is then `tag-declared`'s). A tag carried only by webhooks or
+  callbacks passes: this documentation files neither under a tag, other
+  renderers do. One check per declared tag.
+- `markdown-unsafe` (`warning`) — raw HTML in a CommonMark description that
+  the sanitizer removes → the reader gets nothing where the author put it.
+  Every renderer has to strip what can run code or take over the page, and
+  OpenAPI lets it ("Tooling MAY choose to ignore some CommonMark or extension
+  features to address security concerns", Rich Text Formatting). The rule
+  mirrors what this documentation runs — DOMPurify 3.4.13's HTML profile,
+  plus `style`, `form` and the form controls forbidden: a tag outside the
+  allow-list (`script`, `iframe`, `object`, `embed`, `svg`, `math`, an
+  unknown or custom element), an attribute outside it (`on*` handlers,
+  `target`), a URL whose scheme the sanitizer refuses (`javascript:`,
+  `vbscript:`, `data:` except on an image or media element), in raw HTML or
+  in a Markdown link. Also catches the accidental tag: `List<Pet>` or
+  `/users/<id>` is an element to CommonMark, and vanishes. Text in code
+  spans and code blocks is shown as typed and not judged; HTML comments are
+  meant to be hidden. Every `description` the spec marks CommonMark, schema
+  descriptions included, each node once where it is written. One check per
+  description holding raw HTML or a Markdown link; the finding names the
+  first thing stripped, as written.
+- `markdown-links` (`warning`) — a link or image in a CommonMark
+  description whose target is relative (`./auth.md`, `../x`, `/docs/errors`,
+  `diagram.png`, `?page=2`) → OpenAPI resolves it "in their rendered
+  context, which might differ from the context of the API description"
+  (OAS 3.0.4/3.1.1 §4.6, 3.2.0 §4.1.2.2.3); this documentation sets no base
+  and rewrites no link, so it resolves against the documentation page: the
+  image does not load, the link lands on a 404 of the documentation host. A
+  lone `#fragment` passes (it scrolls to that anchor without changing the
+  route), and so does a protocol-relative `//host`. Inline links and
+  images, the reference definitions a reference uses, raw `<a href>`,
+  `<area href>` and the `src` of `<img>` and the media elements. One check
+  per description with a link; the finding names the first relative
+  target.
+- `document-has-operations` (`warning`) — no operation under `paths` and no
+  webhook → nothing to document: the home page says the schema declares no
+  operations, the navigation is empty, a generator produces a client with no
+  method. Hidden operations count. OpenAPI 3.1 allows a components-only
+  document on purpose — a library of schemas other documents reference — and
+  it fires there too: such a document is not one to publish as an API
+  reference, or the rule is to be switched off for it. One document check.
+- `example-summary` (`info`) — an Example in an `examples` map of
+  two entries or more without a substantive `summary` (`isSubstantive`,
+  the map key as its name — `summary: Sold out` under `soldOut` reads the
+  key back). This app lists each named example as "Example — key
+  (summary)", one after the other, with no picker: without a summary the
+  key is all the reader gets. Other renderers put the summary in their
+  example picker. Read on the dereferenced map, so a 3.1+ Reference's own
+  `summary` overrides its target's, as it does on the page; an Example
+  shared through `components.examples` is checked once, at the component,
+  under the key of its first use.
+- `example-external-only` (`info`) — an Example with
+  `externalValue` and no inline value (`value`, `dataValue`,
+  `serializedValue`). This app never fetches it — a page retrieving
+  whatever URL a document names is a request-forgery surface — so the doc
+  shows a link ("Declared in an external file, not fetched by this page"),
+  and the try-it prefill and the response example skip it. Any other
+  renderer needs CORS from that host, and 3.0 leaves the base of a relative
+  `externalValue` to the implementation. The fix follows the version: 3.2
+  takes a `dataValue` beside the link; before, `value` and `externalValue`
+  are exclusive, so the inline `value` replaces it. One check per Example
+  carrying a string `externalValue`, on the source. A malformed URL is
+  `uri-form`'s; both fields in 3.0/3.1, `exclusive-fields`'.
+- `type-missing` (`info`) — `untyped-input`'s question asked of what
+  the API sends: a value whose schema says nothing about it (`{}`, `true`,
+  annotations only, a 3.0 `nullable: true` alone) in a response body of any
+  operation, or in a parameter or request body of a webhook or callback.
+  Same predicate, same positions (`src/audit/untyped.js`): the root of a
+  parameter and of a JSON body, every property, array item and tuple item
+  below — a response's `readOnly` properties included, its `writeOnly`
+  ones left out; 3.2 `itemSchema` judged like a body root. A schema
+  `untyped-input` walks (any tool input) is that rule's: only its children
+  outside the inputs get a verdict here — a shared component's `readOnly`
+  property, for one. A composition member and an `additionalProperties`
+  value are not judged on their own; a response media type with no schema
+  is `response-content-schema`'s; a file has no type to give. This app
+  shows the value as `any` and its generated example holds `null` there. A
+  schema in `components.schemas` is graded once, at the component.
+- `forbidden-in-browser` (`info`) — what a browser refuses to send,
+  by the Fetch standard's lists, shared with the try-it
+  (`src/openapi/forbidden.js`): an `in: header` parameter that is a
+  forbidden request-header (`Host`, `Cookie`, `Origin`, `Content-Length`,
+  any `Sec-`/`Proxy-` name, a method-override header whose declared values
+  — `enum`, `const`, `default`, examples — name a forbidden method), and a
+  paths operation whose method is CONNECT, TRACE or TRACK (3.2
+  `additionalOperations` included). The browser drops the header without a
+  word and throws on the method; the try-it names the headers it will not
+  send and blocks the method, pointing at the cURL command. Any browser
+  client hits the same wall. One check per header parameter (a shared one
+  once, in components) and per paths operation; webhooks and callbacks are
+  sent by the API. `in: cookie` parameters are left out (the try-it has its
+  cookie note), and `Accept`/`Content-Type`/`Authorization` are
+  `header-parameter-ignored`'s.
+- `server-placeholder` (`warning`) — a server URL, variables at
+  their defaults (`serverDefaultUrl`), whose host RFC 2606 reserves for
+  documentation: `example.com`, `example.net`, `example.org` and their
+  subdomains, any name under `.example` or `.invalid`. The try-it sends to
+  the operation's own server, else to the environment seeded from a root
+  server or the first root server: from this one, every request goes to a
+  host that is not the API. `.test` and `localhost` are not placeholders
+  (RFC 6761 testing and local names). One check per Server the client
+  calls — root, Path Item, Operation — with an absolute URL; not a Link's
+  `server`, nor one inside a webhook or a callback. Plain http is
+  `server-https`'s, an undeclared variable `server-variables`'.
+- `server-described` (`info`) — with two top-level servers or more,
+  one with neither a substantive `description` nor a `name`. This app
+  names the environment seeded from a server after its `name` (3.2), else
+  its `description`, else its URL (`env-manager.js`): the reader is left
+  decoding URLs. One check per top-level server, only when there are
+  several — a lone server needs no telling apart. `name` counts whatever
+  the declared version, as the environment manager reads it; that it is a
+  3.2 field is `unknown-field`'s. Path Item and Operation servers are
+  picked by the operation, not by the reader.
 
 ### 4.6 Version awareness
 

@@ -302,6 +302,9 @@ describe('audit report', () => {
             contact: { email: 'api@example.com' },
             license: { name: 'MIT' },
           },
+          // `example.com` is documentation's own placeholder host (server-placeholder).
+          servers: [{ url: 'https://api.audit.test' }],
+          tags: [{ name: 'pets', description: 'Everything about pets.' }],
           paths: {
             '/pets/{petId}': {
               get: {
@@ -354,13 +357,12 @@ describe('audit report', () => {
     expect(report.counts.total).toBe(0)
     expect(report.score).toBe(100)
     expect(report.grade).toBe('A')
-    // Consistency stays out: four names are needed before a dominant convention
-    // means anything, and this document has one parameter.
     expect(report.categories.map((c) => c.id)).toEqual([
       'correctness',
       'security',
       'completeness',
       'deprecation',
+      'consistency',
       'readiness',
       'agent',
     ])

@@ -599,7 +599,9 @@ describe('apiglow audit', () => {
 
     const unknown = await audit('--explain', 'operation-id')
     expect(unknown.code).toBe(2)
-    expect(unknown.stderr).toContain('did you mean duplicate-operation-id, operation-id-present,')
+    expect(unknown.stderr).toContain(
+      'did you mean duplicate-operation-id, operation-id-collision, operation-id-present,',
+    )
     // A schema next to them would be silently ignored: refused instead.
     expect((await audit('--list-rules', CLEAN)).code).toBe(2)
   })

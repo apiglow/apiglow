@@ -120,6 +120,37 @@ import { oauthLegacyFlows } from './oauth-legacy-flows.js'
 import { rateLimitRetryAfter } from './rate-limit-retry-after.js'
 import { sensitiveFieldExposure } from './sensitive-field-exposure.js'
 import { unboundedInput } from './unbounded-input.js'
+import { requestBodyMethod } from './request-body-method.js'
+import { bodylessStatus } from './bodyless-status.js'
+import { httpDateHeaders } from './http-date-headers.js'
+import { queryMethodBody } from './query-method-body.js'
+import { problemDetailsShape } from './problem-details-shape.js'
+import { responseContentSchema } from './response-content-schema.js'
+import { examplePlaceholder } from './example-placeholder.js'
+import { placeholderText } from './placeholder-text.js'
+import { tagDescribed } from './tag-described.js'
+import { redirectLocation } from './redirect-location.js'
+import { methodNotAllowedAllow } from './method-not-allowed-allow.js'
+import { partialContentRange } from './partial-content-range.js'
+import { deprecationHeaderFormat } from './deprecation-header-format.js'
+import { sunsetBeforeDeprecation } from './sunset-before-deprecation.js'
+import { deprecatedButRequired } from './deprecated-but-required.js'
+import { operationIdCollision } from './operation-id-collision.js'
+import { propertyNameCollision } from './property-name-collision.js'
+import { schemaNameCollision } from './schema-name-collision.js'
+import { operationSummaryPresent } from './operation-summary-present.js'
+import { operationSummaryStyle } from './operation-summary-style.js'
+import { tagDeclared } from './tag-declared.js'
+import { tagUnused } from './tag-unused.js'
+import { markdownUnsafe } from './markdown-unsafe.js'
+import { markdownLinks } from './markdown-links.js'
+import { documentHasOperations } from './document-has-operations.js'
+import { exampleSummary } from './example-summary.js'
+import { exampleExternalOnly } from './example-external-only.js'
+import { typeMissing } from './type-missing.js'
+import { forbiddenInBrowser } from './forbidden-in-browser.js'
+import { serverPlaceholder } from './server-placeholder.js'
+import { serverDescribed } from './server-described.js'
 
 export const RULES = [
   // §4.1 Correctness, §4.6 version awareness
@@ -194,6 +225,12 @@ export const RULES = [
   binaryPlacement,
   exampleHasRef,
   problemStatusMismatch,
+  // §4.1 HTTP semantics
+  requestBodyMethod,
+  bodylessStatus,
+  httpDateHeaders,
+  queryMethodBody,
+  problemDetailsShape,
   // §4.8 Security: what the document lets through
   serverHttps,
   oauthUrlTls,
@@ -215,14 +252,27 @@ export const RULES = [
   responseExample,
   infoDescribed,
   infoMetadata,
+  responseContentSchema,
+  examplePlaceholder,
+  placeholderText,
+  tagDescribed,
+  redirectLocation,
+  methodNotAllowedAllow,
+  partialContentRange,
   // §4.3 Deprecation hygiene
   deprecatedInventory,
   deprecationReplacement,
+  deprecationHeaderFormat,
+  sunsetBeforeDeprecation,
+  deprecatedButRequired,
   // §4.4 Consistency
   parameterNaming,
   propertyNaming,
   pathStyle,
   duplicateInlineSchema,
+  operationIdCollision,
+  propertyNameCollision,
+  schemaNameCollision,
   // §4.5 Docs readiness
   operationIdPresent,
   operationTagged,
@@ -231,6 +281,19 @@ export const RULES = [
   oauthFlowUrls,
   operationExamples,
   schemaExpandWalls,
+  operationSummaryPresent,
+  operationSummaryStyle,
+  tagDeclared,
+  tagUnused,
+  markdownUnsafe,
+  markdownLinks,
+  documentHasOperations,
+  exampleSummary,
+  exampleExternalOnly,
+  typeMissing,
+  forbiddenInBrowser,
+  serverPlaceholder,
+  serverDescribed,
   // §4.7 Agent readiness: what a tool built from the document gets
   operationIdToolName,
   summaryLength,

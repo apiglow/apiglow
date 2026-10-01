@@ -111,6 +111,22 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   where no tool sees them, errors returned as prose, and what this
   documentation's own MCP export cannot carry (cookies, credentials outside
   a header).
+- 31 more audit rules, 146 in all. HTTP semantics: a body on a GET, HEAD
+  or TRACE, content on a 204, a 304 or any HEAD response, a redirect with no
+  `Location`, a 405 with no `Allow`, a 206 with no `Content-Range`, a date
+  header declared as RFC 3339 instead of an HTTP-date, a 3.2 QUERY with no
+  body, a problem+json schema whose members RFC 9457 would ignore.
+  Deprecation: a `Deprecation` header that is not an RFC 9745 date, a sunset
+  set before the deprecation, a deprecated input still required. Names code
+  generators fold into one: two operationIds, two properties or two schemas
+  (`pet_status` and `PetStatus`). And what the reader gets: placeholder
+  titles, an operation with no summary or with Markdown in it, tags used but
+  not declared, declared but undescribed or unused, HTML the sanitizer
+  removes, relative links that break once rendered, responses with no
+  schema, placeholder examples, examples with no summary or only in an
+  external file, untyped response fields, headers and methods a browser
+  refuses to send, servers on `example.com`, servers a reader cannot tell
+  apart, a document with no operation at all.
 - `apiglow audit --explain <rule>` prints one rule — why it matters, how to
   fix it, its severity and options — and `--list-rules` prints them all as
   JSON. The JSON report now carries each rule's message template next to
