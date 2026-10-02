@@ -32,7 +32,7 @@ test('About states the license, what it reads, and what it bundles', async ({ pa
     ['Tailwind CSS', '4.3.3'],
     ['JSON Schema $Ref Parser', '16.0.0'],
     ['Marked', '18.0.9'],
-    ['DOMPurify', '3.4.13'],
+    ['DOMPurify', '3.4.16'],
     ['highlight.js', '11.12.0'],
   ]) {
     const item = dialog(page).locator('li', { hasText: name }).first()

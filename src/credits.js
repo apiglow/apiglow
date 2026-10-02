@@ -47,7 +47,7 @@ export const BUNDLED_CREDITS = [
     id: 'dompurify',
     pkg: 'dompurify',
     name: 'DOMPurify',
-    version: '3.4.13',
+    version: '3.4.16',
     license: 'MPL-2.0 OR Apache-2.0',
     url: 'https://github.com/cure53/DOMPurify',
   },

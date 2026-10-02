@@ -28,7 +28,7 @@ import { markdownFields, markdownLinks, openTags } from '../markdown-text.js'
 // `href`/`src` the same sanitizer vets); the finding names the first thing
 // stripped, as written, in any of the views showing it. A relative link
 // target is `markdown-links`'.
-export const DOMPURIFY_VERSION = '3.4.13'
+export const DOMPURIFY_VERSION = '3.4.16'
 
 const ALLOWED_TAGS = new Set(
   `a abbr acronym address area article aside audio b bdi bdo big blink blockquote body br

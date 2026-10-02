@@ -1149,7 +1149,7 @@ Each message states the concrete degradation *in this app*:
   Every renderer has to strip what can run code or take over the page, and
   OpenAPI lets it ("Tooling MAY choose to ignore some CommonMark or extension
   features to address security concerns", Rich Text Formatting). The rule
-  mirrors what this documentation runs — DOMPurify 3.4.13's HTML profile,
+  mirrors what this documentation runs — DOMPurify 3.4.16's HTML profile,
   plus `style`, `form` and the form controls forbidden: a tag outside the
   allow-list (`script`, `iframe`, `object`, `embed`, `svg`, `math`, an
   unknown or custom element), an attribute outside it (`on*` handlers,

@@ -10,6 +10,14 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Security
+
+- A YAML schema can no longer stall the page with empty merge keys: the
+  bundled js-yaml is 5.4.2. DOMPurify moves to 3.4.16 — the advisory it
+  fixes needs `IN_PLACE` sanitizing and a hook, neither of which ApiGlow
+  uses — and the `undici` an `npm install apiglow` brings in, which the
+  browser bundle never loads, to 8.11.2.
+
 ## [0.3.0] — 2026-10-02
 
 ### Added
