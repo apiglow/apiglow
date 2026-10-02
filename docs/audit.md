@@ -2120,7 +2120,7 @@ CLI version it runs.
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: apiglow/audit-action@v0.2.0
+- uses: apiglow/audit-action@v0.3.0
   with:
     schema: openapi.yaml
     baseline: audit-baseline.json
@@ -2139,7 +2139,7 @@ steps:
       node-version: 24
   - name: Schema audit
     run: |
-      npx --yes apiglow@0.2.0 audit openapi.yaml --baseline audit-baseline.json \
+      npx --yes apiglow@0.3.0 audit openapi.yaml --baseline audit-baseline.json \
         --format github --report markdown="$GITHUB_STEP_SUMMARY" --report sarif=audit.sarif
   - if: always()
     uses: github/codeql-action/upload-sarif@v4
@@ -2154,7 +2154,7 @@ kept as an artifact:
 schema-audit:
   image: node:24
   script:
-    - npx --yes apiglow@0.2.0 audit 'apis/**/openapi.yaml'
+    - npx --yes apiglow@0.3.0 audit 'apis/**/openapi.yaml'
         --baseline audit-baseline.json
         --report codequality=gl-code-quality-report.json --report json=audit.json
   artifacts:
@@ -2176,7 +2176,7 @@ repos:
     hooks:
       - id: apiglow-audit
         name: Schema audit
-        entry: npx --yes apiglow@0.2.0 audit openapi.yaml --baseline audit-baseline.json
+        entry: npx --yes apiglow@0.3.0 audit openapi.yaml --baseline audit-baseline.json
         language: system
         files: \.ya?ml$
         pass_filenames: false
@@ -2205,7 +2205,7 @@ audit, fix, audit again until every check passes; with a baseline,
 `--only-new` keeps its attention on what a change introduced.
 
 ```
-npx apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
+npx apiglow@0.3.0 audit openapi.yaml --format json --min-severity warning
 ```
 
 The package ships that loop as an agent skill —

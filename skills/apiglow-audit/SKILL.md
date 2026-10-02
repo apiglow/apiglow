@@ -12,7 +12,7 @@ the file. The loop is: audit, fix, audit again.
 ## Run it
 
 ```
-npx --yes apiglow@0.2.0 audit openapi.yaml --format json --min-severity warning
+npx --yes apiglow@0.3.0 audit openapi.yaml --format json --min-severity warning
 ```
 
 - One schema per path argument; a quoted pattern (`'apis/**/openapi.yaml'`)
@@ -39,7 +39,7 @@ The JSON report (`format: "apiglow-audit-report"`):
 - `fingerprint` identifies a finding across runs while the file around it
   changes.
 
-`npx --yes apiglow@0.2.0 audit --explain <ruleId>` prints one rule — why,
+`npx --yes apiglow@0.3.0 audit --explain <ruleId>` prints one rule — why,
 how to fix, its severity; `--list-rules` prints every rule as
 JSON.
 
