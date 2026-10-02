@@ -6,6 +6,7 @@ import {
   clickInDoc,
   clickNavOp,
   clipboardText,
+  closeMobilePanels,
   gotoApp,
   openDrawerIfMobile,
   openSearch,
@@ -265,7 +266,9 @@ test('a #name link in a description stays on the page and moves to that id', asy
   expect(await page.evaluate(() => location.hash)).toBe(hash)
   await expect(heading).toHaveText(title)
 
-  // Keyboard activation is the same click.
+  // Keyboard activation is the same click. Below lg, the sheet `clickInDoc`
+  // brought back makes the doc `inert`: nothing in it takes focus until it closes.
+  await closeMobilePanels(page)
   await page.locator('main a', { hasText: 'the responses' }).focus()
   await page.keyboard.press('Enter')
   const target = page.locator('main #responses')

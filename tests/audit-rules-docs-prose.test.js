@@ -303,12 +303,15 @@ describe('markdown text', () => {
     expect(linksOf('<javascript:alert(1)> <b>')).toEqual([
       { target: 'javascript:alert(1)', index: 0, image: false },
     ])
+    // A quadratic scan of these inputs takes seconds; a linear one ~15 ms here
+    // and past 100 ms on a cold CI worker. The bound tells the two apart, not
+    // this machine from that one.
     const line = 'a](x)'.repeat(40000)
     const started = performance.now()
     expect(linksOf(line)).toEqual([])
     expect(linksOf(`${'['.repeat(100000)}](x)`)).toHaveLength(1)
     linksOf(`${'[a'.repeat(50000)}\n${'[b]: c\n'.repeat(10000)}`)
-    expect(performance.now() - started).toBeLessThan(100)
+    expect(performance.now() - started).toBeLessThan(1000)
   })
 
   it('honours a definition only as a block, and only when a reference uses it', () => {
