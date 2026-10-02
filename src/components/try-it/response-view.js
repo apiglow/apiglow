@@ -382,8 +382,18 @@ export function createResponseView({
           'code',
           `hljs ${xml ? 'language-xml' : 'language-json'} text-xs whitespace-pre`,
         )
-        if (typeof value === 'string' && !xml) code.textContent = value
-        else code.innerHTML = highlightSource(shownText, xml ? 'xml' : 'json')
+        code.textContent = shownText
+        // Highlighting a large example (a whole resource) and sanitizing the
+        // result is ~35 ms on a 12 MB schema, inside the task that opens the
+        // endpoint: its colors arrive one task after its text, and the request
+        // editors the reader reaches for first are not kept waiting for them.
+        if (typeof value !== 'string' || xml) {
+          const source = shownText
+          setTimeout(() => {
+            if (code.isConnected && code.textContent === source)
+              code.innerHTML = highlightSource(source, xml ? 'xml' : 'json')
+          })
+        }
         panel.replaceChildren(
           scrollBlock(
             el('pre', 'p-3 text-xs overflow-x-auto max-h-80 overflow-y-auto', code),

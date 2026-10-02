@@ -132,13 +132,28 @@ export function htmlBlock(source) {
 }
 
 // Inline variant (no <p>) for short descriptions in a cell/row.
+// A large schema repeats the same short descriptions hundreds of times on one
+// endpoint page ("The URL.", "Whether…"), and marked + DOMPurify were the
+// biggest script cost of rendering it. Both are pure for a given source (no
+// DOMPurify hook, marked configured once above), so a sanitized span is built
+// once and cloned. Cleared when full rather than LRU: a page's descriptions
+// come in one burst, and the next page refills what it needs.
+const INLINE_CACHE_MAX = 2000
+const inlineCache = new Map()
+
 export function markdownInline(source) {
   if (!source) return null
   followInPageLinks()
-  const span = document.createElement('span')
-  span.className = 'md-content'
-  span.innerHTML = sanitize(marked.parseInline(String(source), { async: false }))
-  return span
+  const key = String(source)
+  let built = inlineCache.get(key)
+  if (!built) {
+    built = document.createElement('span')
+    built.className = 'md-content'
+    built.innerHTML = sanitize(marked.parseInline(key, { async: false }))
+    if (inlineCache.size >= INLINE_CACHE_MAX) inlineCache.clear()
+    inlineCache.set(key, built)
+  }
+  return built.cloneNode(true)
 }
 
 // Syntax highlighting for already-sanitized code blocks.
