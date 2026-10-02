@@ -9,7 +9,6 @@ import {
   expectResponded,
   gotoApp,
   mockApi,
-  openDrawerIfMobile,
   openSettings,
   send,
 } from './helpers.js'
@@ -253,14 +252,4 @@ test('the MCP card keeps its open state and its bridge across a re-render', asyn
   await expect(card).toHaveAttribute('open', '')
   await expect(card.getByLabel('OpenAPI → MCP bridge')).toHaveValue('api-to-mcp')
   await expect(card.locator('pre')).toContainText('@tyk-technologies/api-to-mcp')
-})
-
-test('the nav closes its documentation zone with the llms.txt index', async ({ page }) => {
-  await gotoApp(page)
-  await openDrawerIfMobile(page)
-  const downloadPromise = page.waitForEvent('download')
-  await page.locator('api-nav [data-llms-text]').click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toBe('llms.txt')
-  expect(readFileSync(await download.path(), 'utf8')).toContain('# E2E Test API')
 })

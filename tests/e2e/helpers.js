@@ -52,8 +52,8 @@ export async function mockApi(page, respond = {}) {
 // clipboard, never the OS integration — and reading the real clipboard is
 // Chromium-only anyway (`clipboard-read` is not a permission Firefox or WebKit
 // know, and Firefox has no `readText` for web content at all). So every
-// navigation installs a capture: `writeText` records into `window.__copied`
-// and still delegates to the real implementation where it works, so the app's
+// navigation installs a capture: `writeText` and `write` record into
+// `window.__copied` and still delegate to the real implementation where it works, so the app's
 // own error path stays honest. `tryit.spec.js` keeps one Chromium-only test
 // reading the actual clipboard, which is what proves the capture is not
 // measuring itself.
@@ -74,6 +74,20 @@ async function captureClipboard(page) {
           // WebKit and Firefox reject without a user gesture. The capture
           // above is the assertion; swallowing here keeps the app's own
           // catch-and-log path out of the picture.
+        }
+      },
+    })
+    // The deferred write (`writeClipboardLater`): a ClipboardItem whose text
+    // is still being generated. Recorded once it resolves, like the above.
+    const writeItems = navigator.clipboard?.write?.bind(navigator.clipboard)
+    Object.defineProperty(navigator.clipboard, 'write', {
+      configurable: true,
+      value: async (items) => {
+        window.__copied = await (await items[0].getType('text/plain')).text()
+        try {
+          await writeItems?.(items)
+        } catch {
+          // Same as writeText: the capture is the assertion.
         }
       },
     })

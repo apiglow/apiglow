@@ -85,6 +85,7 @@ import {
 } from './specs.js'
 import { normalizeAnnouncements, rememberDismissed, visibleAnnouncements } from './announcements.js'
 import { announcementBar } from './components/announcement-bar.js'
+import { aiMenu } from './components/ai-menu.js'
 import { loadAnnouncementSources } from './shell/announcements.js'
 import { buildOperationIndex, setOperationIndex } from './docs/operations.js'
 import {
@@ -518,12 +519,6 @@ function appLayout(
       overlays: loaded.overlays,
       specOverlays: config.openapi.overlays ?? [],
     })
-  doc.llmsFullExport = llmsFullExport
-  doc.mcp = mcpContext
-
-  mdPage.llmsFullExport = llmsFullExport
-  mdPage.mcp = mcpContext
-
   // "Configured" badge of the auth card: reads the environment at render
   // time — the re-render on env change goes through syncDocBaseUrl.
   // A host-covered credential counts as configured: the badge answers "can
@@ -821,7 +816,12 @@ function appLayout(
       status: [changelogBtn, userOverlayBtn],
       searchField: headerSearchField(() => openSearchPalette()),
       searchButton: headerSearchButton(() => openSearchPalette()),
-      tools: [envSwitcher, historyBtn, importBtn],
+      tools: [
+        aiMenu({ llmsTextExport, llmsFullExport, mcp: mcpContext }),
+        envSwitcher,
+        historyBtn,
+        importBtn,
+      ],
       appMenu: menu,
     }),
     columns,
@@ -840,7 +840,6 @@ function appLayout(
 
   nav.docs = docsOutline
   nav.docsError = docsError
-  nav.llmsText = llmsTextExport
   // A takeover moves the welcome view to its own entry and makes the docs
   // page the one `#/` renders; the nav needs both facts to point and to
   // highlight correctly.

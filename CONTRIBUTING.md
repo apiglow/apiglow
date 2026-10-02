@@ -402,8 +402,9 @@ logic with no browser surface, or behavior only observable end-to-end).
 | Baked-install generators: `sitemap.xml`, the output layout and its file names, the HTML snapshot (escaped raw HTML, refused link schemes) (`docs/seo.md`) | `sitemap.test.js`, `snapshot-html.test.js`, `llms.test.js`, `llms-full.test.js` | — |
 | `apiglow` CLI: command routing and exit status; `bake`: config resolution (overlays included), output tree, multi-spec nesting, the packaged bin (run through its npm symlink), snapshots served without JavaScript | `cli.test.js`, `bake.test.js` | `bake.spec.js` |
 | MCP server config export (bridge table, auth placeholders) | `mcp.test.js` | `bootstrap.spec.js` |
-| Agent hand-off: raw Markdown view, `claude mcp add` command, Cursor/VS Code install links, `llms.txt` in the nav | `mcp.test.js` | `history-export.spec.js`, `bootstrap.spec.js` |
-| "Copy page" on a prose page: the page as authored, `{{var}}` as a template, MCP context following the environment | `docs-page-markdown.test.js` | `docs-pages.spec.js` |
+| "Copy page" on an endpoint: copied or raw Markdown, handed to an assistant | — | `history-export.spec.js` |
+| "Copy for AI" header menu: `llms-full.txt` and `llms.txt` copied or downloaded, `claude mcp add` command, Cursor/VS Code install links following the environment | `mcp.test.js` | `ai-menu.spec.js` |
+| "Copy page" on a prose page: the page as authored, `{{var}}` as a template | `docs-page-markdown.test.js` | `docs-pages.spec.js` |
 | Preferences, header memory (localStorage) | `prefs.test.js`, `header-memory.test.js` | — |
 | Settings panel: storage inventory, targeted purges, full reset | `maintenance.test.js` | `settings.spec.js` |
 | About dialog, license and third-party notices | `credits.test.js` | `about.spec.js` |

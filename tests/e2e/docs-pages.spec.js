@@ -534,24 +534,6 @@ test.describe('copy page (§5)', () => {
     expect(txt).toContain('# Raw changelog')
     expect(txt).toContain('2026-07-15  First public release.')
   })
-
-  test('the agent items register the API under the selected environment', async ({ page }) => {
-    await gotoFixture(page, `${DOCS_PAGE}#/page/pagination`)
-    await openCopyMenu(page)
-    await page.getByRole('button', { name: 'Copy MCP command' }).click()
-    expect(await clipboardText(page)).toMatch(/^claude mcp add e2e-test-api /)
-    // The page does not re-render on an environment change, so the menu has to
-    // be rebuilt: an install link frozen on the first render would register a
-    // base URL the reader has left behind.
-    await page.keyboard.press('Escape')
-    await selectEnv(page, 'other')
-    await openCopyMenu(page)
-    const cursor = await page.getByRole('link', { name: 'Add to Cursor' }).getAttribute('href')
-    const config = new URL(cursor).searchParams.get('config')
-    expect(JSON.parse(Buffer.from(config, 'base64').toString()).env.API_BASE_URL).toBe(
-      'https://other.e2e.test/v1',
-    )
-  })
 })
 
 test.describe('formats (§4.1)', () => {

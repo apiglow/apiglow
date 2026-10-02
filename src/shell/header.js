@@ -65,9 +65,15 @@ export function header({
   appMenu = null,
 }) {
   // The branding block leads back to the home (of the active spec in multi-spec).
+  // Below sm the start zone wraps (see the return below), and a flex line
+  // breaks on each item's basis, not on what it could shrink to: at its own
+  // width the brand would go to a second line rather than truncate. A zero
+  // basis grown back up to its content keeps it on the first line, ellipsing —
+  // down to 4 rem, below which a name is a letter and an ellipsis, and a
+  // second line (allowed under 360 px) reads better.
   const brand = el(
     'a',
-    'flex min-w-0 items-center gap-2 px-2 rounded-box hover:bg-base-200 transition-colors',
+    'flex min-w-0 items-center gap-2 px-2 rounded-box hover:bg-base-200 transition-colors max-sm:grow max-sm:basis-0 max-sm:min-w-16 max-sm:max-w-fit',
   )
   brand.href = homeHash()
   if (branding.logoUrl) {
@@ -136,7 +142,9 @@ export function header({
       : null,
     el(
       'div',
-      'navbar-end min-w-fit grow basis-0 gap-1 lg:gap-2 max-sm:flex-wrap',
+      // Half the gap on a phone: six ghost glyphs with no border to separate
+      // anyway, and the 12 px are what keep the API name readable at 360 px.
+      'navbar-end min-w-fit grow basis-0 gap-0.5 sm:gap-1 lg:gap-2 max-sm:flex-wrap',
       searchButton,
       ...tools,
       appMenu ? zoneRule() : null,

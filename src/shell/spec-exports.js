@@ -87,11 +87,11 @@ export function createSpecExports({
   // patch or about an overlay that matched nothing.
   const localOverlays = overlayCount > overlayUrls.length
 
-  // The one MCP context, for the home card and for both hand-off menus — an
-  // endpoint's and a prose page's. A provider rather than a value: the base URL
-  // follows the selected environment, and a prose page, unlike the endpoint
-  // doc, does not re-render when that changes. The "no URL, no config" rule
-  // stays with its consumers, which each already apply it.
+  // The one MCP context, for the home card and for the header's "Copy for AI"
+  // menu. A provider rather than a value: the base URL follows the selected
+  // environment, and the header, unlike the home page, is never re-rendered.
+  // The "no URL, no config" rule stays with its consumers, which each already
+  // apply it.
   const mcpContext = () => ({
     title: model.info.title,
     specUrl: publicSpecUrl,

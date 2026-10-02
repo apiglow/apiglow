@@ -372,26 +372,6 @@ test('view as Markdown shows the source the copy item would put in the clipboard
   await expect(dialog).toBeHidden()
 })
 
-test('the agent hand-off items register this API, not the endpoint', async ({ page }) => {
-  await gotoApp(page, '#/op/listPets')
-  await closeMobilePanels(page)
-  await page.locator('main details.dropdown > summary', { hasText: 'Copy page' }).click()
-  await page.getByRole('button', { name: 'Copy MCP command' }).click()
-  const command = await clipboardText(page)
-  expect(command).toMatch(/^claude mcp add e2e-test-api /)
-  expect(command).toContain('@ivotoby/openapi-mcp-server')
-  expect(command).toContain('/tests/e2e/fixtures/e2e-api.json')
-  // Placeholders, never the environment's token (rule 12) — same guarantee as
-  // the config block on the home page.
-  expect(command).toContain('YOUR_API_KEY')
-  expect(command).not.toContain('e2e-bearer-token')
-  // The install links carry the same entry, encoded for each editor.
-  const cursor = await page.getByRole('link', { name: 'Add to Cursor' }).getAttribute('href')
-  expect(cursor).toContain('cursor://anysphere.cursor-deeplink/mcp/install?name=e2e-test-api')
-  const vscode = await page.getByRole('link', { name: 'Add to VS Code' }).getAttribute('href')
-  expect(JSON.parse(decodeURIComponent(vscode.split('?')[1])).name).toBe('e2e-test-api')
-})
-
 test('open in ChatGPT opens a popup with the doc embedded in the prompt', async ({ page }) => {
   await page
     .context()

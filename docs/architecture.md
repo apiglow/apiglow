@@ -1446,11 +1446,10 @@ or the assistant they are pairing with. All three are **exports** — pure
 generators in `src/export/`, produced in the browser. The app runs no server
 and calls no model; nothing here is a runtime feature.
 
-They are reachable from where each is wanted rather than from the home page
-only: `llms.txt` closes the nav's documentation zone (a button, not a link —
-the file is generated here and there is no page to navigate to), and the
-**"Copy page"** menu — on an endpoint's doc and on a prose page alike —
-carries the hand-off items next to the Markdown ones (§5.14.1).
+They are reachable from every page rather than from the home page only: the
+header's **"Copy for AI"** menu carries all of them, and the **"Copy page"**
+menu — on an endpoint's doc and on a prose page alike — hands over the page
+being read (§5.14.1).
 
 The two panels that hand over a *file* — the MCP config on the home page, and
 "Automate this scenario" on a scenario page — share one shell,
@@ -1542,10 +1541,14 @@ the generated text, one clause per gap — an agent told to prefer the
 machine-readable contract has to know the two can disagree, and in which
 direction each time.
 
-#### 5.14.1 The hand-off menu
+#### 5.14.1 The hand-off menus
 
-The "Copy page" menu answers one question — *give me this page elsewhere* — in
-three registers, in that order:
+Two menus, one per subject — *give me this page elsewhere*, and *give me this
+API elsewhere*. An item in both would be two places to keep in step, so each
+item lives in exactly one (`tests/e2e/ai-menu.spec.js` holds the line).
+
+**"Copy page"** (`src/components/copy-page-menu.js`), at the top of an
+endpoint's doc and of a prose page:
 
 - **This page, as Markdown**: copied, or shown raw first ("View as
   Markdown", a dialog over the doc — a hash SPA has no `?format=md` route to
@@ -1555,20 +1558,30 @@ three registers, in that order:
 - **This page, handed to an assistant**: ChatGPT and Claude, opened with
   the Markdown embedded in the prompt, truncated to keep the URL under the
   browsers' limit.
-- **The whole API, wired to an agent**: `llms-full.txt`, then the MCP
-  registration in the three shapes a reader's own tool takes it in — the JSON
-  block (home card), the `claude mcp add …` one-liner, and the Cursor and
-  VS Code install links. All three come out of one `toMcpConfig` call, so the
-  command and the links install exactly what the block shows; the same
-  placeholder rule and the same *no URL, no config* rule apply, which is why
-  the section is simply absent for an inline schema.
 
-The registration is API-wide even in an operation's menu: what an agent needs
-is the document, and the config never narrows to one endpoint. Its base URL
-follows the selected environment, never an operation-level `servers` override
-— the endpoint doc re-renders on every change, and a prose page, which does
-not, rebuilds its menu instead (`src/components/copy-page-menu.js` takes the
-MCP context as a provider for exactly that reason). Every URL handed out of
+**"Copy for AI"** (`src/components/ai-menu.js`), in the header's acting zone
+(§5.16), the same on every page:
+
+- **The whole documentation, handed to an assistant**: `llms-full.txt` and
+  `llms.txt`, each copied or downloaded. The territory comes first: pasted
+  into a chat, `llms-full.txt` is the documentation, while `llms.txt` is a
+  list of links an assistant can only follow on an install that serves the
+  `.md` mirrors ([seo.md](seo.md) §4). Generating `llms-full.txt` fetches
+  the docs pages, so the copy hands the clipboard a pending `ClipboardItem`
+  (`writeClipboardLater`, `src/components/copy-button.js`): Safari refuses a
+  write issued once the click's gesture has expired.
+- **The whole API, wired to an agent**: the MCP registration in the three
+  shapes a reader's own tool takes it in — the JSON block (home card), the
+  `claude mcp add …` one-liner, and the Cursor and VS Code install links.
+  All three come out of one `toMcpConfig` call, so the command and the links
+  install exactly what the block shows; the same placeholder rule and the
+  same *no URL, no config* rule apply, which is why the section is simply
+  absent for an inline schema.
+
+The registration's base URL follows the selected environment, never an
+operation-level `servers` override. The header is built once, so the menu
+builds its items each time it opens, from a provider of the MCP context. Every
+URL handed out of
 the app — this config, `llms.txt`, `llms-full.txt`, a copied page, a baked
 file — carries the environment's `{{variables}}` filled in
 (`publishableUrl`, `src/env/interpolate.js`): nothing out there knows them.
@@ -1576,8 +1589,8 @@ One that would need a sensitive value, or a variable nobody set, gives way
 to the document's own server, never to a file carrying a secret or a literal
 `{{name}}`. The page itself keeps showing the template.
 
-One menu, two subjects: what changes between them is only the string being
-handed over — `toEndpointMarkdown` for an operation, `toDocsPageMarkdown` for
+"Copy page" has two subjects: what changes between them is only the string
+being handed over — `toEndpointMarkdown` for an operation, `toDocsPageMarkdown` for
 a prose page (§5.14.2).
 
 #### 5.14.2 A prose page as Markdown
@@ -1643,19 +1656,23 @@ resolved — `app.js` stays the only module reading the host config (rule 10).
 
 **Four zones, and the order is the reading**: which document (burger, brand,
 version, spec selector, status badges) · how to find something in it (the
-search trigger) · what to act on it with (environment, history, import) · the
-app itself. A 1 px rule stands between them, and the acting zone is where the
-one coloured control lives — the environment selector, deliberately the only
-pill in the bar, because it is the only control here with consequences (it
-decides where a send goes). Everything else is a square glyph of one size,
-labelled through its tooltip and its accessible name.
+search trigger) · what to act on it with (copy for AI, environment, history,
+import) · the app itself. A 1 px rule stands between them, and the acting zone
+is where the one coloured control lives — the environment selector,
+deliberately the only pill in the bar, because it is the only control here
+with consequences (it decides where a send goes). "Copy for AI" is the one
+other control that carries a word, from lg up: a glyph alone does not say
+"hand this documentation to an assistant", and the reader who came for that
+should find it without hovering. Everything else is a square glyph of one
+size, labelled through its tooltip and its accessible name.
 
 **One line, from 320 px to 2560 px** (`header.spec.js`, which is the contract —
 without it "one line" is an opinion). The two flanks split the leftover space
 so the search stays centred, but they yield differently: the naming side may be
 squeezed, the acting side may not, because a glyph has one size and a word does
 not. What goes, in order, as the bar narrows: the API version at lg, the
-status-badge labels at xl, the shortcut chip at lg, the API name at sm — but
+status-badge labels at xl, the shortcut chip and the "Copy for AI" label at
+lg, the API name at sm — but
 only when a logo can stand in for it — and the environment's name at sm, where
 the colour that identifies it is already doing the work. Nothing that goes is
 lost: each survives in an accessible name, a tooltip, or the home page.

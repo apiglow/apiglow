@@ -54,9 +54,6 @@ class ApiEndpointDoc extends HTMLElement {
   #security = null
   #baseUrl = ''
   #anchor = null
-  // Async provider for llms-full.txt (whole doc), wired up by the shell —
-  // the component knows neither the global model nor the config pages.
-  #llmsFullExport = null
   // { prev, next }: neighboring operations in nav order, computed by
   // the shell. Setter without render: always set right before `operation`,
   // which triggers the render with both pieces of info consistent.
@@ -141,20 +138,6 @@ class ApiEndpointDoc extends HTMLElement {
   #changes = null
   set changes(changes) {
     this.#changes = changes ?? null
-  }
-
-  set llmsFullExport(provider) {
-    this.#llmsFullExport = provider
-    this.#scheduleRender()
-  }
-
-  // Provider of the API-wide MCP context for the hand-off items — the very one
-  // the home card and the prose pages are given. A provider, not a value: its
-  // base URL follows the selected environment (§5.14.1).
-  #mcp = null
-  set mcp(provider) {
-    this.#mcp = provider ?? null
-    this.#scheduleRender()
   }
 
   // Every navigation sets several of the setters above in a row (`operation`
@@ -335,8 +318,6 @@ class ApiEndpointDoc extends HTMLElement {
     const sections = [
       headerSection(op, this.#baseUrl, {
         exportBaseUrl: this.#exportBaseUrl,
-        llmsFullExport: this.#llmsFullExport,
-        mcp: this.#mcp,
         changeStatus: this.#changes?.status,
       }),
       authSection(this.#security, this.#credentialsResolver, this.#authRows),
@@ -459,11 +440,7 @@ function configuredBadge(configured, extra = '') {
 // is only a dimmed reminder, the path stays the highlighted information.
 // Webhook: no base URL (the call goes out to the integrator's server) —
 // event name, dedicated badge and direction note.
-function headerSection(
-  op,
-  baseUrl,
-  { exportBaseUrl = '', llmsFullExport = null, mcp = null, changeStatus = null },
-) {
+function headerSection(op, baseUrl, { exportBaseUrl = '', changeStatus = null }) {
   const isWebhook = op.kind === 'webhook'
   const base = isWebhook ? '' : String(effectiveBaseUrl(op, baseUrl)).replace(/\/+$/, '')
   // One derivation of the page's name, for the h1 and for the hand-off menu
@@ -502,9 +479,6 @@ function headerSection(
       // then wraps three times. Below it, right-aligned as everywhere else.
       'flex max-sm:flex-col max-sm:items-end items-start justify-between gap-3',
       el('h1', 'font-display text-display max-sm:self-start', text(heading)),
-      // The MCP context carries the environment's base URL, never `base`: an
-      // operation-level server override belongs to that operation, and what is
-      // being registered is the API.
       copyPageMenu({
         // Outside the app nobody knows the environment's `{{variables}}`: the
         // Markdown gets the base with them filled in, the page shows them.
@@ -517,8 +491,6 @@ function headerSection(
         title: heading,
         filename: `${op.id}.md`,
         promptKey: 'doc.llmPrompt',
-        llmsFullExport,
-        mcp,
       }),
     ),
     el(

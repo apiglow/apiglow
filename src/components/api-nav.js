@@ -3,12 +3,10 @@ import { t } from '../i18n/index.js'
 import { firstCallHash, homeHash, opHash, overviewHash, pageHash, scenarioHash } from '../router.js'
 import { changeDot } from './change-badge.js'
 import { el, externalLink, icon, text, tooltipText } from './dom.js'
-import { downloadText } from './download.js'
 import { externalDocsLink } from './external-docs.js'
 import {
   COLLAPSE_SVG,
   EXTERNAL_SVG_SM,
-  IMPORT_SVG,
   SCENARIO_CONFIG_SVG,
   SCENARIO_LOCAL_SVG,
   SCENARIO_START_SVG,
@@ -82,16 +80,6 @@ class ApiNav extends HTMLElement {
   // it once for the nav and the exports both.
   set docs(entries) {
     this.#docs = entries ?? []
-    if (this.isConnected) this.#renderList()
-  }
-
-  // The llms.txt provider (async, like the home page's), or null. It closes
-  // the docs zone rather than living only on the home page: the file is the
-  // map an agent is handed, and a reader who came to fetch it should not have
-  // to find the overview first.
-  #llmsText = null
-  set llmsText(provider) {
-    this.#llmsText = provider ?? null
     if (this.isConnected) this.#renderList()
   }
 
@@ -502,11 +490,6 @@ class ApiNav extends HTMLElement {
         if (group) items.push(group)
       }
     }
-    // Last in the top zone: it is the index of everything above it, and of the
-    // reference below. On a document with no docs pages it stands alone under
-    // the heading, which is still what it is — the documentation, in the one
-    // form an agent reads.
-    if (this.#llmsText && zone === 'top') items.push(this.#llmsTextItem())
     return items
   }
 
@@ -560,35 +543,6 @@ class ApiNav extends HTMLElement {
     )
     link.title = entry.href
     return el('li', 'max-w-full', link)
-  }
-
-  // A download, not a route: the file is generated in the browser and there is
-  // no page to navigate to. Hence a button — the entry has no href a reader
-  // could copy, and pretending otherwise with an anchor would be a broken link
-  // in a nav made of real ones.
-  #llmsTextItem() {
-    // The label IS the file name, in both languages — but it goes through
-    // `t()` like every other string (rule 9): a key nobody translates is
-    // cheaper than an exception to the rule that has to be argued forever.
-    const label = el('span', 'grow min-w-0 truncate font-mono', text(t('nav.llmsText')))
-    const entry = el(
-      'button',
-      'flex items-center gap-2 w-full min-w-0',
-      icon(IMPORT_SVG, 'text-subtle shrink-0'),
-      label,
-    )
-    entry.type = 'button'
-    entry.dataset.llmsText = ''
-    entry.title = t('nav.llmsTextHint')
-    entry.addEventListener('click', async () => {
-      entry.disabled = true
-      try {
-        downloadText('llms.txt', await this.#llmsText())
-      } finally {
-        entry.disabled = false
-      }
-    })
-    return el('li', 'max-w-full', entry)
   }
 
   #docsGroupItem(group) {

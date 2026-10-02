@@ -38,8 +38,6 @@ class MdPage extends HTMLElement {
   // would be a second fetch of a text this element already holds.
   #source = null
   #copySlot = null
-  #llmsFullExport = null
-  #mcp = null
   // What is currently on screen, identified by where its body came from — a
   // page carried by the host has no URL to compare.
   #rendered = null
@@ -67,19 +65,6 @@ class MdPage extends HTMLElement {
     this.#feedback = feedback ?? null
   }
 
-  // The whole-API half of the "Copy page" menu (docs/architecture.md §5.14.1),
-  // wired by the shell like the endpoint doc's: the async llms-full.txt
-  // provider, and a provider of the MCP context — a provider, because its base
-  // URL follows the selected environment and this element does not re-render
-  // when that changes.
-  set llmsFullExport(provider) {
-    this.#llmsFullExport = provider ?? null
-  }
-
-  set mcp(provider) {
-    this.#mcp = provider ?? null
-  }
-
   // The one source a `{{var}}` resolves against (§12): the environment under
   // the host credential overlay, exactly what the try-it reads. Set once by the
   // shell; its `change` covers an environment switch, a variable edit and a
@@ -92,10 +77,6 @@ class MdPage extends HTMLElement {
     source.addEventListener('change', () => {
       if (!this.isConnected) return
       this.#interpolate()
-      // The MCP install links carry the environment's base URL: built once,
-      // they would keep registering whichever environment was selected when
-      // the page happened to render.
-      this.#buildCopyMenu()
     })
   }
 
@@ -209,8 +190,6 @@ class MdPage extends HTMLElement {
   }
 
   // The same hand-off menu as the endpoint doc, over this page's own source.
-  // Rebuilt rather than patched: the items are built once from the values they
-  // close over, which is exactly what makes the endpoint's version re-render.
   #buildCopyMenu() {
     if (!this.#copySlot || !this.#source) return
     const page = this.#page
@@ -220,8 +199,6 @@ class MdPage extends HTMLElement {
         title: page.title,
         filename: `${page.slug}.md`,
         promptKey: 'doc.llmPromptPage',
-        llmsFullExport: this.#llmsFullExport,
-        mcp: this.#mcp,
       }),
     )
   }

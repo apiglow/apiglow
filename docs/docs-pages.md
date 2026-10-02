@@ -544,8 +544,8 @@ search with the page that happens to link somewhere.
   (`docs/architecture.md` §5.14.1), at the top of the content column — a
   prose page has no header of its own to hang it off, its `h1` comes from the
   body. It hands over this page as Markdown (copy, raw view, download as
-  `{slug}.md`), this page to an assistant, and the whole API to an agent.
-  What travels is the page as authored, `{{var}}` included as a template
+  `{slug}.md`) and this page to an assistant; the whole API is the header's
+  "Copy for AI" menu. What travels is the page as authored, `{{var}}` included as a template
   rather than as its resolved value (§5.14.2 of the architecture).
 - **Prev/next**: bottom-of-page links derived from the flattened nav order
   (pages only — groups flatten, external links skip). One chain across both

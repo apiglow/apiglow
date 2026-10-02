@@ -163,6 +163,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- A "Copy for AI" menu in the header, on every page: copy or download
+  `llms-full.txt` and `llms.txt`, copy the `claude mcp add` command, or add
+  the API to Cursor or VS Code. It replaces the `llms.txt` entry in the
+  navigation, and the "Copy page" menu now covers only the page you are
+  reading.
 - An endpoint page reads as a request and a response. The request is one
   form: every parameter in a single list, where it goes (path, query,
   header, cookie) shown as a tag on its row, then the body, with each field

@@ -196,7 +196,7 @@ keys keep being used as-is (zero migration for existing data).
   `returnHash` naturally carries the prefix.
 - **Cmd+K search**: index built from the active spec's model only — boot cost
   unchanged.
-- **llms-full / "Copy page"**: per active spec; `toLlmsFullText` unchanged
+- **llms-full / "Copy for AI" / "Copy page"**: per active spec; `toLlmsFullText` unchanged
   (it already takes a single model). No aggregated multi-spec export (the
   other specs are not loaded).
 - **Webhooks + simulator**: the only consumer to touch = the `webhookSim.url`

@@ -25,6 +25,27 @@ export async function writeClipboard(value) {
   }
 }
 
+// The same write, for a text still being produced when the click lands —
+// llms-full.txt fetches the docs pages first. Safari only grants the clipboard
+// while the gesture is live, so a write issued after that wait is refused
+// there; a ClipboardItem takes the pending text instead, and the write is
+// issued inside the gesture. Where ClipboardItem is missing, the plain write
+// after the wait is all there is.
+export async function writeClipboardLater(load) {
+  try {
+    if (typeof ClipboardItem === 'function' && navigator.clipboard.write) {
+      const blob = load().then((value) => new Blob([value], { type: 'text/plain' }))
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })])
+    } else {
+      await navigator.clipboard.writeText(await load())
+    }
+    return true
+  } catch (err) {
+    console.error('[api-doc] clipboard write failed:', err)
+    return false
+  }
+}
+
 // `apply(true)` shows the confirmed face, `apply(false)` puts the resting one
 // back. The returned handle is what makes a second click safe: without it the
 // first click's timer fires during the second confirmation and takes it away
