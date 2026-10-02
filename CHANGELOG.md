@@ -110,7 +110,7 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
   sharing a name (Semantic Kernel drops the operation, bridges overwrite
   one), request examples written where no tool sees them, and errors
   returned as prose.
-- 30 more audit rules, 135 in all. HTTP semantics: a body on a GET, HEAD
+- 30 more audit rules, 137 in all. HTTP semantics: a body on a GET, HEAD
   or TRACE, content on a 204, a 304 or any HEAD response, a redirect with no
   `Location`, a 405 with no `Allow`, a 206 with no `Content-Range`, a date
   header declared as RFC 3339 instead of an HTTP-date, a 3.2 QUERY with no

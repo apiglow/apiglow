@@ -42,7 +42,7 @@
   secrets redacted by default ([imports & exports](#imports--exports))
 - **Fix schemas you don't own** — [OpenAPI Overlay 1.1](docs/openapi-coverage.md)
   applied at load, from the config, without forking the schema
-- **Grade your schema** — a [39-rule audit](#schema-audit) with a letter grade, in the browser and in CI
+- **Grade your schema** — a [137-rule audit](#schema-audit) with a letter grade, in the browser and in CI
 - **Prose woven in** — Markdown guides in the same nav, search and AI
   exports as the reference ([docs pages](#docs-pages))
 - **Say something to your readers** — a banner your ops team publishes by
