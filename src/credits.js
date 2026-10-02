@@ -1,5 +1,6 @@
 // Third-party components that TRAVEL IN THE BUNDLE: the runtime
-// dependencies plus the two CSS libraries compiled into app.css. Build tooling
+// dependencies, the one library a dependency bundles in turn, the two CSS
+// libraries compiled into app.css and the display font. Build tooling
 // (Vite, Vitest, Playwright, Biome) is deliberately absent — none of it reaches
 // the reader's browser, and listing it would bury the few notices that
 // legally do ship.
@@ -34,6 +35,14 @@ export const BUNDLED_CREDITS = [
     version: '16.0.0',
     license: 'MIT',
     url: 'https://apidevtools.com/json-schema-ref-parser/',
+  },
+  {
+    id: 'js-yaml',
+    pkg: 'js-yaml',
+    name: 'js-yaml',
+    version: '5.4.2',
+    license: 'MIT',
+    url: 'https://github.com/nodeca/js-yaml',
   },
   {
     id: 'marked',
@@ -93,6 +102,11 @@ export const BUNDLED_CREDITS = [
 // know.
 export const CSS_CREDIT_PACKAGES = ['daisyui', 'tailwindcss']
 export const ASSET_CREDIT_PACKAGES = ['@fontsource-variable/source-serif-4']
+// Imported by a runtime dependency rather than by src/: the ref-parser parses
+// the YAML files a `$ref` reaches with it, so its code lands in app.js. Not
+// pinned by us — the version is whatever package-lock.json resolved within the
+// ref-parser's range, and the test reads it there.
+export const TRANSITIVE_CREDIT_PACKAGES = ['js-yaml']
 
 // Mirrors LICENSE at the repo root (asserted by the same test). A CDN install
 // ships no LICENSE file: the About dialog is where the notice actually reaches

@@ -10,9 +10,11 @@ import {
   BUNDLED_CREDITS,
   CSS_CREDIT_PACKAGES,
   PROJECT_LICENSE,
+  TRANSITIVE_CREDIT_PACKAGES,
 } from '../src/credits.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'))
 const licenseText = readFileSync(new URL('../LICENSE', import.meta.url), 'utf8')
 
 const byPackage = new Map(BUNDLED_CREDITS.map((credit) => [credit.pkg, credit]))
@@ -32,6 +34,16 @@ describe('bundled credits', () => {
     }
   })
 
+  it('credits what a runtime dependency bundles, at the version the lockfile resolved', () => {
+    for (const name of TRANSITIVE_CREDIT_PACKAGES) {
+      const locked = lock.packages[`node_modules/${name}`]
+      expect(locked, `${name} is not installed`).toBeDefined()
+      expect(locked.dev, `${name} is a dev-only package`).toBeFalsy()
+      expect(byPackage.get(name), `${name} ships in dist/ but is not credited`).toBeDefined()
+      expect(byPackage.get(name).version, `${name} version`).toBe(locked.version)
+    }
+  })
+
   // The other side of the contract: build tooling never reaches the browser,
   // and crediting it would drown the notices that do travel.
   it('credits nothing that does not ship', () => {
@@ -39,6 +51,7 @@ describe('bundled credits', () => {
       ...Object.keys(pkg.dependencies),
       ...CSS_CREDIT_PACKAGES,
       ...ASSET_CREDIT_PACKAGES,
+      ...TRANSITIVE_CREDIT_PACKAGES,
     ])
     for (const credit of BUNDLED_CREDITS)
       expect(shipped.has(credit.pkg), `${credit.pkg} does not ship`).toBe(true)

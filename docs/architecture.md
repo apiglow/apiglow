@@ -1419,7 +1419,8 @@ Three properties worth stating, because they are what the design turns on:
   notices reach the people running the code, so removing it would drop an
   obligation rather than a decoration.
 - **Credits list what ships, and only that** — every runtime dependency,
-  Tailwind and daisyUI (whose output is compiled into `app.css`), and the
+  js-yaml (which the ref-parser bundles into `app.js`, credited at the
+  version `package-lock.json` resolved), Tailwind and daisyUI (whose output is compiled into `app.css`), and the
   bundled Source Serif 4 face (§5.9). Build
   tooling never reaches the browser and is deliberately absent.
   `src/credits.js` is the declaration; `tests/credits.test.js` fails the

@@ -954,6 +954,7 @@
   "about.credit.daisyui": "components and themes",
   "about.credit.tailwind": "CSS engine",
   "about.credit.ref-parser": "$ref resolution",
+  "about.credit.js-yaml": "YAML in referenced files",
   "about.credit.marked": "Markdown rendering",
   "about.credit.dompurify": "HTML sanitization",
   "about.credit.highlight": "syntax highlighting",

@@ -10,6 +10,11 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ## [Unreleased]
 
+### Fixed
+
+- The About dialog credits js-yaml, which ships inside the bundle with the
+  `$ref` resolver and was missing from its open-source notices.
+
 ### Security
 
 - A YAML schema can no longer stall the page with empty merge keys: the
