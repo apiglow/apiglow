@@ -90,8 +90,7 @@ test('a changed schema is flagged where it changed: nav, header, parameter, resp
   await clickNavOp(page, 'listPets')
   await expect(page.locator('main header .badge-warning')).toHaveText('Modified')
   // Parameter absent from the snapshot: new. The others carry nothing.
-  const paramRow = (name) =>
-    page.locator('section#params-query .api-param-row').filter({ hasText: name })
+  const paramRow = (name) => page.locator('#params .api-param-row').filter({ hasText: name })
   await expect(paramRow('breed').locator('.badge-success')).toHaveText('New')
   // Enum chips are also .badge elements: we target the marking colors.
   await expect(paramRow('status').locator('.badge-success, .badge-warning')).toHaveCount(0)
@@ -111,14 +110,14 @@ test('a changed schema is flagged where it changed: nav, header, parameter, resp
   await expect(propBadge('section#responses', 'id')).toHaveCount(0)
 
   await clickNavOp(page, 'createPet')
-  await expect(propBadge('section#body', 'name')).toHaveText('Modified')
-  await expect(propBadge('section#body', 'status')).toHaveCount(0)
+  await expect(propBadge('#body', 'name')).toHaveText('Modified')
+  await expect(propBadge('#body', 'status')).toHaveCount(0)
 
   // An entirely new operation is not detailed field by field.
   await clickNavOp(page, 'getPet')
   // .badge-xs distinguishes it from the method badge, also `soft` but not sized.
   await expect(page.locator('main header .badge-success.badge-soft.badge-xs')).toHaveText('New')
-  await expect(page.locator('section#params-path .badge-success')).toHaveCount(0)
+  await expect(page.locator('#params .badge-success')).toHaveCount(0)
 })
 
 // Writes `count` foreign snapshots straight into the store, all older than the

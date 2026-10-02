@@ -43,6 +43,12 @@ test('a cookie parameter is editable, reaches the cURL export, and says it will 
   // pretending otherwise.
   expect(calls[0].headers.cookie).toBeUndefined()
   await expect(tryIt(page)).toContainText('browsers drop the Cookie header')
+  // The doc row folds the caveat to one line, the full text behind its icon.
+  const row = page.locator('main #params .api-param-row', { hasText: 'session' })
+  await expect(row).toContainText('Not delivered to the API from this page')
+  await expect(
+    row.getByRole('button', { name: /Cookie parameters leave in a folded Cookie header/ }),
+  ).toBeVisible()
 })
 
 test('the cookie field mirrors between the doc and the panel', async ({ page }) => {

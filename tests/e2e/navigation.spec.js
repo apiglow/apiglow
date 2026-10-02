@@ -35,12 +35,26 @@ test('clicking an endpoint renders its doc and updates the hash', async ({ page 
   await expect(page.locator('main h1')).toHaveText('List all pets')
   expect(new URL(page.url()).hash).toBe('#/op/listPets')
   // stacked parameter rows + responses by status with a switcher
-  await expect(
-    page.locator('section#params-query .api-param-row', { hasText: 'status' }),
-  ).toBeVisible()
+  await expect(page.locator('#params .api-param-row', { hasText: 'status' })).toBeVisible()
   await expect(page.locator('section#responses [role="tab"]')).toHaveCount(2)
   // sanitized Markdown description: the **status** in the description is rendered as <strong>
   await expect(page.locator('main strong', { hasText: 'status' })).toBeVisible()
+})
+
+test('the request reads as one form, the response as a read-only block', async ({ page }) => {
+  await gotoApp(page, '#/op/listPets')
+  const request = page.locator('section#request')
+  // Where a parameter goes is a tag on its row, not a section of its own.
+  await expect(request.locator('.api-param-row', { hasText: 'status' })).toContainText('query')
+  // The form is tinted with the method's color.
+  await expect(request.locator('.bg-info\\/8').first()).toBeVisible()
+
+  await clickNavOp(page, 'getPet')
+  const response = page.locator('section#responses')
+  // No field on the response side: the declared example fills the value cell.
+  const name = response.locator('.api-schema-row', { has: page.locator('code:text-is("name")') })
+  await expect(name).toContainText('"Rex"')
+  await expect(response.locator('input, select')).toHaveCount(0)
 })
 
 test('Ctrl+K opens the search palette; Enter navigates to the selected result', async ({
@@ -157,9 +171,9 @@ test('section anchor button copies a shareable deep-link', async ({ page }) => {
   await gotoApp(page, '#/op/listPets')
   await clickInDoc(
     page,
-    page.locator('section#params-query button[aria-label="Copy link to this section"]'),
+    page.locator('section#request button[aria-label="Copy link to this section"]'),
   )
-  expect(await clipboardText(page)).toContain('#/op/listPets/params-query')
+  expect(await clipboardText(page)).toContain('#/op/listPets/request')
 })
 
 test('markdown page renders sanitized with heading anchors and highlighted code', async ({

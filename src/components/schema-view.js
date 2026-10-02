@@ -1,6 +1,7 @@
 import { t } from '../i18n/index.js'
 import { isFileSchema } from '../openapi/body-kind.js'
 import { defaultVariant } from '../openapi/model.js'
+import { sampleValue } from '../openapi/sample.js'
 import { changeBadge } from './change-badge.js'
 import { el, text } from './dom.js'
 import { externalDocsLink } from './external-docs.js'
@@ -39,6 +40,15 @@ const MAX_AUTO_DEPTH = 3
 // widget here holds a choice the panel does not; a remount therefore has to
 // ask for the state again instead of waiting for the next unrelated push.
 //
+// options.values: read-only tree (a response, a webhook payload) — the value
+// cell of each scalar row shows an example value where an editable tree puts
+// its field. `{ at }`: the part of the declared example that sits at the
+// current node, walked down with the rows; where it says nothing, the row
+// falls back to the schema's own sample — the same order the try-it panel
+// follows for its mock response, so the two columns show the same values.
+// Kept through `descriptive()` like `xml`; an editable tree never sets it, so
+// the descriptive subtree under one of its arrays shows none.
+//
 // options.xml: the media type being documented is an XML one. Purely
 // presentational, but it is the whole tree's mode rather than a node's, so it
 // has to survive every place below where the edit options are deliberately
@@ -49,7 +59,11 @@ export function schemaTree(node, depth = 0, options = {}) {
   return renderNode(node, depth, options)
 }
 
-const descriptive = (options, extra = {}) => ({ xml: options.xml, ...extra })
+const descriptive = (options, extra = {}) => ({
+  xml: options.xml,
+  values: options.values,
+  ...extra,
+})
 
 function renderNode(node, depth, options = {}) {
   if (!node) return el('div')
@@ -191,8 +205,12 @@ function arrayNode(node, depth, options = {}) {
         node.items,
         depth + 1,
         depth === 0
-          ? descriptive(options, { topRows: true, changes: options.changes })
-          : descriptive(options),
+          ? descriptive(options, {
+              topRows: true,
+              changes: options.changes,
+              values: valuesAt(options, 0),
+            })
+          : descriptive(options, { values: valuesAt(options, 0) }),
       ),
     )
   }
@@ -369,12 +387,12 @@ function propertyRow(prop, depth, options = {}) {
   const top = depth === 0 || options.topRows === true
   const head = rowHead(
     fieldName(prop.name),
+    prop.required ? requiredMark() : null,
     prop.pattern ? el('span', 'badge badge-ghost badge-xs', text(t('schema.patternKey'))) : null,
     isDiscriminator
       ? el('span', 'badge badge-primary badge-outline badge-xs', text(t('schema.discriminator')))
       : null,
     fieldType(schema),
-    prop.required ? requiredMark() : null,
     schema?.deprecated ? deprecatedMark() : null,
     schema?.circular
       ? el('span', 'badge badge-ghost badge-xs', text(`↻ ${t('schema.recursive')}`))
@@ -383,19 +401,21 @@ function propertyRow(prop, depth, options = {}) {
     // granularity of field fingerprints (cf. openapi/diff.js).
     top ? changeBadge(options.changes?.(prop.name)) : null,
   )
-  const row = el('div', top ? 'api-schema-row py-row api-row' : 'py-2 api-row', head)
+  const info = el('div', 'min-w-0', head)
   const description = markdownInline(schema?.description)
-  if (description) row.append(el('div', 'text-sm mt-1', description))
+  if (description) info.append(el('div', 'text-sm text-subtle mt-0.5', description))
   const childPath = [...(options.path ?? []), prop.name]
   // The editor is built before the chips: clickable enum values fill its
   // field (setLeaf), but it displays after them.
   let editor = null
+  let file = false
   if (options.editable && options.fileEditors && isFileSchema(schema)) {
     // A file part: a picker, not a text field. Typing bytes is not a thing.
     // Gated on the registry, which only a multipart body provides: the same
     // `format: binary` inside a JSON body describes a base64 string, and
     // that one does type.
     editor = fileEditor(childPath, options.fileEditors)
+    file = true
   } else if (
     options.editable &&
     (isEditableLeaf(schema) || schema?.kind === 'array' || isFreeFormMap(schema))
@@ -413,8 +433,15 @@ function propertyRow(prop, depth, options = {}) {
     schema,
     descriptive(options, { onEnumPick: editor?.setLeaf ?? undefined }),
   )
-  if (chips) row.append(chips)
-  if (editor) row.append(editor.element)
+  if (chips) info.append(chips)
+  let value = null
+  const below = []
+  if (editor) {
+    if (file || fitsValueCell(schema)) value = editor.element
+    else below.push(editor.element)
+  } else if (options.values && !isComplex(schema)) {
+    value = exampleCell(schema, valuesAt(options, prop.name)?.at)
+  }
   if (isComplex(schema)) {
     // Sub-objects remain editable at depth (extended path); the subtree of an
     // array or of a free-form map, on the other hand, is purely descriptive —
@@ -435,9 +462,40 @@ function propertyRow(prop, depth, options = {}) {
     if (childOptions.discriminatorProp !== undefined) {
       childOptions = { ...childOptions, discriminatorProp: undefined, discriminatorKey: undefined }
     }
-    row.append(nested(schema, depth + 1, childOptions))
+    if (options.values) childOptions = { ...childOptions, values: valuesAt(options, prop.name) }
+    below.push(nested(schema, depth + 1, childOptions))
   }
-  return row
+  return fieldRow(top ? 'api-schema-row py-row api-row' : 'py-2 api-row', info, value, below)
+}
+
+// What goes in the narrow value cell: one field, or a list of them. Anything
+// wider (a map's key/value pairs, an array of objects) keeps the full row
+// width, under the description.
+function fitsValueCell(schema) {
+  if (isEditableLeaf(schema)) return true
+  return schema?.kind === 'array' && !schema.tupleItems?.length && isEditableLeaf(schema.items)
+}
+
+// One step down the declared example (a property name, or 0 for an array's
+// first item). A scalar or a missing branch has nothing below it.
+function valuesAt(options, key) {
+  if (!options.values) return undefined
+  const at = options.values.at
+  return { at: at !== null && typeof at === 'object' ? at[key] : undefined }
+}
+
+// Example value of a read-only scalar row: what the declared example holds
+// there, failing that the deterministic sample of the schema. Nothing for a
+// value that teaches nothing (a binary's empty string), nor for an object,
+// which its own rows already spell out.
+export function exampleCell(schema, declared) {
+  const value = declared !== undefined ? declared : sampleValue(schema, { forResponse: true })
+  if (value === undefined || value === '') return null
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) return null
+  const shown = JSON.stringify(value)
+  const cell = el('code', 'block font-mono text-sm text-subtle truncate', text(shown))
+  cell.title = shown
+  return cell
 }
 
 // Indented subtree: auto-expanded as long as the depth budget allows it,
@@ -521,6 +579,31 @@ export function typeLabel(node) {
 // api-endpoint-doc.js. They looked alike enough to drift silently: the same
 // restyle has to reach both, and only one of the two is under the mirror
 // suite's eye.
+// Two cells once the doc column is wide enough (container query on the doc
+// root): what the field is on the left, its value on the right — the try-it
+// field on the request side, an example on the response side. The value
+// column has one width everywhere, nested rows included, so values line up
+// down the whole form. Narrower, the cells stack as plain rows. `below` (a
+// subtree, a wide editor) always takes the full width.
+export function fieldRow(className, info, value, below = [], tag = 'div') {
+  const row = el(
+    tag,
+    `${className} @xl:grid @xl:grid-cols-[minmax(0,1fr)_16rem] @xl:gap-x-6 @xl:items-center`,
+    info,
+  )
+  if (value) {
+    value.classList.add('mt-2', '@xl:mt-0')
+    row.append(value)
+  } else {
+    info.classList.add('@xl:col-span-2')
+  }
+  for (const element of below) {
+    element.classList.add('@xl:col-span-2')
+    row.append(element)
+  }
+  return row
+}
+
 export function rowHead(...children) {
   return el('div', 'flex flex-wrap items-baseline gap-x-2 gap-y-1', ...children)
 }
@@ -533,10 +616,19 @@ export function fieldType(schema) {
   return el('span', 'text-xs font-mono text-subtle', text(typeLabel(schema)))
 }
 
-// Plain tinted text, no badge: the info should read without shouting — a list
-// of required properties would otherwise be speckled with red.
+// An asterisk, the form convention, rather than a word: a list of required
+// properties would otherwise be speckled with red capitals. The word stays in
+// the accessible text and the tooltip.
 export function requiredMark() {
-  return el('span', 'text-label uppercase text-error', text(t('doc.required')))
+  const mark = el(
+    'span',
+    '-ms-1 text-error font-semibold',
+    el('span', '', text('*')),
+    el('span', 'sr-only', text(t('doc.required'))),
+  )
+  mark.firstChild.setAttribute('aria-hidden', 'true')
+  mark.title = t('doc.required')
+  return mark
 }
 
 export function deprecatedMark() {

@@ -113,7 +113,7 @@ test('clicking an enum value in the doc fills the try-it field (doc → panel sy
   page,
 }) => {
   await gotoApp(page, '#/op/listPets')
-  await clickInDoc(page, page.locator('section#params-query button.badge', { hasText: 'sold' }))
+  await clickInDoc(page, page.locator('#params button.badge', { hasText: 'sold' }))
   await expect(panelField(page, 'status')).toHaveValue('sold')
   // and the cURL preview follows
   await expect(
@@ -123,7 +123,7 @@ test('clicking an enum value in the doc fills the try-it field (doc → panel sy
 
 test('a long enum is collapsed to 7 chips behind a show-more toggle', async ({ page }) => {
   await gotoApp(page, '#/op/listPets')
-  const row = page.locator('section#params-query .api-param-row', {
+  const row = page.locator('#params .api-param-row', {
     has: page.locator('code:text-is("breed")'),
   })
   const values = row.locator('.badge.font-mono')
@@ -294,7 +294,7 @@ test('an array query parameter edits as rows and goes out as repeated pairs', as
 
 test('array parameter: the central doc edits the same rows as the panel', async ({ page }) => {
   await gotoApp(page, '#/op/listPets')
-  const docRow = page.locator('section#params-query .api-param-row', {
+  const docRow = page.locator('#params .api-param-row', {
     has: page.locator('code:text-is("tags")'),
   })
   await editInDoc(page, async () => {
@@ -326,7 +326,7 @@ test('an object query parameter edits per property and spreads as deepObject', a
   expect(sent.has('owner[since]')).toBe(false)
 
   // The doc column edits the same properties.
-  const docRow = page.locator('section#params-query .api-param-row', {
+  const docRow = page.locator('#params .api-param-row', {
     has: page.locator('code:text-is("owner")'),
   })
   await editInDoc(page, () => docRow.getByLabel(/owner.*since/).fill('2024-03-01'))

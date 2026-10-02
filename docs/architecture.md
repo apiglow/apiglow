@@ -510,14 +510,31 @@ load, a revision we do not know. An overlay never breaks a load.
   default applies once — after that the open set belongs to the reader.
 - Per operation: the method badge and the full URL as one composed lockup
   (badge colors via a **static map** of daisyUI classes), the description
-  (sanitized Markdown), then the parameters — path/query/header/cookie — as
-  **stacked rows** (`.api-param-row`), one per parameter: name, type and
-  `required` inline, description and constraint chips (enum, min/max,
-  pattern, default) underneath — an enum whose values are described becomes
-  a list, each value next to its meaning, still clickable — and the
-  mirror-editable field in the row itself. Rows rather than a three-column table because the field needs the
-  width, and because the same information then stays readable at any
-  viewport.
+  (sanitized Markdown), then two sections that must not read alike. The
+  **Request** is one bordered form: the parameters first — every location in
+  a single list, path/query/header/cookie being a tag on the row rather than
+  a section, since where a value goes is read second — then the body, its
+  strip holding the media type picker. The form's border and heading bars take
+  a light wash of the method's color, and a badge next to its heading names
+  the method (static maps), for a reader scrolled past the header. The
+  **Response** is a tinted, read-only block, its status tabs colored by
+  family.
+- Both sections speak one row grammar (`fieldRow`, `components/schema-view.js`):
+  name, required asterisk, type and badges on the head line, description and
+  constraint chips under it — an enum whose values are described becomes a
+  list, each value next to its meaning, still clickable — and a **value
+  cell** on the right. On the request side the value cell is the
+  mirror-editable field; on the response side (and on any read-only tree: a
+  webhook payload, a callback) it is the example value — the declared
+  example's value at that place, failing that the schema's deterministic
+  sample, the same order the try-it panel follows for its mock response.
+  The two cells sit side by side once the doc column is wide enough (a
+  container query on the doc root, since the rails squeeze the column
+  independently of the viewport) and stack below that. A wide editor (an
+  array of objects, a map, an object parameter) takes the row's full width.
+  Parameter rows are `.api-param-row`, top-level property rows
+  `.api-schema-row`; the parameters carry the `params` id and the body the
+  `body` id inside the `request` section.
 - Schema rendering: the conditional keywords (`if`/`then`/`else`, `not`,
   `dependentSchemas`) become labeled panes with the same lazy expansion as a
   composite variant; `patternProperties` become rows of the property list,

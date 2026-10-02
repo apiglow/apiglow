@@ -20,19 +20,20 @@ import { copyPageMenu } from './copy-page-menu.js'
 import { el, externalLink, scrollToAnchor, text, tooltipText } from './dom.js'
 import { externalDocsLink } from './external-docs.js'
 import { pagerSection } from './pager.js'
-import { ANCHOR_SVG, CHECK_SVG } from './icons.js'
+import { ANCHOR_SVG, CHECK_SVG, INFO_SVG } from './icons.js'
 import { highlightCode, markdownBlock, markdownInline } from './markdown.js'
-import { methodBadgeClass, statusColorClass } from './method-colors.js'
+import { methodBadgeClass, methodTint, statusColorClass } from './method-colors.js'
 import { fileEditor, paramField } from './schema-editors.js'
 import {
   chipsLine,
   deprecatedMark,
+  exampleCell,
   fieldName,
+  fieldRow,
   fieldType,
   requiredMark,
   rowHead,
   schemaTree,
-  typeLabel,
 } from './schema-view.js'
 
 // `querystring` (3.2): the entire query string described as a single
@@ -179,7 +180,10 @@ class ApiEndpointDoc extends HTMLElement {
     // description lines stop being scannable, and the stacked parameter rows
     // read better narrow. The try-it rail lives outside this element and
     // keeps its own width.
-    this.classList.add('block', 'max-w-3xl')
+    // The container the field rows measure to decide between one cell and
+    // two (`fieldRow`): the column's own width, which the two rails squeeze
+    // independently of the viewport.
+    this.classList.add('block', 'max-w-3xl', '@container')
     if (this.#op) this.#render()
   }
 
@@ -337,8 +341,7 @@ class ApiEndpointDoc extends HTMLElement {
       }),
       authSection(this.#security, this.#credentialsResolver, this.#authRows),
       markdownBlock(op.description),
-      ...parameterSections(op, registry, fieldStatus),
-      requestBodySection(op, {
+      requestSection(op, registry, fieldStatus, {
         editable: registry !== null,
         fieldStatus,
         bodyEditors: this.#bodyEditors,
@@ -573,13 +576,17 @@ function labelBadges(op) {
 }
 
 // Anchor icon to the left of the section title: copies the deep link
-// #/op/{id}/{anchor}. Always visible (otherwise the feature is unguessable) but
-// dimmed; full opacity on title hover. The -ms-1.5 offsets the button's padding
-// to keep the title nearly aligned with the rest.
+// #/op/{id}/{anchor}. Hidden until the heading is hovered — the same contract
+// as the docs pages' ¶ — and shown on keyboard focus, so it stays reachable
+// without a mouse. Where the pointer can hover it hangs in the margin, out of
+// the flow: hidden in front of the title, it would indent every heading by
+// its invisible width. A device that cannot hover keeps it in the flow and
+// visible, dimmed — there it would otherwise never appear, and the margin of
+// a phone has no room for it. The -ms-1.5 offsets the button's padding.
 function anchorButton(op, anchorId) {
   const btn = el(
     'button',
-    'btn btn-ghost btn-xs px-1 -ms-1.5 text-base-content/30 group-hover:text-base-content/60 hover:text-base-content! focus-visible:text-base-content transition-colors',
+    'btn btn-ghost btn-xs px-1 -ms-1.5 text-base-content/40 hover:text-base-content! focus-visible:text-base-content [@media(hover:hover)]:absolute [@media(hover:hover)]:end-full [@media(hover:hover)]:ms-0 [@media(hover:hover)]:me-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:text-base-content/60 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity',
   )
   btn.type = 'button'
   btn.innerHTML = ANCHOR_SVG
@@ -587,7 +594,9 @@ function anchorButton(op, anchorId) {
   btn.setAttribute('aria-label', t('doc.copyLink'))
   const confirm = confirmed((done) => {
     btn.innerHTML = done ? CHECK_SVG : ANCHOR_SVG
+    // The confirmation must show even once the pointer has left the heading.
     btn.classList.toggle('text-success', done)
+    btn.classList.toggle('opacity-100!', done)
   })
   btn.addEventListener('click', async () => {
     const url = new URL(window.location.href)
@@ -597,16 +606,16 @@ function anchorButton(op, anchorId) {
   return btn
 }
 
-// Major content section (parameters by location, body, responses):
-// separated by a thin rule, title + copyable anchor. titleExtras: badges
-// displayed between the title and the anchor.
+// Major content section (request, responses…): separated by a thin rule,
+// title + copyable anchor. titleExtras: badges displayed between the title
+// and the anchor.
 function docSection(op, anchorId, title, titleExtras, ...children) {
   const section = el(
     'section',
     'mt-section pt-block border-t border-base-300/70',
     el(
       'div',
-      'group flex items-center gap-2 mb-row',
+      'group relative flex items-center gap-2 mb-row',
       anchorButton(op, anchorId),
       el('h2', 'font-display text-heading', text(title)),
       ...titleExtras,
@@ -617,29 +626,64 @@ function docSection(op, anchorId, title, titleExtras, ...children) {
   return section
 }
 
-function parameterSections(op, inputRegistry, fieldStatus = () => undefined) {
-  const sections = []
-  for (const location of PARAM_LOCATIONS) {
-    const params = op.parameters.filter((p) => p.in === location)
-    if (!params.length) continue
-    const list = el('ul')
-    for (const param of params)
-      list.append(parameterRow(param, inputRegistry, fieldStatus(paramFieldKey(param))))
-    sections.push(docSection(op, `params-${location}`, t(`doc.params.${location}`), [], list))
+// Everything the caller sends, as one form: the parameters, whatever their
+// location, then the body. Where a parameter goes is a tag on its row — a
+// detail read second, not a section of its own. The form's tint and the badge
+// carry the method's color down from the header, for a reader scrolled past it.
+function requestSection(op, inputRegistry, fieldStatus, bodyOptions) {
+  const params = PARAM_LOCATIONS.flatMap((location) =>
+    op.parameters.filter((p) => p.in === location),
+  )
+  const tint = methodTint(op.method)
+  const body = requestBodyPart(op, bodyOptions, !params.length, tint)
+  if (!params.length && !body) return null
+  const sheet = el('div', `border rounded-box ${tint.border}`)
+  if (params.length) {
+    const part = el(
+      'div',
+      '',
+      partBar(tint, true, el('h3', '', text(t('doc.params')))),
+      el(
+        'ul',
+        'px-4',
+        ...params.map((param) =>
+          parameterRow(param, inputRegistry, fieldStatus(paramFieldKey(param))),
+        ),
+      ),
+    )
+    part.id = 'params'
+    sheet.append(part)
   }
-  return sections
+  if (body) sheet.append(body)
+  return docSection(
+    op,
+    'request',
+    t('doc.request'),
+    [el('span', methodBadgeClass(op.method, 'badge-sm'), text(op.method))],
+    sheet,
+  )
 }
 
-// One stacked row per parameter: name, type and required on the head line,
-// description, constraint chips and the mirror-editable field underneath —
-// stacked rows (docs/architecture.md §5.2), which stay readable at any column
-// width where the old 3-column table fought for it.
+// Heading bar of one part of the request form (parameters, body), in the
+// form's tint. The first one rounds its top corners with the sheet.
+function partBar(tint, first, ...children) {
+  return el(
+    'div',
+    `flex flex-wrap items-center gap-2 px-4 py-2 text-sm text-subtle ${tint.bar} ${tint.border} ${first ? 'rounded-t-box border-b' : 'border-y'}`,
+    ...children,
+  )
+}
+
+// One row per parameter: name, required, type and location on the head line,
+// description and constraint chips under it, and the mirror-editable field in
+// the row's value cell (`fieldRow`, docs/architecture.md §5.2).
 function parameterRow(param, inputRegistry, changeStatus) {
   const schema = param.schema
   const head = rowHead(
     fieldName(param.name),
-    fieldType(schema),
     param.required ? requiredMark() : null,
+    fieldType(schema),
+    el('span', 'badge badge-ghost badge-xs', text(t(`doc.in.${param.in}`))),
     param.deprecated ? deprecatedMark() : null,
     // How the value is serialized, when the parameter says something the
     // defaults don't: both change what leaves the browser, and both are
@@ -652,12 +696,10 @@ function parameterRow(param, inputRegistry, changeStatus) {
       : null,
     changeBadge(changeStatus),
   )
-  const row = el('li', 'api-param-row py-row api-row', head)
+  const info = el('div', 'min-w-0', head)
   const description = markdownInline(param.description)
-  if (description) row.append(el('div', 'text-sm mt-1', description))
-  if (param.in === 'cookie') {
-    row.append(el('div', 'text-xs text-faint mt-1', text(t('tryit.cookieParamNote'))))
-  }
+  if (description) info.append(el('div', 'text-sm text-subtle mt-0.5', description))
+  if (param.in === 'cookie') info.append(cookieNote())
   // Field built before the chips: clickable enum values fill it,
   // but it displays after them (same logic as the body).
   // inputRegistry null = read-only doc (webhooks, callbacks).
@@ -705,10 +747,13 @@ function parameterRow(param, inputRegistry, changeStatus) {
           }
         : undefined,
   })
-  if (chips) row.append(chips)
+  if (chips) info.append(chips)
   const shownExample = displayableExample(param.examples)
-  if (shownExample) {
-    row.append(
+  // Read-only (webhook): the example is the row's value. Editable, a text
+  // field already shows it as its placeholder; a select or a list of fields
+  // does not, and gets it as a line of its own.
+  if (shownExample && field && field.element.tagName !== 'INPUT') {
+    info.append(
       el(
         'div',
         'mt-1 text-xs text-subtle font-mono',
@@ -718,8 +763,9 @@ function parameterRow(param, inputRegistry, changeStatus) {
   }
   // try-it input directly from the doc: the value flows up to the panel via
   // the tryit-edit event (wired up by the shell).
+  let value = null
+  const below = []
   if (field) {
-    field.element.classList.add('max-w-60', 'mt-2')
     inputRegistry[`${param.in}:${param.name}`] = field
     // Remembered headers (try-it session context) also pre-fill
     // the doc's field — same source as the right-hand panel, pending
@@ -732,12 +778,42 @@ function parameterRow(param, inputRegistry, changeStatus) {
     if (field.element.tagName === 'INPUT' && example !== undefined) {
       field.element.placeholder = typeof example === 'string' ? example : JSON.stringify(example)
     }
-    row.append(field.element)
+    // An object parameter is a card of labeled fields: too wide for the
+    // value cell, it takes the row's width.
+    if (field.multi && schema?.kind === 'object') {
+      field.element.classList.add('mt-2')
+      below.push(field.element)
+    } else {
+      value = field.element
+    }
+  } else if (shownExample) {
+    value = exampleCell(schema, shownExample.value)
   }
-  return row
+  return fieldRow('api-param-row py-row api-row', info, value, below, 'li')
 }
 
-function requestBodySection(
+// The body part of the request form: its strip names it, says whether it is
+// required and holds the media type picker; the tree sits under it.
+// The cookie caveat folded to one line: the row is about the parameter, and
+// the four-line explanation pushed it to twice the height of its neighbors.
+// The full text sits behind the icon — a daisyUI tooltip on hover and keyboard
+// focus, and the button's accessible name for a screen reader.
+function cookieNote() {
+  const button = el('button', 'btn btn-ghost btn-xs btn-circle size-5 min-h-0 text-faint')
+  button.type = 'button'
+  button.innerHTML = INFO_SVG
+  button.setAttribute('aria-label', t('tryit.cookieParamNote'))
+  const tip = el('span', 'tooltip tooltip-bottom', button)
+  tip.dataset.tip = t('tryit.cookieParamNote')
+  return el(
+    'div',
+    'flex items-center gap-1 text-xs text-faint mt-1',
+    text(t('doc.cookieParamShort')),
+    tip,
+  )
+}
+
+function requestBodyPart(
   op,
   {
     editable = true,
@@ -748,14 +824,16 @@ function requestBodySection(
     mediaRegistry = null,
     onEditorsChanged = null,
   } = {},
+  first = false,
+  tint = methodTint(op.method),
 ) {
   const body = op.requestBody
   if (!body) return null
-  const extras = body.required ? [requiredMark()] : []
-  const section = docSection(op, 'body', t('doc.requestBody'), extras)
+  const picker = el('div', 'ms-auto')
+  const content = el('div', 'px-4 pt-2 pb-3')
   const description = markdownInline(body.description)
-  if (description) section.append(el('p', 'text-sm mb-2', description))
-  section.append(
+  if (description) content.append(el('p', 'text-sm mb-2', description))
+  content.append(
     mediaTypeBlock(body.contents, {
       editable,
       bodyEditors,
@@ -763,10 +841,24 @@ function requestBodySection(
       bodyVariants,
       mediaRegistry,
       onEditorsChanged,
+      picker,
       propStatus: (mediaType, name) => fieldStatus(bodyPropKey(mediaType, name)),
     }),
   )
-  return section
+  const part = el(
+    'div',
+    '',
+    partBar(
+      tint,
+      first,
+      el('h3', '', text(t('doc.body'))),
+      body.required ? requiredMark() : null,
+      picker,
+    ),
+    content,
+  )
+  part.id = 'body'
+  return part
 }
 
 // Content area per media type: select if several, schema + examples.
@@ -785,6 +877,7 @@ function mediaTypeBlock(
     bodyVariants = null,
     mediaRegistry = null,
     onEditorsChanged = null,
+    picker = null,
   } = {},
 ) {
   const box = el('div')
@@ -809,7 +902,7 @@ function mediaTypeBlock(
             // binary properties to text fields, like the try-it panel.
             ...(kind === 'multipart' ? { fileEditors: bodyFileEditors } : {}),
           }
-        : { xml }
+        : { xml, values: { at: displayableExample(mt.examples)?.value } }
     // Media type change: the previous editors are detached, the
     // registry must start empty again (it's cleared, not replaced — the reference
     // is the component's).
@@ -829,7 +922,11 @@ function mediaTypeBlock(
     if (mt.itemSchema) {
       content.append(
         el('div', 'text-label uppercase text-subtle mb-1', text(t('doc.streamItem'))),
-        schemaTree(mt.itemSchema, 0, options.changes ? { xml, changes: options.changes } : { xml }),
+        schemaTree(mt.itemSchema, 0, {
+          xml,
+          ...(options.editable ? {} : { values: { at: undefined } }),
+          ...(options.changes ? { changes: options.changes } : {}),
+        }),
       )
     }
     if (!mt.itemSchema || mt.schema?.kind !== 'any')
@@ -855,7 +952,7 @@ function mediaTypeBlock(
   }
   let select = null
   if (contents.length > 1) {
-    select = el('select', 'select select-sm w-auto font-mono mb-2')
+    select = el('select', `select select-sm w-auto font-mono ${picker ? '' : 'mb-2'}`)
     select.setAttribute('aria-label', t('tryit.mediaType'))
     contents.forEach((mt, i) => {
       const option = el('option', '', text(mt.mediaType))
@@ -880,9 +977,15 @@ function mediaTypeBlock(
         show(index)
       }
     })
-    box.append(select)
+    ;(picker ?? box).append(select)
   } else {
-    box.append(el('div', 'text-xs font-mono text-faint mb-2', text(contents[0].mediaType)))
+    ;(picker ?? box).append(
+      el(
+        'div',
+        `text-xs font-mono text-faint ${picker ? '' : 'mb-2'}`,
+        text(contents[0].mediaType),
+      ),
+    )
   }
   box.append(content)
   renderContent(contents[0])
@@ -1021,12 +1124,15 @@ function linkRow(link) {
 // Responses by HTTP code with switcher (tabs) — docs/architecture.md §5.2. registerSelect
 // receives the programmatic selection function (sync with the try-it
 // example mockup, without re-emitting — the loop is cut there).
+// A tinted, read-only block where the request is a bordered form: the two
+// halves of the exchange must not read alike.
 function responsesSection(op, registerSelect = () => {}, fieldStatus = () => undefined) {
   if (!op.responses.length) return null
-  const section = docSection(op, 'responses', t('doc.responses'), [])
   const tablist = el('div', 'tabs tabs-border')
   tablist.setAttribute('role', 'tablist')
   const panel = el('div', 'mt-3')
+  const block = el('div', 'bg-base-200 rounded-box px-4 pt-2 pb-4', tablist, panel)
+  const section = docSection(op, 'responses', t('doc.response'), [], block)
 
   const renderResponse = (response) => {
     panel.replaceChildren()
@@ -1038,17 +1144,10 @@ function responsesSection(op, registerSelect = () => {}, fieldStatus = () => und
     if (response.headers?.length) {
       panel.append(el('h4', 'text-label uppercase text-subtle mt-3 mb-1', text(t('doc.headers'))))
       for (const header of response.headers) {
-        panel.append(
-          el(
-            'div',
-            'flex flex-wrap items-center gap-2 text-sm py-1.5 api-row',
-            el('code', 'font-mono font-semibold', text(header.name)),
-            el('span', 'text-xs font-mono text-subtle', text(typeLabel(header.schema))),
-            header.description
-              ? el('span', 'text-subtle', markdownInline(header.description))
-              : null,
-          ),
-        )
+        const info = el('div', 'min-w-0', rowHead(fieldName(header.name), fieldType(header.schema)))
+        const description = markdownInline(header.description)
+        if (description) info.append(el('div', 'text-sm text-subtle mt-0.5', description))
+        panel.append(fieldRow('py-1.5 api-row', info, exampleCell(header.schema)))
       }
     }
     if (response.links?.length) {
@@ -1112,7 +1211,6 @@ function responsesSection(op, registerSelect = () => {}, fieldStatus = () => und
   linkTabPanel(tabs, panel)
   registerSelect(select)
 
-  section.append(tablist, panel)
   show(0)
   return section
 }

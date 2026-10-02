@@ -58,7 +58,7 @@ test('a recursive subtree expanded by hand is editable, and edits reach the pane
 test('a scalar parameter mirrors both ways from its stacked row', async ({ page }) => {
   await gotoOp(page, PAGE, 'createDeep')
   const docField = page
-    .locator('section#params-query .api-param-row', {
+    .locator('#params .api-param-row', {
       has: page.locator('code:text-is("limit")'),
     })
     .getByLabel('Try-it value for limit')

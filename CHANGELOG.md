@@ -163,6 +163,13 @@ promotes that section into a numbered one ([`docs/release.md`](docs/release.md))
 
 ### Changed
 
+- An endpoint page reads as a request and a response. The request is one
+  form: every parameter in a single list, where it goes (path, query,
+  header, cookie) shown as a tag on its row, then the body, with each field
+  beside its description, all tinted with the method's color. The response
+  is a tinted, read-only block: each field shows its example value where
+  the request has an input. Section links change accordingly: `…/request` replaces the
+  `…/params-query`-style anchors.
 - The audit page leads with its verdict: one card names the API and its
   figures, then shows the grade in a ring drawn to the score beside the
   category bars, which now line up. Finding rows line their titles up, an

@@ -22,10 +22,8 @@ test('nav shows a Webhooks section; the webhook doc is read-only', async ({ page
   await expect(page.locator('main h1')).toHaveText('Pet adopted')
   await expect(page.locator('main .badge').filter({ hasText: 'Webhook' }).first()).toBeVisible()
   // Read-only: no try-it input fields in the central doc.
-  await expect(page.locator('section#params-header .api-param-row')).toContainText(
-    'X-Webhook-Signature',
-  )
-  await expect(page.locator('section#params-header input')).toHaveCount(0)
+  await expect(page.locator('#params .api-param-row')).toContainText('X-Webhook-Signature')
+  await expect(page.locator('#params input')).toHaveCount(0)
   // The right-hand panel is the simulator, not the try-it.
   await openTryItIfMobile(page)
   await expect(page.locator('api-webhook-simulator')).toBeVisible()

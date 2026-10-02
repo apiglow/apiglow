@@ -42,3 +42,20 @@ const STATUS_TEXT = {
 export function statusColorClass(status) {
   return STATUS_TEXT[String(status)[0]] ?? STATUS_TEXT.default
 }
+
+// Tint of the doc's request form: its border and its heading bars take a
+// light wash of the method's color, so a reader scrolled past the header still
+// knows which verb they are filling in, without a stripe shouting it. Same
+// hue as the badge map above; a method with no color there stays neutral.
+const METHOD_TINT = {
+  get: { border: 'border-info/30', bar: 'bg-info/8' },
+  post: { border: 'border-success/30', bar: 'bg-success/8' },
+  put: { border: 'border-warning/30', bar: 'bg-warning/8' },
+  patch: { border: 'border-warning/30', bar: 'bg-warning/8' },
+  delete: { border: 'border-error/30', bar: 'bg-error/8' },
+  query: { border: 'border-secondary/30', bar: 'bg-secondary/8' },
+}
+
+export function methodTint(method) {
+  return METHOD_TINT[method] ?? { border: 'border-base-300', bar: 'bg-base-200/60' }
+}

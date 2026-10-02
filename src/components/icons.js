@@ -132,6 +132,7 @@ export const TRASH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2
 // Arrow leaving the frame: the step goes to open elsewhere (the try-it).
 export const OPEN_EXTERNAL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ${STROKE} class="size-4"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>`
 // Refresh arrow: the return from the panel to the step.
+export const INFO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ${STROKE} class="size-3.5"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>`
 export const REFRESH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ${STROKE} class="size-4"><path d="M20 11a8 8 0 1 0-.9 4.6"/><path d="M20 20v-5h-5"/></svg>`
 
 // Fold state of a rule group: points right closed, down open (the rotation is

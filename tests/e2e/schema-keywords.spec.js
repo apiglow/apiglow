@@ -80,8 +80,11 @@ test('a tuple in a response documents each of its positions', async ({ page }) =
   // Named by index, as the editable slots are, and each carrying its own type.
   const span = responses.locator('.api-row', { hasText: 'span' }).first()
   await expect(span).toContainText('Fixed [start, end] instants')
-  await expect(span.locator('.api-row', { hasText: '0' }).first()).toContainText('date-time')
-  await expect(span.locator('.api-row', { hasText: '1' }).first()).toContainText('integer')
+  // By the position's name: the example values in the rows hold digits too.
+  const position = (index) =>
+    span.locator('.api-row', { has: page.locator(`code:text-is("${index}")`) }).first()
+  await expect(position(0)).toContainText('date-time')
+  await expect(position(1)).toContainText('integer')
 })
 
 // An enum whose values carry descriptions — through `x-enum-descriptions`, or
